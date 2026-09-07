@@ -1,0 +1,80 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { asc, desc, sql } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+import { formatCents, setStatusLabels } from "@/lib/format";
+
+export const metadata: Metadata = { title: "Sets", robots: { index: false } };
+export const dynamic = "force-dynamic";
+
+export default async function SetsPage() {
+  const rows = await db
+    .select({
+      id: schema.sets.id,
+      name: schema.sets.name,
+      setNumber: schema.sets.setNumber,
+      theme: schema.sets.theme,
+      status: schema.sets.status,
+      depositCents: schema.sets.depositCents,
+      planName: sql<string | null>`(select name from ${schema.ratePlans} rp where rp.id = ${schema.sets.ratePlanId})`,
+      pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets.ratePlanId}), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
+      copies: sql<number>`(select count(*)::int from ${schema.setCopies} c where c.set_id = ${schema.sets.id})`,
+      cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets.id} order by i.sort_order asc, i.created_at asc limit 1)`,
+    })
+    .from(schema.sets)
+    .orderBy(asc(schema.sets.status), asc(schema.sets.sortOrder), desc(schema.sets.createdAt));
+
+  return (
+    <>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="text-3xl md:text-4xl font-bold">Sets</h1>
+        <Link href="/admin/sets/nouveau" className="btn btn-brick">
+          Ajouter un set
+        </Link>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="mt-8 brick-card p-6 bg-sky max-w-xl">
+          Aucun set pour l&apos;instant. Ajoutez votre premier set : nom, caution,
+          forfait, puis ses photos et ses exemplaires.
+        </p>
+      ) : (
+        <ul className="mt-8 grid gap-4">
+          {rows.map((s) => (
+            <li key={s.id}>
+              <Link
+                href={`/admin/sets/${s.id}`}
+                className="brick-card p-4 grid gap-4 grid-cols-[5rem_1fr] sm:grid-cols-[5rem_1fr_auto] items-center hover:bg-sky"
+              >
+                <span className="block h-20 w-20 bg-sky border-[3px] border-ink overflow-hidden relative">
+                  {s.cover ? (
+                    <Image src={s.cover} alt="" fill sizes="80px" className="object-cover" />
+                  ) : null}
+                </span>
+                <span>
+                  <span className="display text-xl font-semibold block">
+                    {s.name}
+                    {s.setNumber ? <span className="ml-2 text-slate-ink font-normal text-base">n° {s.setNumber}</span> : null}
+                  </span>
+                  <span className="block text-slate-ink text-sm">
+                    {s.theme ? `${s.theme} · ` : ""}
+                    {s.copies} exemplaire{s.copies > 1 ? "s" : ""} · {s.planName ?? "forfait par défaut"}
+                    {s.pricePerDay != null ? ` (${formatCents(s.pricePerDay)}/jour)` : ""} · caution {formatCents(s.depositCents)}
+                  </span>
+                </span>
+                <span
+                  className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 border-2 border-ink ${
+                    s.status === "published" ? "bg-sun" : s.status === "archived" ? "bg-slate-200" : "bg-paper"
+                  }`}
+                >
+                  {setStatusLabels[s.status]}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}

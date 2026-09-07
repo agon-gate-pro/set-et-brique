@@ -14,6 +14,7 @@ Set et Brique loue de grands sets de briques de construction autour de Lorient. 
 | ORM | Drizzle | Schéma en TypeScript, migrations SQL versionnées |
 | Comptes | Clerk | Inscription, connexion, rôles admin |
 | Paiement | Stripe | Paiement de la location et empreinte pour la caution |
+| Fichiers | Vercel Blob | Photos des sets |
 | Hébergement | Vercel, projet `set-et-brique` | Déploiement automatique à chaque push sur `main` |
 
 Dépôt : `agon-gate-pro/set-et-brique`. Démo : https://set-et-brique.vercel.app.
@@ -48,6 +49,7 @@ app/              pages et layouts (App Router)
   page.tsx        accueil
   catalogue/      catalogue public
   admin/          espace de gestion (rôles admin et superadmin)
+    forfaits/, sets/   écrans + actions.ts (Server Actions)
   compte/         espace client
   connexion/, inscription/   pages Clerk
   qui-sommes-nous/, mentions-legales/, cgu/
@@ -55,6 +57,8 @@ components/       en-tête, pied de page, composants réutilisables
 proxy.ts          protection des routes (Clerk)
 lib/
   auth.ts         rôles et gardes d'accès
+  validation.ts   schémas zod des formulaires
+  format.ts       euros, slugs, libellés des statuts
   site.ts         constantes du site (contact, liens, textes de secours)
   db/schema.ts    schéma de la base (source de vérité)
   db/index.ts     connexion et client Drizzle
@@ -149,8 +153,27 @@ La fiche client en base (`customers`) n'est pas créée à l'inscription : elle 
 
 Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
 
-## 7. Étapes suivantes
+## 7. Espace de gestion
 
-- Écrans de l'espace admin : sets, exemplaires, forfaits, lieux, périodes fermées, réservations, contenus.
+Accessible sur `/admin` aux rôles `admin` et `superadmin`. Les écrans sont des pages serveur qui lisent la base avec Drizzle ; les modifications passent par des Server Actions (`actions.ts` dans chaque dossier), qui revérifient le rôle avec `requireRole()`, valident la saisie avec zod (`lib/validation.ts`) et renvoient un message d'erreur ou de succès affiché sous le formulaire. Les montants sont saisis en euros (« 12,50 ») et stockés en centimes.
+
+Composants partagés dans `components/admin/form.tsx` : bouton d'envoi avec état « Enregistrement… », bouton de suppression en deux clics (pas de boîte de dialogue navigateur), champ avec libellé et aide, message de résultat.
+
+### Forfaits (`/admin/forfaits`)
+
+Liste, création, modification du nom et du prix, choix du forfait par défaut, suppression. Un forfait ne peut pas être supprimé s'il est le forfait par défaut ou si des sets l'utilisent.
+
+### Sets (`/admin/sets`)
+
+- Liste avec photo principale, exemplaires, forfait effectif, caution et statut.
+- Création : la fiche (nom, numéro, thème, pièces, âge, caution, forfait, description, statut, mise en avant). Le `slug` de l'adresse publique est dérivé du nom, unique, et ne change que si le nom change. Un premier exemplaire est créé automatiquement.
+- Fiche : modification, photos, exemplaires, suppression.
+- Photos : envoyées sur Vercel Blob (store `set-et-brique-images`, accès public, variable `BLOB_READ_WRITE_TOKEN`), JPEG, PNG ou WebP jusqu'à 8 Mo. La première de la liste est la photo principale ; l'ordre se règle avec les flèches. Supprimer une photo la retire aussi du stockage.
+- Exemplaires : libellé, état, statut, note interne. Un exemplaire déjà réservé ne se supprime pas : le passer en « Retiré ».
+- Suppression d'un set : refusée s'il a déjà été réservé, il faut alors l'archiver.
+
+## 8. Étapes suivantes
+
+- Écrans de l'espace admin restants : lieux de remise, périodes fermées, réservations, contenus, maintenance.
 - Parcours client : catalogue depuis la base, fiche set, calendrier de disponibilité, réservation et paiement Stripe.
 - Emails transactionnels (confirmation, rappel de retour).
