@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka, Nunito_Sans } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { frFR } from "@clerk/localizations";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -32,6 +34,15 @@ export const metadata: Metadata = {
   icons: { icon: "/images/logo-set-et-brique.png" },
 };
 
+const clerkAppearance = {
+  variables: {
+    colorPrimary: "#e63b2e",
+    colorText: "#120f5a",
+    borderRadius: "0.25rem",
+    fontFamily: "var(--font-nunito), system-ui, sans-serif",
+  },
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -39,9 +50,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fredoka.variable} ${nunito.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <ClerkProvider
+          localization={frFR}
+          appearance={clerkAppearance}
+          signInUrl="/connexion"
+          signUpUrl="/inscription"
+          signInFallbackRedirectUrl="/compte"
+          signUpFallbackRedirectUrl="/compte"
+          afterSignOutUrl="/"
+        >
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </ClerkProvider>
       </body>
     </html>
   );

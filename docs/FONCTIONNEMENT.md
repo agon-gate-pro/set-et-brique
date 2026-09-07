@@ -47,9 +47,14 @@ Scripts utiles :
 app/              pages et layouts (App Router)
   page.tsx        accueil
   catalogue/      catalogue public
+  admin/          espace de gestion (rôles admin et superadmin)
+  compte/         espace client
+  connexion/, inscription/   pages Clerk
   qui-sommes-nous/, mentions-legales/, cgu/
 components/       en-tête, pied de page, composants réutilisables
+proxy.ts          protection des routes (Clerk)
 lib/
+  auth.ts         rôles et gardes d'accès
   site.ts         constantes du site (contact, liens, textes de secours)
   db/schema.ts    schéma de la base (source de vérité)
   db/index.ts     connexion et client Drizzle
@@ -118,8 +123,34 @@ Un exemplaire est disponible sur une période si aucune réservation `pending_pa
 
 Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de la location = nombre de jours × prix par jour du forfait. Au démarrage, un seul forfait existe, « Forfait 1 » à 2 € par jour, marqué par défaut ; les gérants créent les autres forfaits depuis l'admin et les affectent set par set. La caution est un montant fixe par set (`sets.deposit_cents`) ; elle n'est pas débitée mais bloquée sur la carte au moment de la remise.
 
-## 6. Étapes suivantes
+## 6. Comptes et rôles
 
-- Espace admin (Clerk, rôle `admin`) : sets, exemplaires, tarifs, lieux, périodes fermées, réservations, contenus.
+Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin` et `/compte`.
+
+Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk :
+
+| Rôle | Qui | Accès |
+| --- | --- | --- |
+| aucun | les clients | catalogue, réservation, `/compte` |
+| `admin` | les gérants (Marion et Gaëtan) | `/admin` : sets, exemplaires, réservations, forfaits, contenus |
+| `superadmin` | Agon-Gate | tout `admin`, plus `/admin/maintenance` (réglages techniques, rôles) |
+
+Le contrôle du rôle se fait côté serveur dans `app/admin/layout.tsx` via `requireRole()` de `lib/auth.ts`. Le rôle est lu dans le jeton de session si le Dashboard Clerk expose `metadata` dans les claims (Sessions > Customize session token : `{"metadata": "{{user.public_metadata}}"}`), sinon via l'API Clerk. Les deux chemins fonctionnent, le premier évite un appel réseau par page.
+
+Attribuer un rôle, une fois que la personne a créé son compte sur le site :
+
+```bash
+pnpm role marion@example.com admin
+pnpm role contact@agon-gate.com superadmin
+pnpm role marion@example.com none      # retirer
+```
+
+La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première réservation, à partir du compte Clerk. Ça évite un webhook et une synchronisation à maintenir.
+
+Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
+
+## 7. Étapes suivantes
+
+- Écrans de l'espace admin : sets, exemplaires, forfaits, lieux, périodes fermées, réservations, contenus.
 - Parcours client : catalogue depuis la base, fiche set, calendrier de disponibilité, réservation et paiement Stripe.
 - Emails transactionnels (confirmation, rappel de retour).

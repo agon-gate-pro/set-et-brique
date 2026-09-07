@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Show, UserButton } from "@clerk/nextjs";
 import { nav, site } from "@/lib/site";
 
 export function SiteHeader() {
@@ -41,6 +42,18 @@ export function SiteHeader() {
           <Link href="/catalogue" className="btn btn-brick text-base py-3 px-5">
             Réserver un set
           </Link>
+          <Show when="signed-out">
+            <Link href="/connexion" className="font-bold text-ink-deep hover:text-brick-deep">
+              Connexion
+            </Link>
+          </Show>
+          <Show when="signed-in">
+            <UserButton
+              userProfileMode="navigation"
+              userProfileUrl="/compte"
+              appearance={{ elements: { avatarBox: "h-10 w-10 border-[3px] border-ink" } }}
+            />
+          </Show>
         </nav>
 
         <button
@@ -70,6 +83,24 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <Show when="signed-out">
+            <Link
+              href="/connexion"
+              onClick={() => setOpen(false)}
+              className="font-bold text-lg text-ink-deep py-3"
+            >
+              Connexion
+            </Link>
+          </Show>
+          <Show when="signed-in">
+            <Link
+              href="/compte"
+              onClick={() => setOpen(false)}
+              className="font-bold text-lg text-ink-deep py-3"
+            >
+              Mon compte
+            </Link>
+          </Show>
           <Link
             href="/catalogue"
             onClick={() => setOpen(false)}
