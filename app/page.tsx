@@ -28,14 +28,14 @@ export default function HomePage() {
     <>
       <section className="studs border-b-[3px] border-ink">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24 grid gap-12 md:grid-cols-[1.1fr_1fr] items-center [&>*]:min-w-0">
-          <h1 className="flex flex-col items-start gap-3 text-[2.75rem] leading-none md:text-7xl font-bold">
+          <h1 className="flex flex-col items-start gap-3 text-4xl leading-none sm:text-5xl md:text-7xl font-bold">
             <span className="block bg-brick text-white px-4 py-2 border-[3px] border-ink shadow-brick">
               Louez.
             </span>
-            <span className="block bg-paper text-ink-deep px-4 py-2 border-[3px] border-ink shadow-brick ml-6 md:ml-10">
+            <span className="block bg-paper text-ink-deep px-4 py-2 border-[3px] border-ink shadow-brick ml-3 md:ml-10">
               Construisez.
             </span>
-            <span className="block bg-ink text-sun px-4 py-2 border-[3px] border-ink shadow-brick ml-12 md:ml-20">
+            <span className="block bg-ink text-sun px-4 py-2 border-[3px] border-ink shadow-brick ml-6 md:ml-20">
               Rapportez.
             </span>
           </h1>
