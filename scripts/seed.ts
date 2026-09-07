@@ -4,7 +4,7 @@
  *
  *   pnpm db:seed
  */
-import { isNull, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, schema } from "../lib/db";
 import { press, reviews, site } from "../lib/site";
 
@@ -53,18 +53,18 @@ async function main() {
     console.log("+ 1 lieu de remise");
   }
 
-  const [{ count: tierCount }] = await db
+  const [{ count: planCount }] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(schema.priceTiers)
-    .where(isNull(schema.priceTiers.setId));
-  if (tierCount === 0) {
-    // Grille d'exemple, à remplacer par les vrais tarifs depuis l'admin.
-    await db.insert(schema.priceTiers).values([
-      { setId: null, minDays: 1, priceCentsPerDay: 500 },
-      { setId: null, minDays: 7, priceCentsPerDay: 400 },
-      { setId: null, minDays: 14, priceCentsPerDay: 300 },
-    ]);
-    console.log("+ grille tarifaire par défaut (exemple)");
+    .from(schema.ratePlans)
+    .where(eq(schema.ratePlans.isDefault, true));
+  if (planCount === 0) {
+    await db.insert(schema.ratePlans).values({
+      name: "Forfait 1",
+      priceCentsPerDay: 200,
+      isDefault: true,
+      sortOrder: 0,
+    });
+    console.log("+ forfait par défaut : Forfait 1, 2 € par jour");
   }
 
   const settings: Record<string, unknown> = {

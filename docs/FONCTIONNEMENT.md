@@ -39,7 +39,7 @@ Scripts utiles :
 | `pnpm db:generate` | Génère une migration SQL à partir du schéma |
 | `pnpm db:migrate` | Applique les migrations en attente |
 | `pnpm db:studio` | Interface web pour parcourir la base |
-| `pnpm db:seed` | Amorce la base (avis, presse, lieu de remise, réglages, grille tarifaire d'exemple). Sans effet si déjà fait |
+| `pnpm db:seed` | Amorce la base (avis, presse, lieu de remise, réglages, forfait par défaut). Sans effet si déjà fait |
 
 ## 3. Organisation du code
 
@@ -79,7 +79,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 - `sets` : un modèle de set (nom, numéro, thème, pièces, âge, caution, statut `draft` / `published` / `archived`). Seuls les sets `published` apparaissent sur le site.
 - `set_images` : photos d'un set, ordonnées.
 - `set_copies` : les exemplaires physiques d'un set. Un set peut exister en plusieurs exemplaires, chacun avec son état (`new`, `very_good`, `good`, `worn`) et son statut (`available`, `maintenance`, `retired`). C'est l'exemplaire qui est réservé, pas le modèle.
-- `price_tiers` : grille tarifaire dégressive. Chaque palier donne un prix par jour à partir d'un nombre de jours minimum. Une grille sans `set_id` est la grille par défaut ; un set peut avoir la sienne.
+- `rate_plans` : les forfaits de location, chacun avec un nom et un prix par jour. Un forfait est marqué par défaut (`is_default`). Chaque set pointe vers un forfait via `sets.rate_plan_id` ; s'il est vide, le forfait par défaut s'applique.
 
 **Logistique**
 
@@ -116,7 +116,7 @@ Un exemplaire est disponible sur une période si aucune réservation `pending_pa
 
 ### Prix
 
-Pour N jours, on prend le palier de la grille (celle du set, sinon la grille par défaut) avec le plus grand `min_days` inférieur ou égal à N. Total = N × prix par jour du palier. La grille par défaut actuelle est un exemple (5 €, 4 € et 3 € par jour selon la durée), à remplacer par les vrais tarifs depuis l'admin. La caution est un montant fixe par set (`sets.deposit_cents`) ; elle n'est pas débitée mais bloquée sur la carte au moment de la remise.
+Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de la location = nombre de jours × prix par jour du forfait. Au démarrage, un seul forfait existe, « Forfait 1 » à 2 € par jour, marqué par défaut ; les gérants créent les autres forfaits depuis l'admin et les affectent set par set. La caution est un montant fixe par set (`sets.deposit_cents`) ; elle n'est pas débitée mais bloquée sur la carte au moment de la remise.
 
 ## 6. Étapes suivantes
 

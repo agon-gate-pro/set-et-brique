@@ -80,11 +80,28 @@ export const customers = pgTable(
 /* Catalogue                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Forfaits de location : un prix par jour, choisi par set.
+ * Le forfait marqué `isDefault` s'applique aux sets sans forfait explicite.
+ */
+export const ratePlans = pgTable("rate_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  priceCentsPerDay: integer("price_cents_per_day").notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  ...timestamps,
+});
+
 export const sets = pgTable(
   "sets",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     slug: text("slug").notNull(),
+    /** Null = forfait par défaut. */
+    ratePlanId: uuid("rate_plan_id").references(() => ratePlans.id, {
+      onDelete: "set null",
+    }),
     name: text("name").notNull(),
     setNumber: text("set_number"),
     theme: text("theme"),
@@ -97,7 +114,10 @@ export const sets = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     ...timestamps,
   },
-  (t) => [uniqueIndex("sets_slug_idx").on(t.slug)],
+  (t) => [
+    uniqueIndex("sets_slug_idx").on(t.slug),
+    index("sets_rate_plan_id_idx").on(t.ratePlanId),
+  ],
 );
 
 export const setImages = pgTable(
@@ -129,23 +149,6 @@ export const setCopies = pgTable(
     ...timestamps,
   },
   (t) => [index("set_copies_set_id_idx").on(t.setId)],
-);
-
-/**
- * Grille tarifaire dégressive. `setId` null = grille par défaut appliquée
- * à tous les sets qui n'ont pas leur propre grille.
- * Pour une durée de N jours, on prend le palier dont `minDays` est le plus
- * grand tout en restant ≤ N, et le total = N × priceCentsPerDay.
- */
-export const priceTiers = pgTable(
-  "price_tiers",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    setId: uuid("set_id").references(() => sets.id, { onDelete: "cascade" }),
-    minDays: integer("min_days").notNull(),
-    priceCentsPerDay: integer("price_cents_per_day").notNull(),
-  },
-  (t) => [index("price_tiers_set_id_idx").on(t.setId)],
 );
 
 /* ------------------------------------------------------------------ */
@@ -273,10 +276,14 @@ export const customersRelations = relations(customers, ({ many }) => ({
   bookings: many(bookings),
 }));
 
-export const setsRelations = relations(sets, ({ many }) => ({
+export const ratePlansRelations = relations(ratePlans, ({ many }) => ({
+  sets: many(sets),
+}));
+
+export const setsRelations = relations(sets, ({ one, many }) => ({
+  ratePlan: one(ratePlans, { fields: [sets.ratePlanId], references: [ratePlans.id] }),
   images: many(setImages),
   copies: many(setCopies),
-  priceTiers: many(priceTiers),
   bookings: many(bookings),
 }));
 
@@ -287,10 +294,6 @@ export const setImagesRelations = relations(setImages, ({ one }) => ({
 export const setCopiesRelations = relations(setCopies, ({ one, many }) => ({
   set: one(sets, { fields: [setCopies.setId], references: [sets.id] }),
   bookings: many(bookings),
-}));
-
-export const priceTiersRelations = relations(priceTiers, ({ one }) => ({
-  set: one(sets, { fields: [priceTiers.setId], references: [sets.id] }),
 }));
 
 export const bookingsRelations = relations(bookings, ({ one, many }) => ({
@@ -316,7 +319,7 @@ export type Customer = typeof customers.$inferSelect;
 export type Set = typeof sets.$inferSelect;
 export type SetImage = typeof setImages.$inferSelect;
 export type SetCopy = typeof setCopies.$inferSelect;
-export type PriceTier = typeof priceTiers.$inferSelect;
+export type RatePlan = typeof ratePlans.$inferSelect;
 export type PickupPoint = typeof pickupPoints.$inferSelect;
 export type BlackoutPeriod = typeof blackoutPeriods.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
