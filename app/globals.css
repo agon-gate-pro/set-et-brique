@@ -1,26 +1,187 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-brick: #e63b2e;
+  --color-brick-deep: #c42b20;
+  --color-sun: #ffd23f;
+  --color-sun-deep: #f5b800;
+  --color-ink: #1d1a7c;
+  --color-ink-deep: #120f5a;
+  --color-sky: #eef2ff;
+  --color-paper: #ffffff;
+  --color-slate-ink: #3f3d6e;
+
+  --font-display: var(--font-fredoka), "Fredoka", system-ui, sans-serif;
+  --font-sans: var(--font-nunito), "Nunito Sans", system-ui, sans-serif;
+
+  --shadow-brick: 0.375rem 0.375rem 0 0 var(--color-ink);
+  --shadow-brick-sm: 0.25rem 0.25rem 0 0 var(--color-ink);
+  --shadow-brick-sun: 0.375rem 0.375rem 0 0 var(--color-sun-deep);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: clip;
+  background: var(--color-paper);
+  color: var(--color-ink-deep);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Brick studs: the repeated motif of the site. */
+.studs {
+  background-color: var(--color-sun);
+  background-image: radial-gradient(
+    circle at center,
+    var(--color-sun-deep) 0 38%,
+    transparent 40%
+  );
+  background-size: 2.5rem 2.5rem;
+  background-position: center;
+}
+
+.studs-ink {
+  background-color: var(--color-ink);
+  background-image: radial-gradient(
+    circle at center,
+    var(--color-ink-deep) 0 38%,
+    transparent 40%
+  );
+  background-size: 2.5rem 2.5rem;
+  background-position: center;
+}
+
+.studs-sky {
+  background-color: var(--color-sky);
+  background-image: radial-gradient(
+    circle at center,
+    #dfe5fb 0 38%,
+    transparent 40%
+  );
+  background-size: 2.5rem 2.5rem;
+  background-position: center;
+}
+
+/* Hard-edged block with the logo's extruded shadow. */
+.brick-card {
+  border: 3px solid var(--color-ink);
+  box-shadow: var(--shadow-brick);
+  background: var(--color-paper);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1;
+  padding: 1rem 1.5rem;
+  border: 3px solid var(--color-ink);
+  box-shadow: var(--shadow-brick-sm);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.btn:hover {
+  transform: translate(-0.125rem, -0.125rem);
+  box-shadow: 0.375rem 0.375rem 0 0 var(--color-ink);
+}
+
+.btn:active {
+  transform: translate(0.25rem, 0.25rem);
+  box-shadow: 0 0 0 0 var(--color-ink);
+}
+
+.btn-brick {
+  background: var(--color-brick);
+  color: #fff;
+}
+
+.btn-sun {
+  background: var(--color-sun);
+  color: var(--color-ink-deep);
+}
+
+.btn-paper {
+  background: var(--color-paper);
+  color: var(--color-ink-deep);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-brick);
+  outline-offset: 3px;
+}
+
+.prose-legal h2 {
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-legal p,
+.prose-legal li {
+  line-height: 1.65;
+  color: var(--color-slate-ink);
+}
+
+.prose-legal p + p,
+.prose-legal ul {
+  margin-top: 0.75rem;
+}
+
+.prose-legal ul {
+  padding-left: 1.25rem;
+  list-style: square;
+}
+
+.prose-legal li + li {
+  margin-top: 0.35rem;
+}
+
+.prose-legal a {
+  color: var(--color-brick-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose-legal dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 1.5rem;
+  row-gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.prose-legal dt {
+  font-weight: 700;
+  color: var(--color-ink-deep);
+}
+
+.prose-legal dd {
+  color: var(--color-slate-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .btn,
+  .btn:hover,
+  .btn:active {
+    transition: none;
+    transform: none;
+  }
 }
