@@ -10,21 +10,24 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-paper border-b-[3px] border-ink">
+    <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-xl border-b border-slate-ink/10">
       <div className="mx-auto max-w-6xl px-5 md:px-8 flex items-center justify-between h-20">
         <Link
           href="/"
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 group"
           onClick={() => setOpen(false)}
         >
-          <Image
-            src="/images/logo-set-et-brique.png"
-            alt=""
-            width={52}
-            height={52}
-            priority
-          />
-          <span className="display text-xl font-bold text-ink-deep">
+          <span className="flex items-center justify-center rounded-2xl border border-slate-ink/10 bg-paper p-1.5 shadow-brick-sm transition-transform group-hover:scale-105">
+            <Image
+              src="/images/logo-set-et-brique.png"
+              alt=""
+              width={44}
+              height={44}
+              className="rounded-xl"
+              priority
+            />
+          </span>
+          <span className="display text-xl font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
             {site.name}
           </span>
         </Link>
@@ -51,14 +54,14 @@ export function SiteHeader() {
             <UserButton
               userProfileMode="navigation"
               userProfileUrl="/compte"
-              appearance={{ elements: { avatarBox: "h-10 w-10 border-[3px] border-ink" } }}
+              appearance={{ elements: { avatarBox: "h-10 w-10 border-2 border-slate-ink/15 rounded-full" } }}
             />
           </Show>
         </nav>
 
         <button
           type="button"
-          className="md:hidden display font-semibold text-ink-deep border-[3px] border-ink px-3 py-2"
+          className="md:hidden display font-semibold text-ink-deep rounded-xl border border-slate-ink/15 px-3 py-2 hover:bg-sky transition-colors"
           aria-expanded={open}
           aria-controls="menu-mobile"
           onClick={() => setOpen((v) => !v)}
@@ -70,7 +73,7 @@ export function SiteHeader() {
       <div
         id="menu-mobile"
         hidden={!open}
-        className="md:hidden border-t-[3px] border-ink bg-sky"
+        className="md:hidden border-t border-slate-ink/10 bg-paper"
       >
         <nav className="mx-auto max-w-6xl px-5 py-4 flex flex-col gap-1" aria-label="Principale mobile">
           {nav.map((item) => (

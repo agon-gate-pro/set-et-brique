@@ -5,7 +5,7 @@ export function SiteFooter() {
   return (
     <footer className="studs-ink text-white">
       <div className="mx-auto max-w-6xl px-5 md:px-8 py-14">
-        <div className="bg-ink-deep border-[3px] border-white/20 p-8 md:p-10 grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="bg-ink-deep rounded-2xl border border-white/10 p-8 md:p-10 grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <p className="display text-2xl font-bold">{site.name}</p>
             <p className="mt-3 max-w-sm text-white/75 leading-relaxed">

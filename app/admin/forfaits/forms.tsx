@@ -43,7 +43,7 @@ export function RatePlanRow({
         <p className="display text-xl font-semibold">
           {plan.name}
           {plan.isDefault ? (
-            <span className="ml-3 text-sm bg-sun px-2 py-0.5 border-2 border-ink">par défaut</span>
+            <span className="ml-3 text-sm bg-sun px-2 py-0.5 rounded-md">par défaut</span>
           ) : null}
         </p>
         <p className="text-slate-ink">

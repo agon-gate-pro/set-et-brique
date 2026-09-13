@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brick: #e63b2e;
-  --color-brick-deep: #c42b20;
-  --color-sun: #ffd23f;
-  --color-sun-deep: #f5b800;
-  --color-ink: #1d1a7c;
-  --color-ink-deep: #120f5a;
-  --color-sky: #eef2ff;
+  --color-brick: #e3000b;
+  --color-brick-deep: #b8000a;
+  --color-sun: #fcd54b;
+  --color-sun-deep: #eab308;
+  --color-ink: #2b207d;
+  --color-ink-deep: #172554;
+  --color-sky: #f8fafc;
   --color-paper: #ffffff;
-  --color-slate-ink: #3f3d6e;
+  --color-slate-ink: #334155;
 
-  --font-display: var(--font-fredoka), "Fredoka", system-ui, sans-serif;
-  --font-sans: var(--font-nunito), "Nunito Sans", system-ui, sans-serif;
+  --font-display: var(--font-poppins), "Poppins", system-ui, sans-serif;
+  --font-sans: var(--font-poppins), "Poppins", system-ui, sans-serif;
 
-  --shadow-brick: 0.375rem 0.375rem 0 0 var(--color-ink);
-  --shadow-brick-sm: 0.25rem 0.25rem 0 0 var(--color-ink);
-  --shadow-brick-sun: 0.375rem 0.375rem 0 0 var(--color-sun-deep);
+  --shadow-brick: 0 10px 30px -10px rgb(23 37 84 / 0.25);
+  --shadow-brick-sm: 0 4px 14px -4px rgb(23 37 84 / 0.2);
+  --shadow-brick-sun: 0 10px 30px -10px rgb(234 179 8 / 0.35);
 }
 
 html {
@@ -25,7 +25,7 @@ html {
 
 body {
   overflow-x: clip;
-  background: var(--color-paper);
+  background: var(--color-sky);
   color: var(--color-ink-deep);
   font-family: var(--font-sans);
 }
@@ -35,47 +35,34 @@ h2,
 h3,
 .display {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-/* Brick studs: the repeated motif of the site. */
+/* Subtle dot texture, reused across tinted sections instead of the old brick-stud motif. */
 .studs {
   background-color: var(--color-sun);
-  background-image: radial-gradient(
-    circle at center,
-    var(--color-sun-deep) 0 38%,
-    transparent 40%
-  );
-  background-size: 2.5rem 2.5rem;
-  background-position: center;
+  background-image: radial-gradient(circle, rgb(23 37 84 / 0.12) 1px, transparent 1px);
+  background-size: 1.75rem 1.75rem;
 }
 
 .studs-ink {
-  background-color: var(--color-ink);
-  background-image: radial-gradient(
-    circle at center,
-    var(--color-ink-deep) 0 38%,
-    transparent 40%
-  );
-  background-size: 2.5rem 2.5rem;
-  background-position: center;
+  background-color: var(--color-ink-deep);
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.08) 1px, transparent 1px);
+  background-size: 1.75rem 1.75rem;
 }
 
 .studs-sky {
   background-color: var(--color-sky);
-  background-image: radial-gradient(
-    circle at center,
-    #dfe5fb 0 38%,
-    transparent 40%
-  );
-  background-size: 2.5rem 2.5rem;
-  background-position: center;
+  background-image: radial-gradient(circle, rgb(51 65 85 / 0.1) 1px, transparent 1px);
+  background-size: 1.75rem 1.75rem;
 }
 
-/* Hard-edged block with the logo's extruded shadow. */
+/* Soft rounded card, replaces the old hard-edged brick block. */
 .brick-card {
-  border: 3px solid var(--color-ink);
-  box-shadow: var(--shadow-brick);
+  border: 1px solid rgb(51 65 85 / 0.12);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-brick-sm);
   background: var(--color-paper);
 }
 
@@ -87,22 +74,23 @@ h3,
   font-weight: 600;
   font-size: 1.0625rem;
   line-height: 1;
-  padding: 1rem 1.5rem;
-  border: 3px solid var(--color-ink);
+  padding: 1rem 1.75rem;
+  border-radius: 9999px;
   box-shadow: var(--shadow-brick-sm);
   transition:
-    transform 120ms ease,
-    box-shadow 120ms ease;
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease;
 }
 
 .btn:hover {
-  transform: translate(-0.125rem, -0.125rem);
-  box-shadow: 0.375rem 0.375rem 0 0 var(--color-ink);
+  transform: translateY(-0.125rem);
+  box-shadow: var(--shadow-brick);
 }
 
 .btn:active {
-  transform: translate(0.25rem, 0.25rem);
-  box-shadow: 0 0 0 0 var(--color-ink);
+  transform: translateY(0);
+  opacity: 0.9;
 }
 
 .btn-brick {
@@ -118,6 +106,7 @@ h3,
 .btn-paper {
   background: var(--color-paper);
   color: var(--color-ink-deep);
+  border: 1px solid rgb(51 65 85 / 0.15);
 }
 
 :focus-visible {

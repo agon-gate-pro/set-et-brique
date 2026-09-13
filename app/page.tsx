@@ -26,16 +26,16 @@ const audiences = [
 export default function HomePage() {
   return (
     <>
-      <section className="studs border-b-[3px] border-ink">
+      <section className="studs border-b border-slate-ink/10">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24 grid gap-12 md:grid-cols-[1.1fr_1fr] items-center [&>*]:min-w-0">
           <h1 className="flex flex-col items-start gap-3 text-4xl leading-none sm:text-5xl md:text-7xl font-bold">
-            <span className="block bg-brick text-white px-4 py-2 border-[3px] border-ink shadow-brick">
+            <span className="block bg-brick text-white px-4 py-2 rounded-2xl shadow-brick">
               Louez.
             </span>
-            <span className="block bg-paper text-ink-deep px-4 py-2 border-[3px] border-ink shadow-brick ml-3 md:ml-10">
+            <span className="block bg-paper text-ink-deep px-4 py-2 rounded-2xl shadow-brick ml-3 md:ml-10">
               Construisez.
             </span>
-            <span className="block bg-ink text-sun px-4 py-2 border-[3px] border-ink shadow-brick ml-6 md:ml-20">
+            <span className="block bg-ink text-sun px-4 py-2 rounded-2xl shadow-brick ml-6 md:ml-20">
               Rapportez.
             </span>
           </h1>
@@ -81,7 +81,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="studs-sky border-y-[3px] border-ink">
+      <section className="studs-sky border-y border-slate-ink/10">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24 grid gap-10 md:grid-cols-[1fr_1.3fr] items-start">
           <div>
             <h2 className="text-3xl md:text-5xl font-bold">
@@ -136,7 +136,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-ink text-white border-y-[3px] border-ink">
+      <section className="bg-ink text-white">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24">
           <h2 className="text-3xl md:text-5xl font-bold">
             La presse en parle
@@ -148,7 +148,7 @@ export default function HomePage() {
                   href={p.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-full flex-col bg-ink-deep border-[3px] border-white/25 p-6 hover:border-sun"
+                  className="flex h-full flex-col bg-ink-deep rounded-2xl border border-white/15 p-6 transition-colors hover:border-sun"
                 >
                   <span className="display text-sun font-semibold">{p.outlet}</span>
                   <span className="mt-2 text-xl font-semibold leading-snug">

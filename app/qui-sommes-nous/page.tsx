@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <article>
-      <section className="studs border-b-[3px] border-ink">
+      <section className="studs border-b border-slate-ink/10">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24">
           <h1 className="text-4xl md:text-6xl font-bold">
             Une famille de Lorient, des bacs de briques plein le salon

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function CataloguePage() {
   return (
-    <section className="studs-sky border-b-[3px] border-ink">
+    <section className="studs-sky border-b border-slate-ink/10">
       <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24 grid gap-10 md:grid-cols-[1.2fr_1fr] items-start">
         <div>
           <h1 className="text-4xl md:text-6xl font-bold">Le catalogue</h1>
