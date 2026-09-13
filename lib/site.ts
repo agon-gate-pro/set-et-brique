@@ -34,6 +34,7 @@ export const nav = [
   { href: "/#concept", label: "Comment ça marche" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/qui-sommes-nous", label: "Qui sommes-nous" },
+  { href: "/#vinted", label: "Vinted" },
   { href: "/#contact", label: "Contact" },
 ];
 

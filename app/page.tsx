@@ -6,9 +6,11 @@ import {
   PackageOpen,
   RotateCcw,
   Search,
+  ShoppingBag,
   Star,
   type LucideIcon,
 } from "lucide-react";
+import { ContactForm } from "@/components/contact-form";
 import { GoogleLogo } from "@/components/google-logo";
 import { ReviewsCarousel } from "@/components/reviews-carousel";
 import { press, reviews, site } from "@/lib/site";
@@ -162,6 +164,35 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section id="vinted" className="scroll-mt-24 py-16 md:py-24">
+        <div className="mx-auto max-w-3xl px-5 md:px-8 text-center">
+          <span className="inline-flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl md:rounded-3xl bg-paper border-x border-b border-slate-ink/10 border-t-4 border-t-brick shadow-brick-sm mb-8">
+            <ShoppingBag className="h-8 w-8 md:h-9 md:w-9 text-[#09B1BA]" />
+          </span>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+            L&apos;aventure continue en Seconde Main
+          </h2>
+          <p className="mt-6 text-lg md:text-xl leading-relaxed text-slate-ink">
+            Les briques ont cette capacité unique de capturer
+            l&apos;imagination et de transformer n&apos;importe quel moment
+            en une aventure créative. Que vous soyez collectionneurs
+            passionné ou simplement à la recherche de vracs, figurines,
+            plaques etc... pour compléter votre ensemble, notre boutique
+            Vinted officielle est l&apos;endroit idéal pour dénicher des
+            trésors cachés.
+          </p>
+          <a
+            href={site.links.vinted}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn mt-8 justify-center bg-[#09B1BA] text-white"
+          >
+            <ShoppingBag className="h-5 w-5" />
+            Acheter sur Vinted
+          </a>
+        </div>
+      </section>
+
       <section className="py-16 md:py-24">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
           <h2 className="text-center text-3xl md:text-5xl font-bold">
@@ -229,32 +260,20 @@ export default function HomePage() {
             </a>
           </div>
 
-          <div className="brick-card mt-8 p-8 md:p-10 text-left mx-auto max-w-lg">
-            <dl className="space-y-5">
-              <div>
-                <dt className="display font-semibold text-brick-deep">Téléphone</dt>
-                <dd>
-                  <a href={site.phoneHref} className="text-2xl font-bold">
-                    {site.phone}
-                  </a>
-                </dd>
-              </div>
-              <div>
-                <dt className="display font-semibold text-brick-deep">Email</dt>
-                <dd>
-                  <a href={`mailto:${site.email}`} className="text-2xl font-bold break-all">
-                    {site.email}
-                  </a>
-                </dd>
-              </div>
-              <div>
-                <dt className="display font-semibold text-brick-deep">Où</dt>
-                <dd className="text-lg">
-                  {site.city}, remise en main propre jusqu&apos;à {site.radiusKm} km
-                </dd>
-              </div>
-            </dl>
+          <div className="bg-paper rounded-[2rem] md:rounded-[2.5rem] border border-slate-ink/10 shadow-brick-sm mt-8 p-8 md:p-12 text-left">
+            <ContactForm />
           </div>
+
+          <p className="mt-6 text-slate-ink">
+            Vous préférez appeler ou écrire directement ?{" "}
+            <a href={site.phoneHref} className="font-bold text-ink-deep hover:text-brick">
+              {site.phone}
+            </a>{" "}
+            ·{" "}
+            <a href={`mailto:${site.email}`} className="font-bold text-ink-deep hover:text-brick">
+              {site.email}
+            </a>
+          </p>
         </div>
       </section>
     </>
