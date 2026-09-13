@@ -23,7 +23,8 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
   const scrollToIndex = useCallback((i: number) => {
     const track = trackRef.current;
     const card = track?.children[i] as HTMLElement | undefined;
-    card?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    if (!track || !card) return;
+    track.scrollTo({ left: card.offsetLeft - track.offsetLeft, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
