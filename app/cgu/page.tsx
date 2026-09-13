@@ -8,7 +8,9 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <article className="mx-auto max-w-3xl px-5 md:px-8 py-14 md:py-20 prose-legal">
+    <article className="studs-sky py-14 md:py-20">
+    <div className="mx-auto max-w-3xl px-5 md:px-8">
+    <div className="bg-paper rounded-[2rem] md:rounded-[2.5rem] border border-slate-ink/10 shadow-brick-sm p-8 md:p-14 prose-legal">
       <h1 className="text-4xl md:text-5xl font-bold">
         Conditions générales d&apos;utilisation
       </h1>
@@ -118,6 +120,8 @@ export default function TermsPage() {
         <a href={`mailto:${site.email}`}>{site.email}</a> ·{" "}
         <a href={site.phoneHref}>{site.phone}</a> · {site.address}
       </p>
+    </div>
+    </div>
     </article>
   );
 }

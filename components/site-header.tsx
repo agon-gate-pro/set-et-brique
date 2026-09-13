@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import { Show, UserButton } from "@clerk/nextjs";
 import { nav, site } from "@/lib/site";
 
@@ -61,12 +62,12 @@ export function SiteHeader() {
 
         <button
           type="button"
-          className="md:hidden display font-semibold text-ink-deep rounded-xl border border-slate-ink/15 px-3 py-2 hover:bg-sky transition-colors"
+          className="md:hidden flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors"
           aria-expanded={open}
           aria-controls="menu-mobile"
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? "Fermer" : "Menu"}
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
