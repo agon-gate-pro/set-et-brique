@@ -6,7 +6,7 @@ import { site } from "@/lib/site";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-ink-deep text-white">
+    <footer className="bg-ink-deeper text-white">
       <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-20">
         <div className="grid gap-12 md:grid-cols-[1.6fr_1fr_1fr]">
           <div>

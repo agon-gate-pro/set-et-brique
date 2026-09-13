@@ -48,13 +48,13 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-4xl px-5 md:px-8 py-20 md:py-28 text-center">
           <Link
             href="/qui-sommes-nous"
-            className="mx-auto mb-6 block max-w-xs md:max-w-md overflow-hidden rounded-[2rem] border-4 border-paper shadow-brick transition-transform hover:scale-[1.02]"
+            className="mx-auto mb-6 block max-w-sm md:max-w-lg lg:max-w-xl overflow-hidden rounded-[2rem] border-4 border-paper shadow-brick transition-transform hover:scale-[1.02]"
           >
             <Image
               src="/images/bandeau.png"
               alt="Trois personnages en briques de construction, entourés de pièces colorées"
-              width={640}
-              height={360}
+              width={670}
+              height={316}
               className="h-auto w-full object-cover"
               priority
             />

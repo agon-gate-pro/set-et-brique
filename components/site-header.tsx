@@ -22,13 +22,13 @@ export function SiteHeader() {
             <Image
               src="/images/logo-set-et-brique.png"
               alt=""
-              width={40}
-              height={40}
+              width={48}
+              height={48}
               className="rounded-xl"
               priority
             />
           </span>
-          <span className="display whitespace-nowrap text-lg font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
+          <span className="display whitespace-nowrap text-xl md:text-2xl font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
             {site.name}
           </span>
         </Link>
