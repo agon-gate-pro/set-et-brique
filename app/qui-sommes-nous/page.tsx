@@ -14,58 +14,78 @@ export default function AboutPage() {
       <div className="mx-auto max-w-4xl px-5 md:px-8">
         <div className="bg-paper rounded-[2rem] md:rounded-[2.5rem] border border-slate-ink/10 shadow-brick-sm p-8 md:p-14">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Une famille de Lorient, des bacs de briques plein le salon
+            Qui sommes-nous ?
           </h1>
 
           <div className="mt-8 space-y-4 text-lg leading-relaxed text-slate-ink">
             <p>
-              Nous sommes Marion et Gaëtan, passionnés de briques de
-              construction depuis l&apos;enfance. Cette passion, nous
-              l&apos;avons redécouverte il y a quelques années et vite
-              partagée avec nos deux enfants.
+              Bienvenue chez Set et Brique, une entreprise familiale
+              chaleureuse et innovante basée à Lorient. Nous sommes Marion et
+              Gaëtan, deux passionnés de briques de construction depuis notre
+              plus tendre enfance. Cette passion, nous l&apos;avons
+              redécouverte il y a quelques années et n&apos;avons pas tardé à
+              la partager avec nos deux enfants.
             </p>
 
             <h2 className="!mt-10 text-2xl font-semibold text-ink-deep">
               Notre histoire
             </h2>
             <p>
-              En replongeant dans les briques, deux choses sont devenues
-              évidentes : nos constructions prenaient beaucoup de place, et
-              acheter de nouveaux sets revenait vite cher. Nous avons pensé
-              revendre nos sets une fois montés, mais il fallait garder les
-              boîtes intactes et éviter que les enfants ne les démontent ou
-              perdent des pièces.
+              En replongeant dans l&apos;univers fascinant des briques de
+              construction, nous avons réalisé que nos constructions
+              prenaient beaucoup de place et que le coût d&apos;achat de
+              nouveaux sets pouvait rapidement revenir onéreux. Pour continuer
+              à assouvir notre passion sans nous ruiner, nous avons pensé à
+              vendre nos sets une fois construits pour en acheter de
+              nouveaux. Toutefois, cela nécessitait de conserver les boîtes
+              intactes et d&apos;éviter que les sets ne soient détruits ou
+              perdus par nos enfants.
             </p>
             <p>
-              Le plaisir, c&apos;était de construire, pas d&apos;exposer.
-              L&apos;idée de la location est venue de là. Aucun service local
-              ne le proposait, alors nous l&apos;avons créé.
+              Le plaisir de construire était là, mais l&apos;idée
+              d&apos;exposer nos créations ne nous séduisait pas
+              particulièrement. C&apos;est alors que l&apos;idée de la
+              location a émergé. Malheureusement, nous n&apos;avons trouvé
+              aucun service local qui permettait cela.
             </p>
 
             <h2 className="!mt-10 text-2xl font-semibold text-ink-deep">
               Notre mission
             </h2>
             <p>
-              Les grands sets ne sont pas accessibles à toutes les familles, à
-              cause de leur prix et de la place qu&apos;ils prennent. Et
-              beaucoup n&apos;en ont besoin que de temps en temps : des
-              patients d&apos;hôpitaux, des résidents de centres de
-              rééducation ou de maisons de retraite, des grands-parents qui
-              accueillent les petits-enfants pendant les vacances.
+              En réfléchissant davantage, il nous est apparu que les sets de
+              construction ne sont pas accessibles à toutes les familles en
+              raison de leur coût et que bien qu&apos;extraordinaires, ils
+              prennent énormément de place. Nous avons imaginé que
+              d&apos;autres personnes pourraient également ressentir ce
+              besoin de façon occasionnelle : que ce soit des patients
+              d&apos;hôpitaux, des résidents de centres de rééducation, des
+              maisons de retraite, ou encore des grands-parents accueillant
+              leurs petits-enfants pendant les vacances.
             </p>
 
             <h2 className="!mt-10 text-2xl font-semibold text-ink-deep">
               Notre engagement
             </h2>
             <p>
-              À la maison, nous privilégions la seconde main, le fait maison
-              et la réutilisation. Louer un set plutôt que l&apos;acheter,
-              c&apos;est la même logique : des moments de créativité
-              accessibles à tous, et une consommation plus raisonnée.
+              À la maison, nous adoptons un mode de consommation raisonné.
+              Nous privilégions le seconde main, le fait maison et la
+              réutilisation. C&apos;est dans cet esprit que la réutilisation
+              des sets de construction prend tout son sens. En proposant un
+              service de location à moindre coût, nous souhaitons rendre ces
+              moments de créativité accessibles à tous, tout en favorisant
+              une consommation responsable.
+            </p>
+            <p className="font-bold text-xl text-ink-deep">
+              Rejoignez-nous dans cette aventure et redécouvrez le plaisir de
+              construire ensemble, sans les contraintes financières ou
+              d&apos;espace.
             </p>
             <p>
-              La remise en main propre garde à tout cela un esprit de partage
-              et de convivialité, celui qu&apos;apportent les briques.
+              Chez Set et Brique, la remise en main propre et le service
+              local nous permettent de maintenir cet esprit de partage, de
+              convivialité et du vivre ensemble qu&apos;apporte les briques de
+              constructions.
             </p>
           </div>
 
