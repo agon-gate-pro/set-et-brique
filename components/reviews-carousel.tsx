@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { GoogleLogo } from "./google-logo";
 import type { reviews as reviewsData } from "@/lib/site";
@@ -13,15 +13,18 @@ const avatarPalette = [
   "bg-red-50 text-red-600",
 ];
 
+const AUTOPLAY_DELAY = 3000;
+
 export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  const scrollToIndex = (i: number) => {
+  const scrollToIndex = useCallback((i: number) => {
     const track = trackRef.current;
     const card = track?.children[i] as HTMLElement | undefined;
     card?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-  };
+  }, []);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -43,8 +46,27 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
     return () => track.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Défilement automatique toutes les 3s, en pause au survol/toucher, comme sur le site vitrine.
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => {
+      setActive((prev) => {
+        const next = (prev + 1) % reviews.length;
+        scrollToIndex(next);
+        return next;
+      });
+    }, AUTOPLAY_DELAY);
+    return () => clearInterval(id);
+  }, [paused, reviews.length, scrollToIndex]);
+
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={() => setPaused(true)}
+      onTouchEnd={() => setPaused(false)}
+    >
       <div className="hidden md:flex justify-end gap-3 mb-6">
         <button
           type="button"

@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import "./globals.css";
+import { BackgroundParticles } from "@/components/background-particles";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/lib/site";
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${poppins.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        <BackgroundParticles />
         <ClerkProvider
           localization={frFR}
           appearance={clerkAppearance}
