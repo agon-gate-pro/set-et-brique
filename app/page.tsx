@@ -13,6 +13,7 @@ import {
 import { ContactForm } from "@/components/contact-form";
 import { GoogleLogo } from "@/components/google-logo";
 import { ReviewsCarousel } from "@/components/reviews-carousel";
+import { FacebookIcon, InstagramIcon } from "@/components/social-icons";
 import { press, reviews, site } from "@/lib/site";
 
 const steps: { title: string; text: string; icon: LucideIcon; border: string }[] = [
@@ -246,17 +247,21 @@ export default function HomePage() {
               href={site.links.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-ink-deep hover:text-brick transition-colors"
+              className="flex items-center gap-2 font-bold text-[#1877F2] hover:opacity-80 transition-opacity"
             >
+              <FacebookIcon className="h-6 w-6" />
               Facebook
             </a>
             <a
               href={site.links.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-ink-deep hover:text-brick transition-colors"
+              className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity"
             >
-              Instagram
+              <InstagramIcon className="h-6 w-6" />
+              <span className="bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] bg-clip-text text-transparent">
+                Instagram
+              </span>
             </a>
           </div>
 
