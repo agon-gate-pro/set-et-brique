@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { GoogleLogo } from "./google-logo";
 import type { reviews as reviewsData } from "@/lib/site";
@@ -24,6 +24,7 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
   const [offset, setOffset] = useState(0);
   const [animate, setAnimate] = useState(true);
   const [paused, setPaused] = useState(false);
+  const drag = useRef<{ startX: number; startOffset: number } | null>(null);
 
   const items = [...reviews, reviews[0]];
   const realIndex = active % reviews.length;
@@ -78,6 +79,38 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
     setActive(index);
   }
 
+  // Glisser au doigt / à la souris : suit le pointeur en direct, puis change
+  // d'avis ou revient à la position actuelle selon la distance parcourue.
+  function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    setPaused(true);
+    setAnimate(false);
+    drag.current = { startX: e.clientX, startOffset: offset };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!drag.current) return;
+    const delta = e.clientX - drag.current.startX;
+    setOffset(drag.current.startOffset - delta);
+  }
+
+  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!drag.current) return;
+    const delta = e.clientX - drag.current.startX;
+    drag.current = null;
+    setPaused(false);
+    setAnimate(true);
+
+    const threshold = 50;
+    if (delta <= -threshold && realIndex < reviews.length - 1) {
+      setActive(realIndex + 1);
+    } else if (delta >= threshold && realIndex > 0) {
+      setActive(realIndex - 1);
+    } else {
+      measure(active);
+    }
+  }
+
   return (
     <div
       className="relative"
@@ -107,7 +140,13 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
         </button>
       </div>
 
-      <div className="overflow-hidden">
+      <div
+        className="overflow-hidden touch-pan-y cursor-grab active:cursor-grabbing"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
         <div
           ref={trackRef}
           className="flex items-stretch gap-6 md:gap-8"

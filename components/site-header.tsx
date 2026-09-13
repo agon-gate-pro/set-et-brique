@@ -24,11 +24,11 @@ export function SiteHeader() {
               alt=""
               width={48}
               height={48}
-              className="rounded-xl"
+              className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl"
               priority
             />
           </span>
-          <span className="display whitespace-nowrap text-xl md:text-2xl font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
+          <span className="display whitespace-nowrap text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
             {site.name}
           </span>
         </Link>
