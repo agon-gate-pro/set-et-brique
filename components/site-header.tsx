@@ -12,42 +12,42 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-xl border-b border-slate-ink/10">
-      <div className="mx-auto max-w-6xl px-5 md:px-8 flex items-center justify-between h-20">
+      <div className="mx-auto max-w-7xl px-5 md:px-8 flex items-center justify-between h-20 gap-4">
         <Link
           href="/"
-          className="flex items-center gap-3 group"
+          className="flex items-center gap-2.5 shrink-0 group"
           onClick={() => setOpen(false)}
         >
           <span className="flex items-center justify-center rounded-2xl border border-slate-ink/10 bg-paper p-1.5 shadow-brick-sm transition-transform group-hover:scale-105">
             <Image
               src="/images/logo-set-et-brique.png"
               alt=""
-              width={44}
-              height={44}
+              width={40}
+              height={40}
               className="rounded-xl"
               priority
             />
           </span>
-          <span className="display text-xl font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
+          <span className="display whitespace-nowrap text-lg font-bold tracking-tight text-ink-deep group-hover:text-brick transition-colors">
             {site.name}
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-7" aria-label="Principale">
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-6" aria-label="Principale">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="font-bold text-ink-deep hover:text-brick-deep"
+              className="whitespace-nowrap font-semibold text-[15px] text-ink-deep hover:text-brick-deep transition-colors"
             >
               {item.label}
             </Link>
           ))}
-          <Link href="/catalogue" className="btn btn-brick text-base py-3 px-5">
-            Réserver un set
-          </Link>
           <Show when="signed-out">
-            <Link href="/connexion" className="font-bold text-ink-deep hover:text-brick-deep">
+            <Link
+              href="/connexion"
+              className="whitespace-nowrap font-semibold text-[15px] text-ink-deep hover:text-brick-deep transition-colors"
+            >
               Connexion
             </Link>
           </Show>
@@ -55,14 +55,17 @@ export function SiteHeader() {
             <UserButton
               userProfileMode="navigation"
               userProfileUrl="/compte"
-              appearance={{ elements: { avatarBox: "h-10 w-10 border-2 border-slate-ink/15 rounded-full" } }}
+              appearance={{ elements: { avatarBox: "h-9 w-9 border-2 border-slate-ink/15 rounded-full" } }}
             />
           </Show>
+          <Link href="/catalogue" className="btn btn-brick whitespace-nowrap text-sm py-2.5 px-4">
+            Réserver un set
+          </Link>
         </nav>
 
         <button
           type="button"
-          className="md:hidden flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors"
+          className="lg:hidden flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors shrink-0"
           aria-expanded={open}
           aria-controls="menu-mobile"
           onClick={() => setOpen((v) => !v)}
@@ -74,9 +77,9 @@ export function SiteHeader() {
       <div
         id="menu-mobile"
         hidden={!open}
-        className="md:hidden border-t border-slate-ink/10 bg-paper"
+        className="lg:hidden border-t border-slate-ink/10 bg-paper"
       >
-        <nav className="mx-auto max-w-6xl px-5 py-4 flex flex-col gap-1" aria-label="Principale mobile">
+        <nav className="mx-auto max-w-7xl px-5 py-4 flex flex-col gap-1" aria-label="Principale mobile">
           {nav.map((item) => (
             <Link
               key={item.href}
