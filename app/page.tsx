@@ -2,9 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpen,
-  Building2,
-  GraduationCap,
-  Heart,
   MapPin,
   PackageOpen,
   RotateCcw,
@@ -12,6 +9,8 @@ import {
   Star,
   type LucideIcon,
 } from "lucide-react";
+import { GoogleLogo } from "@/components/google-logo";
+import { ReviewsCarousel } from "@/components/reviews-carousel";
 import { press, reviews, site } from "@/lib/site";
 
 const steps: { title: string; text: string; icon: LucideIcon; border: string }[] = [
@@ -34,31 +33,6 @@ const steps: { title: string; text: string; icon: LucideIcon; border: string }[]
     border: "border-t-sun-deep",
   },
 ];
-
-const audiences: { who: string; why: string; icon: LucideIcon }[] = [
-  {
-    who: "Familles",
-    why: "Un grand set pour les vacances ou un anniversaire, sans l'acheter ni le stocker.",
-    icon: Heart,
-  },
-  {
-    who: "Grands-parents",
-    why: "De quoi occuper les petits-enfants qui débarquent pour une semaine.",
-    icon: Heart,
-  },
-  {
-    who: "Écoles et associations",
-    why: "Un atelier construction pour un groupe, avec devis sur mesure.",
-    icon: GraduationCap,
-  },
-  {
-    who: "Hôpitaux et maisons de retraite",
-    why: "Une activité calme, valorisante, à partager en chambre ou en salle commune.",
-    icon: Building2,
-  },
-];
-
-const avatarPalette = ["bg-brick/10 text-brick-deep", "bg-ink/10 text-ink", "bg-sun/30 text-ink-deep"];
 
 export default function HomePage() {
   return (
@@ -150,68 +124,41 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="studs-sky border-y border-slate-ink/10">
-        <div className="mx-auto max-w-6xl px-5 md:px-8 py-16 md:py-24 grid gap-10 md:grid-cols-[1fr_1.3fr] items-start">
-          <div>
-            <h2 className="text-3xl md:text-5xl font-bold">Pour qui ?</h2>
-            <p className="mt-4 text-lg text-slate-ink leading-relaxed">
-              Un grand set coûte cher et prend de la place une fois monté. La
-              location rend ces moments accessibles à tous, pour le temps
-              qu&apos;il faut.
-            </p>
-            <a href={`mailto:${site.email}`} className="btn btn-sun mt-7">
-              Demander un devis
-            </a>
-          </div>
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {audiences.map(({ who, why, icon: Icon }) => (
-              <li key={who} className="brick-card p-6">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky">
-                  <Icon className="h-5 w-5 text-ink-deep" />
-                </span>
-                <h3 className="mt-4 text-xl font-semibold">{who}</h3>
-                <p className="mt-2 text-slate-ink leading-relaxed">{why}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-sky">
         <div className="mx-auto max-w-6xl px-5 md:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="text-center mb-14 md:mb-16">
+            <div className="flex justify-center gap-1 mb-5">
+              {Array.from({ length: 5 }).map((_, star) => (
+                <Star key={star} className="h-6 w-6 fill-sun-deep text-sun-deep" />
+              ))}
+            </div>
             <h2 className="text-3xl md:text-5xl font-bold">
-              Ce que disent les familles
+              Ce que disent nos clients
             </h2>
             <a
               href={site.links.googleReviews}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-brick-deep underline underline-offset-4"
+              className="mt-5 inline-flex items-center gap-2 font-bold uppercase tracking-widest text-sm text-ink hover:text-brick transition-colors"
             >
-              Tous les avis sur Google
+              <GoogleLogo className="h-5 w-5" />
+              Avis vérifiés sur Google
             </a>
           </div>
-          <ul className="mt-10 columns-1 md:columns-2 lg:columns-3 gap-6 [&>li]:break-inside-avoid">
-            {reviews.map((r, i) => (
-              <li key={r.name} className="brick-card p-7 mb-6">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-bold ${avatarPalette[i % avatarPalette.length]}`}
-                  >
-                    {r.name.charAt(0)}
-                  </span>
-                  <p className="display font-semibold text-ink-deep">{r.name}</p>
-                </div>
-                <div className="mt-4 flex gap-0.5">
-                  {Array.from({ length: 5 }).map((_, star) => (
-                    <Star key={star} className="h-4 w-4 fill-sun-deep text-sun-deep" />
-                  ))}
-                </div>
-                <p className="mt-3 text-slate-ink leading-relaxed">« {r.text} »</p>
-              </li>
-            ))}
-          </ul>
+
+          <ReviewsCarousel reviews={reviews} />
+
+          <div className="mt-10 md:mt-14 text-center">
+            <a
+              href={site.links.googleReviews}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-paper"
+            >
+              <GoogleLogo className="h-5 w-5" />
+              Voir plus d&apos;avis sur Google
+            </a>
+          </div>
         </div>
       </section>
 
