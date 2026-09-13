@@ -14,23 +14,76 @@ const avatarPalette = [
 ];
 
 const AUTOPLAY_DELAY = 3000;
+const TRANSITION_MS = 700;
+
+function easeInOutQuad(t: number) {
+  return t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+}
+
+function animateScrollLeft(el: HTMLElement, to: number, duration: number, onDone: () => void) {
+  const start = el.scrollLeft;
+  const change = to - start;
+  if (Math.abs(change) < 1) {
+    onDone();
+    return;
+  }
+  const startTime = performance.now();
+  function step(now: number) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    el.scrollLeft = start + change * easeInOutQuad(t);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      onDone();
+    }
+  }
+  requestAnimationFrame(step);
+}
 
 export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const animating = useRef(false);
+  // active va de 0 à reviews.length inclus : la dernière valeur pointe vers un
+  // clone du premier avis, ajouté en fin de piste pour boucler sans à-coup.
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  const scrollToIndex = useCallback((i: number) => {
+  const items = [...reviews, reviews[0]];
+  const realIndex = active % reviews.length;
+
+  const scrollToChildIndex = useCallback((i: number) => {
     const track = trackRef.current;
     const card = track?.children[i] as HTMLElement | undefined;
     if (!track || !card) return;
-    track.scrollTo({ left: card.offsetLeft - track.offsetLeft, behavior: "smooth" });
+    const target = card.offsetLeft - track.offsetLeft;
+    animating.current = true;
+    animateScrollLeft(track, target, TRANSITION_MS, () => {
+      animating.current = false;
+    });
   }, []);
 
+  // Anime vers l'index actif ; s'il s'agit du clone final, revient
+  // instantanément (sans animation) au premier avis une fois arrivé.
+  useEffect(() => {
+    scrollToChildIndex(active);
+    if (active === reviews.length) {
+      const timeout = setTimeout(() => {
+        const track = trackRef.current;
+        if (track) track.scrollLeft = 0;
+        setActive(0);
+      }, TRANSITION_MS + 40);
+      return () => clearTimeout(timeout);
+    }
+  }, [active, reviews.length, scrollToChildIndex]);
+
+  // Suit un défilement manuel (glissement tactile) sans interférer avec nos
+  // propres animations programmatiques.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     const onScroll = () => {
+      if (animating.current) return;
       const cards = Array.from(track.children) as HTMLElement[];
       let closest = 0;
       let min = Infinity;
@@ -51,14 +104,10 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
   useEffect(() => {
     if (paused) return;
     const id = setInterval(() => {
-      setActive((prev) => {
-        const next = (prev + 1) % reviews.length;
-        scrollToIndex(next);
-        return next;
-      });
+      setActive((prev) => prev + 1);
     }, AUTOPLAY_DELAY);
     return () => clearInterval(id);
-  }, [paused, reviews.length, scrollToIndex]);
+  }, [paused]);
 
   return (
     <div
@@ -71,8 +120,8 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
       <div className="hidden md:flex justify-end gap-3 mb-6">
         <button
           type="button"
-          onClick={() => scrollToIndex(Math.max(active - 1, 0))}
-          disabled={active === 0}
+          onClick={() => setActive(Math.max(realIndex - 1, 0))}
+          disabled={realIndex === 0}
           aria-label="Avis précédent"
           className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-ink/15 bg-paper text-ink-deep shadow-brick-sm transition-colors hover:border-brick hover:text-brick disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -80,8 +129,8 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
         </button>
         <button
           type="button"
-          onClick={() => scrollToIndex(Math.min(active + 1, reviews.length - 1))}
-          disabled={active === reviews.length - 1}
+          onClick={() => setActive(Math.min(realIndex + 1, reviews.length - 1))}
+          disabled={realIndex === reviews.length - 1}
           aria-label="Avis suivant"
           className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-ink/15 bg-paper text-ink-deep shadow-brick-sm transition-colors hover:border-brick hover:text-brick disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -93,9 +142,9 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
         ref={trackRef}
         className="flex items-stretch gap-6 md:gap-8 overflow-x-auto snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {reviews.map((r, i) => (
+        {items.map((r, i) => (
           <div
-            key={r.name}
+            key={i === reviews.length ? `${r.name}-loop` : r.name}
             className="group w-[85vw] sm:w-[420px] shrink-0 snap-start bg-paper p-8 md:p-9 rounded-[2rem] border border-slate-ink/10 shadow-brick-sm hover:shadow-brick transition-shadow flex flex-col"
           >
             <div className="flex items-start justify-between gap-3">
@@ -131,10 +180,10 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
           <button
             key={i}
             type="button"
-            onClick={() => scrollToIndex(i)}
+            onClick={() => setActive(i)}
             aria-label={`Aller à l'avis ${i + 1}`}
             className={`h-2.5 w-2.5 rounded-full transition-colors ${
-              i === active ? "bg-ink" : "bg-slate-ink/20 hover:bg-slate-ink/40"
+              i === realIndex ? "bg-ink" : "bg-slate-ink/20 hover:bg-slate-ink/40"
             }`}
           />
         ))}
