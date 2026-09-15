@@ -34,29 +34,35 @@ export const nav = [
   { href: "/#concept", label: "Comment ça marche" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/qui-sommes-nous", label: "Qui sommes-nous" },
+  { href: "/#vinted", label: "Vinted" },
   { href: "/#contact", label: "Contact" },
 ];
 
 export const reviews = [
   {
-    name: "Aurore",
-    text: "J'adore ! Une super activité sur plusieurs jours partagée avec mon fils, et parfois un moment calme pour lui seul. Il était fier de finir un si grand set. Je reprendrai sur une période de vacances, très bon contact avec les gérants.",
+    name: "Aurore Fsd",
+    avisCount: 7,
+    text: "J'adore !! Une super activité sur plusieurs jours partagée avec mon fils. Et parfois un moment calme pour lui seul. Il était fier de finir un si grand Lego ! Je reprendrai sur une période de vacances aussi, ce qui fait une bonne activité complémentaire. Très bon contact avec les gérants. Je recommande à tout le monde autour de moi maintenant !",
   },
   {
-    name: "Nathalie",
-    text: "L'idée de location était pile ce que je recherchais. J'admire l'organisation de la famille, leur gentillesse et leur disponibilité, tant dans les échanges que pour la remise et la restitution des sets. Je louerai de nouveau sans hésitation.",
+    name: "Nathalie Guillevic-Le Dantec",
+    avisCount: 2,
+    text: "L'idée de location de Lego était pile ce que je recherchais. J'admire l'organisation de la famille « Set et Briques », leur gentillesse, et leur disponibilité tant dans les échanges que pour la remise et la restitution des sets. Je louerai de nouveau sans hésitation, et en ai déjà parlé autour de moi tellement je trouve l'idée au top ! Merci et à bientôt pour la location de nouvelles heures de plaisir de montage !",
   },
   {
-    name: "Virginie",
-    text: "Très bonne expérience. Première location et sûrement pas la dernière. Tout est parfait et très bien organisé. Mon fils a été ravi.",
+    name: "Virginie Le Guen",
+    avisCount: 6,
+    text: "Très bonne expérience. Première location de lego et sûrement pas la dernière. Tout est parfait et très bien organisé. Mon fils a été ravi.",
   },
   {
-    name: "Xavier",
-    text: "Set très agréable à monter, location et retour faciles, et très bonne communication. Merci !",
+    name: "Xavier Carré",
+    avisCount: 3,
+    text: "Lego très agréable à monter, location et retour faciles 🙂 et très bonne communication. Merci !",
   },
   {
-    name: "Marine",
-    text: "Une superbe expérience que nous allons renouveler avec plaisir. Tout est très bien organisé, échange simple et réactif. Gentillesse, sourire et bienveillance sont au rendez-vous.",
+    name: "Marine Chauvel",
+    avisCount: 3,
+    text: "Une superbe expérience que nous allons renouveler avec plaisir !! L'idée de location est géniale. Tout est très bien organisé, échange simple et réactif. Gentillesse, sourire et bienveillance sont au rendez-vous lors des échanges. Je recommande + + +",
   },
 ];
 

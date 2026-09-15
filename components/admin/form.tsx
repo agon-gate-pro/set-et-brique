@@ -75,10 +75,10 @@ export function FormMessage({ state }: { state: ActionState }) {
   return (
     <p
       role="status"
-      className={`mt-4 border-[3px] px-4 py-3 font-semibold ${
+      className={`mt-4 rounded-xl border px-4 py-3 font-semibold ${
         state.error
-          ? "border-brick bg-red-50 text-brick-deep"
-          : "border-ink bg-sky text-ink-deep"
+          ? "border-brick/30 bg-red-50 text-brick-deep"
+          : "border-slate-ink/15 bg-sky text-ink-deep"
       }`}
     >
       {state.error ?? state.ok}
@@ -105,4 +105,4 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full border-[3px] border-ink bg-paper px-3 py-2 text-ink-deep focus:outline-none focus-visible:ring-4 focus-visible:ring-sun";
+  "w-full rounded-xl border border-slate-ink/20 bg-paper px-3 py-2 text-ink-deep focus:outline-none focus-visible:ring-4 focus-visible:ring-sun";

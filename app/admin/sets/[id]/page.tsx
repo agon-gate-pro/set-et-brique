@@ -41,7 +41,7 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <h1 className="text-3xl md:text-4xl font-bold">{set.name}</h1>
-        <span className="text-sm font-bold px-2 py-1 border-2 border-ink bg-paper">
+        <span className="text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 bg-paper">
           {setStatusLabels[set.status]}
         </span>
       </div>

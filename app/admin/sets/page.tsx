@@ -47,7 +47,7 @@ export default async function SetsPage() {
                 href={`/admin/sets/${s.id}`}
                 className="brick-card p-4 grid gap-4 grid-cols-[5rem_1fr] sm:grid-cols-[5rem_1fr_auto] items-center hover:bg-sky"
               >
-                <span className="block h-20 w-20 bg-sky border-[3px] border-ink overflow-hidden relative">
+                <span className="block h-20 w-20 rounded-xl bg-sky border border-slate-ink/15 overflow-hidden relative">
                   {s.cover ? (
                     <Image src={s.cover} alt="" fill sizes="80px" className="object-cover" />
                   ) : null}
@@ -64,7 +64,7 @@ export default async function SetsPage() {
                   </span>
                 </span>
                 <span
-                  className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 border-2 border-ink ${
+                  className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 ${
                     s.status === "published" ? "bg-sun" : s.status === "archived" ? "bg-slate-200" : "bg-paper"
                   }`}
                 >

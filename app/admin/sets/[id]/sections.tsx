@@ -36,11 +36,11 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
       {images.length > 0 ? (
         <ul className="mt-5 grid gap-4 grid-cols-2 md:grid-cols-4">
           {images.map((img, i) => (
-            <li key={img.id} className="border-[3px] border-ink bg-sky">
+            <li key={img.id} className="rounded-xl overflow-hidden border border-slate-ink/15 bg-sky">
               <div className="relative aspect-square">
                 <Image src={img.url} alt={img.alt ?? ""} fill sizes="(min-width: 768px) 200px, 45vw" className="object-cover" />
                 {i === 0 ? (
-                  <span className="absolute top-2 left-2 text-xs font-bold bg-sun px-2 py-0.5 border-2 border-ink">
+                  <span className="absolute top-2 left-2 text-xs font-bold bg-sun px-2 py-0.5 rounded-md">
                     principale
                   </span>
                 ) : null}
@@ -115,7 +115,7 @@ function CopyRow({ copy }: { copy: SetCopy }) {
   const [editState, editAction] = useActionState(updateCopy, null);
   const [deleteState, deleteAction] = useActionState(deleteCopy, null);
   return (
-    <li className="border-[3px] border-ink p-4">
+    <li className="rounded-xl border border-slate-ink/15 p-4">
       <form action={editAction} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] items-end">
         <input type="hidden" name="id" value={copy.id} />
         <CopyFields copy={copy} />
@@ -147,7 +147,7 @@ export function CopiesSection({ setId, copies }: { setId: string; copies: SetCop
           <CopyRow key={c.id} copy={c} />
         ))}
       </ul>
-      <form action={action} className="mt-5 bg-sky border-[3px] border-ink p-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] items-end">
+      <form action={action} className="mt-5 rounded-xl bg-sky border border-slate-ink/15 p-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] items-end">
         <input type="hidden" name="setId" value={setId} />
         <CopyFields />
         <SubmitButton>Ajouter</SubmitButton>
