@@ -82,6 +82,17 @@ export function formatDate(iso: string) {
   return dateFull.format(new Date(`${iso}T12:00:00Z`));
 }
 
+/** « 17/09/2026 » à partir d'une date ISO, pour les listes de gestion. */
+export function formatDateShort(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** « 10:30 » à partir d'une heure Postgres (« 10:30:00 »). */
+export function formatTime(value: string | null | undefined) {
+  return value ? value.slice(0, 5) : null;
+}
+
 /** « 12 octobre » à partir d'une date ISO (aaaa-mm-jj). */
 export function formatDay(iso: string) {
   return dateLong.format(new Date(`${iso}T12:00:00Z`));

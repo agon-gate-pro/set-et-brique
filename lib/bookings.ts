@@ -82,6 +82,7 @@ export type BookingRequest = {
   pickupPointId: string;
   startDate: string;
   days: number;
+  pickupTime: string;
   customerNote: string | null;
 };
 
@@ -157,6 +158,7 @@ export async function createBookingRequest(req: BookingRequest) {
           pickupPointId: pickupPoint.id,
           startDate: req.startDate,
           endDate,
+          pickupTime: req.pickupTime,
           days: req.days,
           status: "pending_review",
           rentalCents: req.days * pricePerDay,

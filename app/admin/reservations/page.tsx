@@ -3,7 +3,8 @@ import Link from "next/link";
 import { asc, desc } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { daysLate, todayIso } from "@/lib/dates";
-import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
+import { bookingStatusLabels, formatCents, formatDateShort, formatPhone, formatTime } from "@/lib/format";
+import { ListActions } from "./list-actions";
 import type { BookingStatus } from "@/lib/db/schema";
 
 export const metadata: Metadata = { title: "Réservations", robots: { index: false } };
@@ -21,7 +22,7 @@ export default async function BookingsPage() {
   const today = todayIso();
   const bookings = await db.query.bookings.findMany({
     with: {
-      customer: { columns: { firstName: true, lastName: true, blocked: true } },
+      customer: { columns: { firstName: true, lastName: true, phone: true, blocked: true } },
       set: { columns: { name: true } },
       pickupPoint: { columns: { name: true } },
     },
@@ -55,26 +56,52 @@ export default async function BookingsPage() {
                 {rows.map((b) => {
                   const late = b.status === "picked_up" ? daysLate(b.endDate, today) : 0;
                   return (
-                  <li key={b.id}>
-                    <Link href={`/admin/reservations/${b.id}`} className="brick-card p-4 grid gap-2 sm:grid-cols-[8rem_1fr_auto] items-center hover:bg-sky">
-                      <span className="font-bold">{b.reference}</span>
-                      <span>
-                        <span className="display text-lg font-semibold block">{b.set.name}</span>
-                        <span className="block text-sm text-slate-ink">
-                          {b.customer.firstName} {b.customer.lastName}
-                          {b.customer.blocked ? " · compte bloqué" : ""} · du {formatDate(b.startDate)} au {formatDate(b.endDate)} · {b.pickupPoint?.name ?? "lieu à convenir"} ·{" "}
-                          {formatCents(b.rentalCents)}
+                    <li key={b.id} className="brick-card p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-slate-ink">{b.reference}</p>
+                          <Link href={`/admin/reservations/${b.id}`} className="display text-xl font-semibold text-ink-deep underline-offset-4 hover:underline">
+                            {b.set.name}
+                          </Link>
+                          <p className="mt-1 text-slate-ink">
+                            {b.customer.firstName} {b.customer.lastName}
+                            {b.customer.phone ? ` · ${formatPhone(b.customer.phone)}` : ""}
+                            {b.customer.blocked ? " · compte bloqué" : ""}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-sm font-bold px-2.5 py-1 rounded-md border ${
+                            late > 0 ? "border-brick bg-brick text-paper" : "border-slate-ink/15 bg-sky"
+                          }`}
+                        >
+                          {late > 0 ? `Retard de ${late} jour${late > 1 ? "s" : ""}` : bookingStatusLabels[b.status]}
                         </span>
-                      </span>
-                      <span
-                        className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 rounded-md border ${
-                          late > 0 ? "border-brick bg-brick text-paper" : "border-slate-ink/15 bg-paper"
-                        }`}
-                      >
-                        {late > 0 ? `Retard de ${late} jour${late > 1 ? "s" : ""}` : bookingStatusLabels[b.status]}
-                      </span>
-                    </Link>
-                  </li>
+                      </div>
+                      <dl className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2 text-slate-ink">
+                        <div className="sm:col-span-2">
+                          <dt className="inline text-sm">Période de location : </dt>
+                          <dd className="inline font-semibold text-ink-deep">
+                            du {formatDateShort(b.startDate)} au {formatDateShort(b.endDate)}
+                            <span className="font-normal text-slate-ink"> · {b.days} jour{b.days > 1 ? "s" : ""} · {formatCents(b.rentalCents)}</span>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="inline text-sm">Lieu de remise : </dt>
+                          <dd className="inline font-semibold text-ink-deep">{b.pickupPoint?.name ?? "à convenir"}</dd>
+                        </div>
+                        <div>
+                          <dt className="inline text-sm">Heure de remise : </dt>
+                          <dd className="inline font-semibold text-ink-deep">{formatTime(b.pickupTime) ?? "à convenir"}</dd>
+                        </div>
+                      </dl>
+                      {b.status === "pending_review" ? (
+                        <ListActions bookingId={b.id} />
+                      ) : (
+                        <Link href={`/admin/reservations/${b.id}`} className="mt-4 inline-block font-bold underline underline-offset-4">
+                          Voir la réservation
+                        </Link>
+                      )}
+                    </li>
                   );
                 })}
               </ul>

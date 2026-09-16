@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { bookingStatusLabels, formatCents, formatDate, formatPhone, phoneHref } from "@/lib/format";
+import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
 import { AdminNoteForm, CustomerBlockForm, HandoverActions, ReviewActions } from "./forms";
 
@@ -56,7 +56,10 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
               </Link>
               {copy ? ` · ${copy.label}` : " · aucun exemplaire attribué"}
             </Row>
-            <Row label="Remise">{formatDate(b.startDate)}</Row>
+            <Row label="Remise">
+              {formatDate(b.startDate)}
+              {b.pickupTime ? ` à ${formatTime(b.pickupTime)}` : ", heure à convenir"}
+            </Row>
             <Row label="Retour">
               {formatDate(b.endDate)} ({b.days} jour{b.days > 1 ? "s" : ""})
             </Row>

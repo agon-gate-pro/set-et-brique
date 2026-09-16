@@ -8,6 +8,7 @@ import {
   pgEnum,
   pgTable,
   text,
+  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -242,6 +243,8 @@ export const bookings = pgTable(
     }),
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
+    /** Heure de remise souhaitée par le client, confirmée ou ajustée par les gérants. */
+    pickupTime: time("pickup_time"),
     days: integer("days").notNull(),
     status: bookingStatus("status").notNull().default("pending_review"),
     /** Autre date proposée par les gérants, en attente de la réponse du client. */

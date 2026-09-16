@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
 import type { Booking, Customer } from "@/lib/db/schema";
 import { daysLate, todayIso } from "@/lib/dates";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import { acceptBooking, markPickedUp, markReturned, proposeDate, refuseBooking, saveAdminNote, toggleCustomerBlock } from "../actions";
 
 /** Remise en main propre puis retour du set : les deux gestes du quotidien. */
@@ -80,7 +80,7 @@ export function ReviewActions({ booking }: { booking: Booking }) {
   if (!canRefuse) return null;
 
   return (
-    <section className="mt-8 brick-card p-6 bg-sun/30">
+    <section id="decision" className="mt-8 brick-card p-6 bg-sun/30 scroll-mt-24">
       <h2 className="text-2xl font-semibold">Décision</h2>
 
       {canAccept ? (
@@ -92,20 +92,23 @@ export function ReviewActions({ booking }: { booking: Booking }) {
       ) : null}
 
       {canPropose ? (
-        <form action={proposeAction} className="mt-6 grid gap-4 sm:grid-cols-[10rem_8rem_1fr_auto] items-end">
+        <form action={proposeAction} className="mt-6 grid gap-4 sm:grid-cols-[10rem_7rem_7rem_1fr_auto] items-end">
           <input type="hidden" name="id" value={booking.id} />
-          <h3 className="sm:col-span-4 font-bold">Proposer d&apos;autres dates</h3>
+          <h3 className="sm:col-span-5 font-bold">Modifier : proposer d&apos;autres dates ou une autre heure</h3>
           <Field label="Remise le">
             <input name="startDate" type="date" required defaultValue={booking.proposedStartDate ?? booking.startDate} className={inputClass} />
           </Field>
           <Field label="Jours">
             <input name="days" type="number" min={1} required defaultValue={booking.days} className={inputClass} />
           </Field>
+          <Field label="Heure">
+            <input name="pickupTime" type="time" step={900} defaultValue={formatTime(booking.pickupTime) ?? ""} className={inputClass} />
+          </Field>
           <Field label="Message au client" hint="Facultatif">
             <input name="message" className={inputClass} placeholder="Le set revient le 12, on vous le remet le 16 ?" />
           </Field>
           <SubmitButton variant="paper">Proposer</SubmitButton>
-          <div className="sm:col-span-4">
+          <div className="sm:col-span-5">
             <FormMessage state={proposeState} />
           </div>
         </form>

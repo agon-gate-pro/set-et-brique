@@ -58,6 +58,9 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
             className={inputClass}
           />
         </Field>
+        <Field label="Heure de remise souhaitée" hint="Nous la confirmons ou vous proposons un autre créneau">
+          <input name="pickupTime" type="time" required step={900} defaultValue="10:00" className={inputClass} />
+        </Field>
         <Field label="Lieu de remise">
           <select
             name="pickupPointId"

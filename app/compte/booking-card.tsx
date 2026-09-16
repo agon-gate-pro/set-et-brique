@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ConfirmButton, FormMessage, SubmitButton } from "@/components/admin/form";
 import { daysLate, todayIso } from "@/lib/dates";
-import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
+import { bookingStatusLabels, formatCents, formatDate, formatTime } from "@/lib/format";
 import type { Booking } from "@/lib/db/schema";
 import { acceptProposedDate, cancelRequest } from "./actions";
 
@@ -50,7 +50,10 @@ export function BookingCard({
       <dl className="mt-4 grid gap-2 sm:grid-cols-2 text-slate-ink">
         <div>
           <dt className="text-sm">Remise</dt>
-          <dd className="font-semibold text-ink-deep">{formatDate(booking.startDate)}</dd>
+          <dd className="font-semibold text-ink-deep">
+            {formatDate(booking.startDate)}
+            {booking.pickupTime ? ` à ${formatTime(booking.pickupTime)}` : ""}
+          </dd>
         </div>
         <div>
           <dt className="text-sm">Retour</dt>
@@ -102,7 +105,8 @@ export function BookingCard({
         <div className="mt-4 rounded-xl border border-ink/20 bg-sky p-4">
           <p className="font-semibold text-ink-deep">
             Ces dates ne sont pas possibles. Nous vous proposons du {formatDate(booking.proposedStartDate)} au{" "}
-            {formatDate(booking.proposedEndDate)}.
+            {formatDate(booking.proposedEndDate)}
+            {booking.pickupTime ? `, remise à ${formatTime(booking.pickupTime)}` : ""}.
           </p>
           {booking.cancelReason ? <p className="mt-1 text-slate-ink">{booking.cancelReason}</p> : null}
           <form action={acceptAction} className="mt-3">

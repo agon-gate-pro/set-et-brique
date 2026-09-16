@@ -40,6 +40,7 @@ export async function submitBookingRequest(_: ActionState, formData: FormData): 
       pickupPointId: d.pickupPointId,
       startDate: d.startDate,
       days: d.days,
+      pickupTime: d.pickupTime,
       customerNote: d.customerNote,
     });
     reference = booking.reference;

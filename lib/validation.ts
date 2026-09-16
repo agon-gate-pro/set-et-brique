@@ -145,9 +145,12 @@ export const customerProfileSchema = z.object({
     .transform((v) => (v ? v : null)),
 });
 
+const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure de remise attendue (hh:mm)");
+
 export const bookingRequestSchema = z.object({
   startDate: isoDate,
   days: positiveInt("Nombre de jours"),
+  pickupTime: clockTime,
   pickupPointId: required("Lieu de remise"),
   customerNote: optionalText,
   ...customerFields,
@@ -161,6 +164,7 @@ export const bookingRequestSchema = z.object({
 export const proposeDateSchema = z.object({
   startDate: isoDate,
   days: positiveInt("Nombre de jours"),
+  pickupTime: clockTime.optional().or(z.literal("").transform(() => undefined)),
   message: optionalText,
 });
 

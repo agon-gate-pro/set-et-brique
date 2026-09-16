@@ -81,15 +81,16 @@ export async function proposeDate(_: ActionState, formData: FormData): Promise<A
   const r = await loadBooking(id, ["pending_review", "date_proposed"]);
   if ("error" in r) return { error: r.error };
 
-  const { startDate, days, message } = parsed.data;
+  const { startDate, days, message, pickupTime } = parsed.data;
   if (startDate <= todayIso()) return { error: "La date de remise doit être à venir." };
   const endDate = endDateFor(startDate, days);
   const copy = await isRangeFreeFor(r.booking, startDate, endDate);
   if (!copy) return { error: "Aucun exemplaire libre sur ces dates (battement compris)." };
 
-  await transition(id, r.booking.status, "date_proposed", `Autre date proposée : du ${startDate} au ${endDate}`, {
+  await transition(id, r.booking.status, "date_proposed", `Autre date proposée : du ${startDate} au ${endDate}${pickupTime ? ` à ${pickupTime}` : ""}`, {
     proposedStartDate: startDate,
     proposedEndDate: endDate,
+    ...(pickupTime ? { pickupTime } : {}),
     copyId: copy.id,
     cancelReason: message,
   });
