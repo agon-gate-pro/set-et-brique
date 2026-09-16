@@ -10,13 +10,13 @@ Dernière mise à jour : 16 septembre 2026.
 | --- | --- | --- | --- |
 | 1. Catalogue et stock | **Fait** | Fiche set complète (numéros multiples, marque, notices papier/numérique, figurines, dimensions, temps de montage, commentaire public, poids interne, caution, battement par set), 10 photos max, multi-exemplaires, statuts calculés Disponible / Location / Battement / Réparation / Retiré, catalogue et fiche publics, les 28 sets de la grille de la cliente importés | Photos des sets, vérification par la cliente des gammes déduites et des textes |
 | 2. Planning des locations | **Fait en partie** | 5 lieux de remise, durée libre à 2 €/jour, jours calendaires, battement entre clients différents et aucun battement pour le même client qui enchaîne, périodes fermées, blocage par set via « En réparation » | Planning propre à chaque lieu (une remise à la fois) non contrôlé : validation manuelle |
-| 3. Comptes clients et suivi | **Fait en partie** | Compte Clerk, fiche client à la première demande avec nom, prénom, téléphone, adresse obligatoires, compte bloqué par les gérants, espace `/compte` avec ses réservations, gestion du compte `/compte/profil` (Clerk + onglets Coordonnées et Historique), lieu de remise préféré | Suivi « récupéré / à rendre / retard » : les statuts existent, pas encore les actions de remise et de retour |
+| 3. Comptes clients et suivi | **Fait** | Compte Clerk, fiche client à la première demande avec nom, prénom, téléphone, adresse obligatoires, compte bloqué par les gérants, espace `/compte` avec ses réservations, gestion du compte `/compte/profil` (Clerk + onglets Coordonnées et Historique), lieu de remise préféré, suivi récupéré / à rendre / retard sur chaque location | Rien de bloquant ; la purge des données au bout de 3 ans reste à écrire (voir §2) |
 | 4. Paiement Stripe | **Pas commencé** | Colonnes Stripe prévues en base, statut `pending_payment` | Tout le paiement, la caution, les délais de blocage (1 h, 15 min). Bloqué par deux questions ouvertes, voir §3 |
 | 5. Tunnel de réservation | **Fait** | Set → dates → lieu → coordonnées → CG → demande en attente ; validation manuelle par les gérants : accepter, refuser, proposer d'autres dates ; réponse du client ; annulation | Paiement (module 4), bon cadeau (module 6) |
 | 6. Bons cadeaux | **Pas commencé** | | Tout |
 | 7. Contrat et CG | **Fait en partie** | Case à cocher obligatoire, horodatée en base | Contrat PDF généré, texte légal définitif |
 | 8. Facturation | **Pas commencé** | | Tout |
-| 9. État des lieux et dommages | **Pas commencé** | Statut « En réparation » et note interne par exemplaire | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits |
+| 9. État des lieux et dommages | **Commencé** | Statut « En réparation » et note interne par exemplaire, état des lieux en commentaire libre au retour, retard calculé et affiché | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits |
 | 10. Notifications | **Pas commencé** | Historique `booking_events` sur lequel se brancher | Fournisseur d'email à choisir (aucune clé dans le projet), templates modifiables |
 | 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord, sets, forfaits, lieux, fermetures, réservations. Rôles admin et superadmin | Contenus du site, maintenance, réglages, CA du mois, taux d'occupation, export des ventes |
 | 12. Déploiement et formation | **En cours** | Déploiement Vercel automatique, base Neon partagée | Instance Clerk de production, domaine final, formation |
@@ -50,10 +50,9 @@ Autres points à poser quand l'occasion se présente :
 ## 4. Prochaines étapes, dans l'ordre proposé
 
 1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée / date proposée. Les gérants doivent pouvoir modifier les textes (module 10).
-2. Actions de remise et de retour dans l'admin (`picked_up`, `returned`), pour boucler le suivi client du module 3.
-3. Paiement Stripe et caution (module 4), une fois les deux questions tranchées.
-4. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
-5. Séquence de retard, état des lieux et barème (module 9), puis facturation (8), contrat PDF (7), bons cadeaux (6), reporting (11).
+2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées.
+3. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
+4. Séquence de retard, état des lieux et barème (module 9), puis facturation (8), contrat PDF (7), bons cadeaux (6), reporting (11).
 
 ### Passage de Clerk en production (module 12)
 
@@ -78,6 +77,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 - **Comptes** : inscription testée avec succès sur l'instance Clerk de développement (e-mail + code de vérification). Plan de passage en production noté en §4.
 - **Gestion du compte** : « Gérer le compte » du bouton utilisateur envoyait vers la page des locations. Nouvelle page `/compte/profil` avec le composant Clerk `UserProfile`, lien depuis `/compte`.
 - **Coordonnées et historique dans la gestion du compte**. Onglet Coordonnées (identité, adresse, téléphone pour contrat et facture, lieu de remise préféré pré-sélectionné dans le tunnel), onglet Historique des réservations. Migration 0006 (`customers.preferred_pickup_point_id`). Correctif : les onglets n'apparaissaient pas en ligne, Clerk exige qu'ils soient déclarés dans un composant client.
+- **Remise et retour dans l'admin**. Actions « Set remis » (dès l'acceptation, le loyer pouvant être réglé par TPE) et « Set rendu » avec date et état des lieux libre (migration 0007, `bookings.return_note`). Liste admin en cinq groupes, retard calculé à partir de J+1 et affiché en rouge, alerte sur le tableau de bord. Un set dehors non rendu reste indisponible au catalogue et pour les demandes. Suivi côté client sur chaque carte. Tests : retard et fin effective (unitaires), set en retard sur la base (indisponible, puis libre une fois rendu).
 
 ### Avant le 16 septembre 2026
 

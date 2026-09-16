@@ -167,6 +167,18 @@ export const refuseBookingSchema = z.object({
   reason: optionalText,
 });
 
+/** Remise en main propre constatée par les gérants. */
+export const pickupSchema = z.object({
+  date: isoDate,
+  note: optionalText,
+});
+
+/** Retour du set, avec l'état des lieux en commentaire libre (module 9). */
+export const returnSchema = z.object({
+  date: isoDate,
+  returnNote: optionalText,
+});
+
 export const copySchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire"),
   condition: z.enum(["new", "very_good", "good", "worn"]),

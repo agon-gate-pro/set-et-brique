@@ -1,9 +1,9 @@
-import { and, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, or } from "drizzle-orm";
 import { addDays, todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 
-export { addDays, endDateFor, todayIso } from "@/lib/dates";
+export { addDays, daysLate, endDateFor, todayIso } from "@/lib/dates";
 
 /**
  * Statut d'un set tel que le client le voit (spécification, module 1) :
@@ -28,6 +28,14 @@ export const OCCUPYING_STATUSES = ["pending_payment", "confirmed", "picked_up"] 
 
 /** Réservations qui réservent des dates, demandes en attente comprises. */
 export const RESERVING_STATUSES = ["pending_review", "date_proposed", ...OCCUPYING_STATUSES] as const;
+
+/**
+ * Un set remis et pas encore rendu occupe son exemplaire au-delà de la date
+ * de retour prévue : tant qu'il est dehors, sa fin effective est aujourd'hui.
+ */
+export function withLateReturn<T extends { status: string; endDate: string }>(b: T, today: string = todayIso()): T {
+  return b.status === "picked_up" && b.endDate < today ? { ...b, endDate: today } : b;
+}
 
 /**
  * Calcul pur, sans base : exemplaires du set, réservations bloquantes, battement en jours.
@@ -116,6 +124,7 @@ export async function loadAvailability(
       .select({
         setId: schema.bookings.setId,
         copyId: schema.bookings.copyId,
+        status: schema.bookings.status,
         startDate: schema.bookings.startDate,
         endDate: schema.bookings.endDate,
       })
@@ -124,8 +133,11 @@ export async function loadAvailability(
         and(
           inArray(schema.bookings.setId, ids),
           inArray(schema.bookings.status, [...OCCUPYING_STATUSES]),
-          // Seules les réservations récentes ou à venir peuvent bloquer aujourd'hui.
-          gte(schema.bookings.endDate, addDays(today, -(maxTurnaround + 1))),
+          // Seules les réservations récentes, à venir ou pas encore rendues peuvent bloquer aujourd'hui.
+          or(
+            gte(schema.bookings.endDate, addDays(today, -(maxTurnaround + 1))),
+            eq(schema.bookings.status, "picked_up"),
+          ),
         ),
       ),
   ]);
@@ -135,7 +147,7 @@ export async function loadAvailability(
       set.id,
       computeSetAvailability(
         copies.filter((c) => c.setId === set.id),
-        bookings.filter((b) => b.setId === set.id),
+        bookings.filter((b) => b.setId === set.id).map((b) => withLateReturn(b, today)),
         set.turnaroundDays ?? globalTurnaround,
         today,
       ),

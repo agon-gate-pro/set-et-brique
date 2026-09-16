@@ -82,7 +82,7 @@ export const bookingStatusLabels = {
   date_proposed: "Autre date proposée",
   pending_payment: "Acceptée, paiement à venir",
   confirmed: "Confirmée",
-  picked_up: "En cours",
+  picked_up: "En cours de location",
   returned: "Rendue",
   cancelled: "Annulée",
 } as const;

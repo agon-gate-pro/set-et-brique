@@ -2,28 +2,34 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { todayIso } from "@/lib/dates";
 
 export const metadata: Metadata = { title: "Gestion", robots: { index: false } };
 
 export default async function AdminHome() {
-  const [[sets], [copies], [bookings], [customers], [pending]] = await Promise.all([
+  const today = todayIso();
+  const [[sets], [copies], [bookings], [customers], [pending], [late]] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.sets),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.setCopies),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
-      .where(sql`${schema.bookings.status} in ('confirmed', 'picked_up')`),
+      .where(sql`${schema.bookings.status} = 'picked_up'`),
     db.select({ n: sql<number>`count(*)::int` }).from(schema.customers),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
       .where(sql`${schema.bookings.status} = 'pending_review'`),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.bookings)
+      .where(sql`${schema.bookings.status} = 'picked_up' and ${schema.bookings.endDate} < ${today}`),
   ]);
 
   const tiles = [
     ["Sets au catalogue", sets.n],
     ["Exemplaires", copies.n],
-    ["Locations en cours", bookings.n],
+    ["Sets en location", bookings.n],
     ["Clients", customers.n],
   ] as const;
 
@@ -33,6 +39,11 @@ export default async function AdminHome() {
       {pending.n > 0 ? (
         <Link href="/admin/reservations" className="mt-6 block brick-card bg-sun/40 p-5 font-semibold text-ink-deep hover:bg-sun/60">
           {pending.n} demande{pending.n > 1 ? "s" : ""} de réservation à traiter
+        </Link>
+      ) : null}
+      {late.n > 0 ? (
+        <Link href="/admin/reservations" className="mt-4 block brick-card bg-brick/10 border-brick p-5 font-semibold text-brick-deep hover:bg-brick/20">
+          {late.n} set{late.n > 1 ? "s" : ""} en retard de retour
         </Link>
       ) : null}
       <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

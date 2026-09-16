@@ -262,6 +262,8 @@ export const bookings = pgTable(
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
+    /** État des lieux au retour, commentaire libre des gérants (spécification, module 9). */
+    returnNote: text("return_note"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     ...timestamps,
   },

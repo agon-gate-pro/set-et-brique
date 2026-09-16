@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
-import { AdminNoteForm, CustomerBlockForm, ReviewActions } from "./forms";
+import { daysLate, todayIso } from "@/lib/dates";
+import { AdminNoteForm, CustomerBlockForm, HandoverActions, ReviewActions } from "./forms";
 
 export const metadata: Metadata = { title: "Réservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
   });
   if (!booking) notFound();
   const { customer, set, copy, pickupPoint, events, ...b } = booking;
+  const late = b.status === "picked_up" ? daysLate(b.endDate, todayIso()) : 0;
 
   return (
     <>
@@ -37,6 +39,11 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
         <span className="text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 bg-paper">
           {bookingStatusLabels[b.status]}
         </span>
+        {late > 0 ? (
+          <span className="text-sm font-bold px-2 py-1 rounded-md border border-brick bg-brick text-paper">
+            Retard de {late} jour{late > 1 ? "s" : ""}
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -62,6 +69,9 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
             <Row label="Location">{formatCents(b.rentalCents)}</Row>
             <Row label="Caution">{formatCents(b.depositCents)}</Row>
             <Row label="Demande faite le">{dateTime.format(b.createdAt)}</Row>
+            {b.pickedUpAt ? <Row label="Remis le">{dateTime.format(b.pickedUpAt)}</Row> : null}
+            {b.returnedAt ? <Row label="Rendu le">{dateTime.format(b.returnedAt)}</Row> : null}
+            {b.returnNote ? <Row label="État des lieux">{b.returnNote}</Row> : null}
             {b.customerNote ? <Row label="Message du client">{b.customerNote}</Row> : null}
             {b.cancelReason && b.status === "cancelled" ? <Row label="Motif">{b.cancelReason}</Row> : null}
           </dl>
@@ -97,6 +107,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       </div>
 
       <ReviewActions booking={b} />
+      <HandoverActions booking={b} />
 
       <section className="mt-8 brick-card p-6">
         <h2 className="text-2xl font-semibold">Historique</h2>

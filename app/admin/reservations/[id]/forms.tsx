@@ -3,7 +3,72 @@
 import { useActionState } from "react";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
 import type { Booking, Customer } from "@/lib/db/schema";
-import { acceptBooking, proposeDate, refuseBooking, saveAdminNote, toggleCustomerBlock } from "../actions";
+import { daysLate, todayIso } from "@/lib/dates";
+import { formatDate } from "@/lib/format";
+import { acceptBooking, markPickedUp, markReturned, proposeDate, refuseBooking, saveAdminNote, toggleCustomerBlock } from "../actions";
+
+/** Remise en main propre puis retour du set : les deux gestes du quotidien. */
+export function HandoverActions({ booking }: { booking: Booking }) {
+  const [pickupState, pickupAction] = useActionState(markPickedUp, null);
+  const [returnState, returnAction] = useActionState(markReturned, null);
+  const today = todayIso();
+
+  if (booking.status === "pending_payment" || booking.status === "confirmed") {
+    return (
+      <section className="mt-8 brick-card p-6 bg-sky">
+        <h2 className="text-2xl font-semibold">Remise du set</h2>
+        <p className="mt-2 text-slate-ink">
+          À enregistrer une fois le set remis en main propre, remise prévue le {formatDate(booking.startDate)}.
+          {booking.status === "pending_payment" ? " Le loyer peut être réglé sur place par TPE." : ""}
+        </p>
+        <form action={pickupAction} className="mt-4 grid gap-4 sm:grid-cols-[10rem_1fr_auto] items-end">
+          <input type="hidden" name="id" value={booking.id} />
+          <Field label="Remis le">
+            <input name="date" type="date" required max={today} defaultValue={today} className={inputClass} />
+          </Field>
+          <Field label="Précision" hint="Facultatif, pour l'historique">
+            <input name="note" className={inputClass} placeholder="Loyer encaissé par TPE" />
+          </Field>
+          <SubmitButton>Set remis</SubmitButton>
+          <div className="sm:col-span-3">
+            <FormMessage state={pickupState} />
+          </div>
+        </form>
+      </section>
+    );
+  }
+
+  if (booking.status === "picked_up") {
+    const late = daysLate(booking.endDate, today);
+    return (
+      <section className={`mt-8 brick-card p-6 ${late > 0 ? "bg-brick/10 border-brick" : "bg-sky"}`}>
+        <h2 className="text-2xl font-semibold">Retour du set</h2>
+        <p className={`mt-2 ${late > 0 ? "font-bold text-brick-deep" : "text-slate-ink"}`}>
+          {late > 0
+            ? `En retard de ${late} jour${late > 1 ? "s" : ""} : retour attendu le ${formatDate(booking.endDate)}.`
+            : `Retour attendu le ${formatDate(booking.endDate)}.`}
+        </p>
+        <form action={returnAction} className="mt-4 grid gap-4">
+          <input type="hidden" name="id" value={booking.id} />
+          <div className="grid gap-4 sm:grid-cols-[10rem_1fr] items-end">
+            <Field label="Rendu le">
+              <input name="date" type="date" required max={today} defaultValue={today} className={inputClass} />
+            </Field>
+          </div>
+          <Field label="État des lieux" hint="Commentaire libre : pièces manquantes, sachets, notices, figurines. Jamais visible du client.">
+            <textarea name="returnNote" rows={3} className={inputClass} placeholder="Complet, sachets refaits. Une figurine sans son casque." />
+          </Field>
+          <div>
+            <SubmitButton>Set rendu</SubmitButton>
+          </div>
+          <FormMessage state={returnState} />
+        </form>
+      </section>
+    );
+  }
+
+  return null;
+}
 
 export function ReviewActions({ booking }: { booking: Booking }) {
   const [acceptState, acceptAction] = useActionState(acceptBooking, null);

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { ConfirmButton, FormMessage, SubmitButton } from "@/components/admin/form";
+import { daysLate, todayIso } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
 import type { Booking } from "@/lib/db/schema";
 import { acceptProposedDate, cancelRequest } from "./actions";
@@ -30,6 +31,7 @@ export function BookingCard({
   const [acceptState, acceptAction] = useActionState(acceptProposedDate, null);
   const [cancelState, cancelAction] = useActionState(cancelRequest, null);
   const cancellable = booking.status === "pending_review" || booking.status === "date_proposed";
+  const late = booking.status === "picked_up" ? daysLate(booking.endDate, todayIso()) : 0;
 
   return (
     <li className="brick-card p-5">
@@ -40,8 +42,8 @@ export function BookingCard({
             {setName}
           </a>
         </div>
-        <span className={`text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${badge[booking.status]}`}>
-          {bookingStatusLabels[booking.status]}
+        <span className={`text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${late > 0 ? "bg-brick text-paper" : badge[booking.status]}`}>
+          {late > 0 ? "Retour en retard" : bookingStatusLabels[booking.status]}
         </span>
       </div>
 
@@ -68,6 +70,32 @@ export function BookingCard({
 
       {booking.status === "pending_review" ? (
         <p className="mt-4 text-slate-ink">Nous examinons votre demande et revenons vers vous rapidement.</p>
+      ) : null}
+
+      {booking.status === "pending_payment" || booking.status === "confirmed" ? (
+        <p className="mt-4 text-slate-ink">
+          Remise prévue le {formatDate(booking.startDate)}. L&apos;heure exacte se convient avec nous par téléphone ou email.
+        </p>
+      ) : null}
+
+      {booking.status === "picked_up" ? (
+        late > 0 ? (
+          <p className="mt-4 font-semibold text-brick-deep">
+            Le set était à rendre le {formatDate(booking.endDate)}, il y a {late} jour{late > 1 ? "s" : ""}. Merci de nous
+            contacter au plus vite pour convenir du retour.
+          </p>
+        ) : (
+          <p className="mt-4 text-slate-ink">
+            Set récupéré{booking.pickedUpAt ? ` le ${formatDate(booking.pickedUpAt.toISOString().slice(0, 10))}` : ""}. À rendre le{" "}
+            {formatDate(booking.endDate)}, à l&apos;heure qui vous arrange.
+          </p>
+        )
+      ) : null}
+
+      {booking.status === "returned" ? (
+        <p className="mt-4 text-slate-ink">
+          Set rendu{booking.returnedAt ? ` le ${formatDate(booking.returnedAt.toISOString().slice(0, 10))}` : ""}. Merci, et à bientôt !
+        </p>
       ) : null}
 
       {booking.status === "date_proposed" && booking.proposedStartDate && booking.proposedEndDate ? (

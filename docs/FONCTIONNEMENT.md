@@ -131,11 +131,13 @@ demande ──▶ pending_review ──accepter───────────
 - `date_proposed` : les gérants proposent d'autres dates ; le client les accepte depuis son compte (elles remplacent les siennes, le prix est recalculé) ou annule.
 - `pending_payment` : demande acceptée. Le moment du paiement (avant ou après validation) est encore en attente de la cliente, cette étape est donc un point d'arrêt pour l'instant.
 - `confirmed` : paiement reçu, client prévenu.
-- `picked_up` : remise faite, empreinte de caution posée.
-- `returned` : set rendu et vérifié, empreinte libérée (ou capturée partiellement en cas de pièces manquantes).
+- `picked_up` : remise en main propre faite, enregistrée par les gérants (`picked_up_at`). Possible depuis `pending_payment` (loyer réglé par TPE à la remise) ou `confirmed`. L'empreinte de caution viendra avec le module 4.
+- `returned` : set rendu, enregistré par les gérants avec la date et un état des lieux en commentaire libre (`returned_at`, `return_note`). L'exemplaire redevient libre après le battement. La libération ou la capture de la caution viendra avec le module 4.
 - `cancelled` : refus des gérants, annulation par le client (possible tant que la demande n'est pas acceptée) ou par les gérants. `cancel_reason` est montré au client.
 
 Chaque changement est tracé dans `booking_events` avec son auteur.
+
+Retard : un set `picked_up` dont la date de retour est passée est en retard à partir de J+1 (`daysLate()` de `lib/dates.ts`, jours calendaires). Le retard se déduit, rien n'est stocké. Tant que le set n'est pas rendu, il continue d'occuper son exemplaire : `withLateReturn()` ramène sa fin effective à aujourd'hui dans les calculs de disponibilité et de recherche d'exemplaire libre, pour que le catalogue ne l'annonce pas disponible et qu'aucune demande ne soit acceptée dessus. La séquence d'emails et le forfait de retard (module 9) ne sont pas encore là.
 
 ### Disponibilité
 
@@ -255,11 +257,15 @@ Fermetures à venir modifiables, création, suppression ; les périodes passées
 
 ### Réservations (`/admin/reservations`)
 
-Liste en quatre groupes : à traiter (`pending_review`), en attente du client (`date_proposed`), acceptées et en cours, terminées et annulées. Le tableau de bord affiche le nombre de demandes à traiter. La fiche d'une réservation montre la location, le client (avec blocage et déblocage du compte), la note interne, les décisions possibles et l'historique.
+Liste en cinq groupes : à traiter (`pending_review`), en attente du client (`date_proposed`), à remettre (`pending_payment`, `confirmed`), en cours de location (`picked_up`, triées par date de retour, retard en rouge), terminées et annulées. Le tableau de bord affiche le nombre de demandes à traiter, le nombre de sets en location et une alerte sur les retours en retard. La fiche d'une réservation montre la location, le client (avec blocage et déblocage du compte), la note interne, les décisions possibles et l'historique.
 
 - **Accepter** : `pending_review` → `pending_payment`. Rien d'autre n'est déclenché pour l'instant (pas d'email, pas de paiement).
 - **Proposer d'autres dates** : vérifie qu'un exemplaire est libre sur les nouvelles dates (battement compris, en ignorant la réservation elle-même), puis `date_proposed` avec un message facultatif au client.
 - **Refuser** : `cancelled` avec un motif visible du client, possible aussi sur une demande déjà acceptée tant qu'elle n'est pas payée.
+- **Set remis** : `pending_payment` ou `confirmed` → `picked_up`, avec la date (aujourd'hui par défaut, jamais dans le futur) et une précision facultative pour l'historique (« loyer encaissé par TPE »). Refusé si aucun exemplaire n'est attribué.
+- **Set rendu** : `picked_up` → `returned`, avec la date (pas avant la remise, pas dans le futur) et l'état des lieux en commentaire libre, jamais visible du client. Le retard éventuel est écrit dans l'historique.
+
+Pas d'annulation d'une remise ou d'un retour enregistrés par erreur pour l'instant : le passer par la maintenance si ça arrive.
 
 ### Où vit un set
 
@@ -280,7 +286,7 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 Depuis la fiche d'un set disponible, « Réserver ce set » mène à `/catalogue/<slug>/reserver` (connexion requise). Le client choisit la date de remise (à partir de demain), le nombre de jours (libre, minimum `min_rental_days`, pas de maximum), le lieu de remise parmi les lieux actifs, laisse un message facultatif, renseigne ses coordonnées et coche les conditions générales. Le total (prix par jour × jours) et la date de retour s'affichent en direct ; la fin est comptée en jours calendaires (mardi + 4 jours = vendredi). Aucun paiement à cette étape.
 
-Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clair si : le set n'est plus publié, le lieu n'est pas actif, la remise ou le retour tombe dans une fermeture, aucun exemplaire n'est libre, ou le compte est bloqué. Sinon la réservation est créée en `pending_review` avec sa référence, et le client est redirigé vers `/compte`, où il suit ses demandes, accepte une date proposée ou annule.
+Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clair si : le set n'est plus publié, le lieu n'est pas actif, la remise ou le retour tombe dans une fermeture, aucun exemplaire n'est libre, ou le compte est bloqué. Sinon la réservation est créée en `pending_review` avec sa référence, et le client est redirigé vers `/compte`, où il suit ses demandes, accepte une date proposée ou annule. Chaque carte lui dit où en est la location : remise prévue le, set récupéré le et à rendre le, retour en retard (avec invitation à contacter les gérants), set rendu le (spécification, module 3).
 
 Hypothèses prises faute de règle dans la spécification : la remise ne peut pas être demandée pour le jour même, et le planning par lieu (une seule remise à la fois) n'est pas contrôlé automatiquement, c'est la validation manuelle qui s'en charge.
 

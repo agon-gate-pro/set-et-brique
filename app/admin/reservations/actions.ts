@@ -3,10 +3,10 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
-import { endDateFor, todayIso } from "@/lib/availability";
+import { daysLate, endDateFor, todayIso } from "@/lib/availability";
 import { isRangeFreeFor } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
-import { firstError, formToObject, proposeDateSchema, refuseBookingSchema } from "@/lib/validation";
+import { firstError, formToObject, pickupSchema, proposeDateSchema, refuseBookingSchema, returnSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
 import type { BookingStatus } from "@/lib/db/schema";
 
@@ -95,6 +95,56 @@ export async function proposeDate(_: ActionState, formData: FormData): Promise<A
   });
   revalidate(id);
   return { ok: "Proposition envoyée au client : elle apparaît dans son espace." };
+}
+
+/** Instant d'un jour saisi : maintenant si c'est aujourd'hui, sinon midi à Paris ce jour-là. */
+function atDay(date: string) {
+  return date === todayIso() ? new Date() : new Date(`${date}T12:00:00+02:00`);
+}
+
+/**
+ * Remise en main propre faite : la location commence. Possible dès l'acceptation
+ * (le loyer peut être réglé par TPE à la remise) ou après paiement en ligne.
+ */
+export async function markPickedUp(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const parsed = pickupSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const r = await loadBooking(id, ["pending_payment", "confirmed"]);
+  if ("error" in r) return { error: r.error };
+  if (parsed.data.date > todayIso()) return { error: "La date de remise ne peut pas être dans le futur." };
+  if (!r.booking.copyId) return { error: "Aucun exemplaire attribué à cette réservation." };
+
+  const note = parsed.data.note;
+  await transition(id, r.booking.status, "picked_up", note ? `Set remis au client. ${note}` : "Set remis au client", {
+    pickedUpAt: atDay(parsed.data.date),
+  });
+  revalidate(id);
+  return { ok: `Remise enregistrée. Retour attendu le ${r.booking.endDate.split("-").reverse().join("/")}.` };
+}
+
+/** Retour du set : l'exemplaire se libère (après le battement), la caution suit le module 4. */
+export async function markReturned(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const parsed = returnSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const r = await loadBooking(id, ["picked_up"]);
+  if ("error" in r) return { error: r.error };
+  const today = todayIso();
+  if (parsed.data.date > today) return { error: "La date de retour ne peut pas être dans le futur." };
+  const pickedUpDay = r.booking.pickedUpAt ? new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris" }).format(r.booking.pickedUpAt) : null;
+  if (pickedUpDay && parsed.data.date < pickedUpDay) return { error: "Le retour ne peut pas précéder la remise." };
+
+  const late = daysLate(r.booking.endDate, parsed.data.date);
+  const message = late > 0 ? `Set rendu avec ${late} jour${late > 1 ? "s" : ""} de retard` : "Set rendu";
+  await transition(id, r.booking.status, "returned", message, {
+    returnedAt: atDay(parsed.data.date),
+    returnNote: parsed.data.returnNote,
+  });
+  revalidate(id);
+  return { ok: late > 0 ? `Retour enregistré, ${late} jour${late > 1 ? "s" : ""} de retard.` : "Retour enregistré." };
 }
 
 export async function saveAdminNote(_: ActionState, formData: FormData): Promise<ActionState> {
