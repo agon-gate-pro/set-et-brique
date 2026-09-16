@@ -6,6 +6,7 @@ const sections = [
   { href: "/admin/sets", label: "Sets" },
   { href: "/admin/reservations", label: "Réservations" },
   { href: "/admin/forfaits", label: "Forfaits" },
+  { href: "/admin/bons-cadeaux", label: "Bons cadeaux" },
   { href: "/admin/contenus", label: "Contenus du site" },
 ];
 

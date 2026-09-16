@@ -42,6 +42,14 @@ export const bookingStatus = pgEnum("booking_status", [
 
 export const bookingActor = pgEnum("booking_actor", ["customer", "admin", "system"]);
 
+export const giftVoucherOrigin = pgEnum("gift_voucher_origin", ["purchase", "admin"]);
+
+export const giftVoucherStatus = pgEnum("gift_voucher_status", [
+  "valid",
+  "used",
+  "cancelled",
+]);
+
 /* ------------------------------------------------------------------ */
 /* Colonnes communes                                                   */
 /* ------------------------------------------------------------------ */
@@ -237,6 +245,41 @@ export const bookingEvents = pgTable(
 );
 
 /* ------------------------------------------------------------------ */
+/* Bons cadeaux                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Crédit en euros utilisable comme moyen de paiement dans une réservation.
+ * `origin = "admin"` couvre à la fois les avoirs offerts (compensation) et
+ * les lots créés pour un événement ; `origin = "purchase"` correspondra aux
+ * bons achetés en ligne par un client, une fois le tunnel de réservation en
+ * place. L'état "expiré" n'est pas stocké : il se déduit de `status = "valid"`
+ * et `expiresAt` dépassée.
+ */
+export const giftVouchers = pgTable(
+  "gift_vouchers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    origin: giftVoucherOrigin("origin").notNull().default("admin"),
+    status: giftVoucherStatus("status").notNull().default("valid"),
+    /** Étiquette de lot, pour retrouver les codes créés ensemble pour un événement. */
+    batchLabel: text("batch_label"),
+    /** Motif interne, non affiché au client. */
+    note: text("note"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("gift_vouchers_code_idx").on(t.code),
+    index("gift_vouchers_status_idx").on(t.status),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
 /* Contenu éditable du site                                            */
 /* ------------------------------------------------------------------ */
 
@@ -327,3 +370,6 @@ export type BookingEvent = typeof bookingEvents.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type PressArticle = typeof pressArticles.$inferSelect;
 export type BookingStatus = (typeof bookingStatus.enumValues)[number];
+export type GiftVoucher = typeof giftVouchers.$inferSelect;
+export type GiftVoucherOrigin = (typeof giftVoucherOrigin.enumValues)[number];
+export type GiftVoucherStatus = (typeof giftVoucherStatus.enumValues)[number];
