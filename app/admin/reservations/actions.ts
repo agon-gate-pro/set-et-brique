@@ -1,12 +1,11 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
-import { daysLate, endDateFor, todayIso } from "@/lib/availability";
-import { isRangeFreeFor } from "@/lib/bookings";
+import { daysLate, todayIso } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
-import { firstError, formToObject, pickupSchema, proposeDateSchema, refuseBookingSchema, returnSchema } from "@/lib/validation";
+import { firstError, formToObject, handoverSchema, pickupSchema, refuseBookingSchema, returnSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
 import type { BookingStatus } from "@/lib/db/schema";
 
@@ -72,30 +71,40 @@ export async function refuseBooking(_: ActionState, formData: FormData): Promise
   return { ok: "Demande refusée." };
 }
 
-/** Proposer d'autres dates : le client accepte ou annule depuis son compte. */
-export async function proposeDate(_: ActionState, formData: FormData): Promise<ActionState> {
+/**
+ * Modifier la remise d'une demande : lieu et heure seulement. Les jours sont
+ * ceux choisis par le client, on n'y revient pas. Le client voit la modification
+ * dans son espace, la demande reste à accepter.
+ */
+export async function updateHandover(_: ActionState, formData: FormData): Promise<ActionState> {
   await requireRole("admin");
   const id = String(formData.get("id") ?? "");
-  const parsed = proposeDateSchema.safeParse(formToObject(formData));
+  const parsed = handoverSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const r = await loadBooking(id, ["pending_review", "date_proposed"]);
+  const r = await loadBooking(id, ["pending_review", "pending_payment", "confirmed"]);
   if ("error" in r) return { error: r.error };
 
-  const { startDate, days, message, pickupTime } = parsed.data;
-  if (startDate <= todayIso()) return { error: "La date de remise doit être à venir." };
-  const endDate = endDateFor(startDate, days);
-  const copy = await isRangeFreeFor(r.booking, startDate, endDate);
-  if (!copy) return { error: "Aucun exemplaire libre sur ces dates (battement compris)." };
+  const [point] = await db
+    .select({ id: schema.pickupPoints.id, name: schema.pickupPoints.name })
+    .from(schema.pickupPoints)
+    .where(and(eq(schema.pickupPoints.id, parsed.data.pickupPointId), eq(schema.pickupPoints.active, true)));
+  if (!point) return { error: "Ce lieu de remise n'est plus proposé." };
 
-  await transition(id, r.booking.status, "date_proposed", `Autre date proposée : du ${startDate} au ${endDate}${pickupTime ? ` à ${pickupTime}` : ""}`, {
-    proposedStartDate: startDate,
-    proposedEndDate: endDate,
-    ...(pickupTime ? { pickupTime } : {}),
-    copyId: copy.id,
-    cancelReason: message,
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.bookings)
+      .set({ pickupPointId: point.id, pickupTime: parsed.data.pickupTime })
+      .where(eq(schema.bookings.id, id));
+    await tx.insert(schema.bookingEvents).values({
+      bookingId: id,
+      actor: "admin",
+      fromStatus: r.booking.status,
+      toStatus: r.booking.status,
+      message: `Remise modifiée : ${point.name} à ${parsed.data.pickupTime}`,
+    });
   });
   revalidate(id);
-  return { ok: "Proposition envoyée au client : elle apparaît dans son espace." };
+  return { ok: `Remise modifiée : ${point.name} à ${parsed.data.pickupTime}.` };
 }
 
 /** Instant d'un jour saisi : maintenant si c'est aujourd'hui, sinon midi à Paris ce jour-là. */

@@ -5,7 +5,7 @@ import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/c
 import type { Booking, Customer } from "@/lib/db/schema";
 import { daysLate, todayIso } from "@/lib/dates";
 import { formatDate, formatTime } from "@/lib/format";
-import { acceptBooking, markPickedUp, markReturned, proposeDate, refuseBooking, saveAdminNote, toggleCustomerBlock } from "../actions";
+import { acceptBooking, markPickedUp, markReturned, refuseBooking, saveAdminNote, toggleCustomerBlock, updateHandover } from "../actions";
 
 /** Remise en main propre puis retour du set : les deux gestes du quotidien. */
 export function HandoverActions({ booking }: { booking: Booking }) {
@@ -70,60 +70,72 @@ export function HandoverActions({ booking }: { booking: Booking }) {
   return null;
 }
 
-export function ReviewActions({ booking }: { booking: Booking }) {
+export function ReviewActions({
+  booking,
+  pickupPoints,
+}: {
+  booking: Booking;
+  pickupPoints: { id: string; name: string }[];
+}) {
   const [acceptState, acceptAction] = useActionState(acceptBooking, null);
   const [refuseState, refuseAction] = useActionState(refuseBooking, null);
-  const [proposeState, proposeAction] = useActionState(proposeDate, null);
+  const [handoverState, handoverAction] = useActionState(updateHandover, null);
   const canAccept = booking.status === "pending_review";
-  const canPropose = booking.status === "pending_review" || booking.status === "date_proposed";
-  const canRefuse = canPropose || booking.status === "pending_payment";
+  const canRefuse = booking.status === "pending_review" || booking.status === "pending_payment";
   if (!canRefuse) return null;
 
   return (
     <section id="decision" className="mt-8 brick-card p-6 bg-sun/30 scroll-mt-24">
       <h2 className="text-2xl font-semibold">Décision</h2>
+      <p className="mt-2 text-slate-ink">
+        Les dates et la durée sont celles choisies par le client, elles ne se modifient pas. Vous pouvez
+        ajuster le lieu et l&apos;heure de remise avant d&apos;accepter.
+      </p>
 
-      {canAccept ? (
-        <form action={acceptAction} className="mt-4">
-          <input type="hidden" name="id" value={booking.id} />
-          <SubmitButton>Accepter la demande</SubmitButton>
-          <FormMessage state={acceptState} />
-        </form>
-      ) : null}
-
-      {canPropose ? (
-        <form action={proposeAction} className="mt-6 grid gap-4 sm:grid-cols-[10rem_7rem_7rem_1fr_auto] items-end">
-          <input type="hidden" name="id" value={booking.id} />
-          <h3 className="sm:col-span-5 font-bold">Modifier : proposer d&apos;autres dates ou une autre heure</h3>
-          <Field label="Remise le">
-            <input name="startDate" type="date" required defaultValue={booking.proposedStartDate ?? booking.startDate} className={inputClass} />
-          </Field>
-          <Field label="Jours">
-            <input name="days" type="number" min={1} required defaultValue={booking.days} className={inputClass} />
-          </Field>
-          <Field label="Heure">
-            <input name="pickupTime" type="time" step={900} defaultValue={formatTime(booking.pickupTime) ?? ""} className={inputClass} />
-          </Field>
-          <Field label="Message au client" hint="Facultatif">
-            <input name="message" className={inputClass} placeholder="Le set revient le 12, on vous le remet le 16 ?" />
-          </Field>
-          <SubmitButton variant="paper">Proposer</SubmitButton>
-          <div className="sm:col-span-5">
-            <FormMessage state={proposeState} />
-          </div>
-        </form>
-      ) : null}
-
-      <form action={refuseAction} className="mt-6 grid gap-4 sm:grid-cols-[1fr_auto] items-end">
+      <form action={handoverAction} className="mt-6 grid gap-4 sm:grid-cols-[1fr_9rem_auto] items-end">
         <input type="hidden" name="id" value={booking.id} />
-        <Field label="Refuser, avec un motif visible du client" hint="Facultatif">
-          <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
+        <h3 className="sm:col-span-3 font-bold">Modifier la remise</h3>
+        <Field label="Lieu de remise">
+          <select name="pickupPointId" required defaultValue={booking.pickupPointId ?? ""} className={inputClass}>
+            {pickupPoints.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
         </Field>
-        <ConfirmButton confirmLabel="Oui, refuser">Refuser la demande</ConfirmButton>
-        <div className="sm:col-span-2">
-          <FormMessage state={refuseState} />
+        <Field label="Heure de remise">
+          <input name="pickupTime" type="time" required step={900} defaultValue={formatTime(booking.pickupTime) ?? ""} className={inputClass} />
+        </Field>
+        <SubmitButton variant="sun">Modifier</SubmitButton>
+        <div className="sm:col-span-3">
+          <FormMessage state={handoverState} />
         </div>
       </form>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-[auto_1fr_auto] items-end">
+        {canAccept ? (
+          <form action={acceptAction}>
+            <input type="hidden" name="id" value={booking.id} />
+            <SubmitButton variant="leaf">Accepter la demande</SubmitButton>
+            <FormMessage state={acceptState} />
+          </form>
+        ) : (
+          <div />
+        )}
+        <form action={refuseAction} className="sm:col-span-2 grid gap-4 sm:grid-cols-[1fr_auto] items-end">
+          <input type="hidden" name="id" value={booking.id} />
+          <Field label="Motif du refus, visible du client" hint="Facultatif">
+            <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
+          </Field>
+          <ConfirmButton confirmLabel="Oui, refuser" className="btn btn-brick text-paper no-underline">
+            Refuser la demande
+          </ConfirmButton>
+          <div className="sm:col-span-2">
+            <FormMessage state={refuseState} />
+          </div>
+        </form>
+      </div>
     </section>
   );
 }

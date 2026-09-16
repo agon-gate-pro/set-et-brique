@@ -177,12 +177,10 @@ export const bookingRequestSchema = z.object({
     .refine((v) => v === "on", "Vous devez accepter les conditions générales"),
 });
 
-/** Proposition d'une autre date par les gérants. */
-export const proposeDateSchema = z.object({
-  startDate: isoDate,
-  days: positiveInt("Nombre de jours"),
-  pickupTime: clockTime.optional().or(z.literal("").transform(() => undefined)),
-  message: optionalText,
+/** Modification de la remise par les gérants : lieu et heure seulement, les jours sont ceux du client. */
+export const handoverSchema = z.object({
+  pickupPointId: required("Lieu de remise"),
+  pickupTime: clockTime,
 });
 
 export const refuseBookingSchema = z.object({

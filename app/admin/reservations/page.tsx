@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: "Réservations", robots: { index: fal
 export const dynamic = "force-dynamic";
 
 const groups: { title: string; statuses: BookingStatus[]; hint?: string }[] = [
-  { title: "À traiter", statuses: ["pending_review"], hint: "Demandes à accepter, refuser ou décaler." },
-  { title: "En attente du client", statuses: ["date_proposed"], hint: "Vous avez proposé d'autres dates." },
+  { title: "À traiter", statuses: ["pending_review"], hint: "Demandes à accepter ou refuser, lieu et heure de remise ajustables." },
+  { title: "En attente du client", statuses: ["date_proposed"] },
   { title: "À remettre", statuses: ["pending_payment", "confirmed"], hint: "Acceptées, la remise en main propre reste à faire." },
   { title: "En cours de location", statuses: ["picked_up"], hint: "Sets dehors, à enregistrer au retour." },
   { title: "Terminées et annulées", statuses: ["returned", "cancelled"] },

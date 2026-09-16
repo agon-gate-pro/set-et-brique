@@ -26,6 +26,11 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
     },
   });
   if (!booking) notFound();
+  const pickupPoints = await db
+    .select({ id: schema.pickupPoints.id, name: schema.pickupPoints.name })
+    .from(schema.pickupPoints)
+    .where(eq(schema.pickupPoints.active, true))
+    .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt));
   const { customer, set, copy, pickupPoint, events, ...b } = booking;
   const late = b.status === "picked_up" ? daysLate(b.endDate, todayIso()) : 0;
 
@@ -109,7 +114,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
         </section>
       </div>
 
-      <ReviewActions booking={b} />
+      <ReviewActions booking={b} pickupPoints={pickupPoints} />
       <HandoverActions booking={b} />
 
       <section className="mt-8 brick-card p-6">
