@@ -1,0 +1,2 @@
+ALTER TABLE "customers" ADD COLUMN "preferred_pickup_point_id" uuid;--> statement-breakpoint
+ALTER TABLE "customers" ADD CONSTRAINT "customers_preferred_pickup_point_id_pickup_points_id_fk" FOREIGN KEY ("preferred_pickup_point_id") REFERENCES "public"."pickup_points"("id") ON DELETE set null ON UPDATE no action;

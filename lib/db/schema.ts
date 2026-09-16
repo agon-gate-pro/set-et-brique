@@ -8,6 +8,7 @@ import {
   pgEnum,
   pgTable,
   text,
+  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -19,6 +20,9 @@ import {
 
 export const setStatus = pgEnum("set_status", ["draft", "published", "archived"]);
 
+/** Notices papier ou numériques (dans ce cas, avertir le client qu'il faut un accès internet). */
+export const instructionType = pgEnum("instruction_type", ["paper", "digital"]);
+
 export const copyCondition = pgEnum("copy_condition", [
   "new",
   "very_good",
@@ -26,13 +30,23 @@ export const copyCondition = pgEnum("copy_condition", [
   "worn",
 ]);
 
+/**
+ * Statut saisi par les gérants. Les états « en location » et « en battement »
+ * ne sont pas stockés : ils se déduisent des réservations en cours.
+ */
 export const copyStatus = pgEnum("copy_status", [
   "available",
   "maintenance",
   "retired",
 ]);
 
+/**
+ * Cycle de vie d'une réservation. Toute demande est validée à la main par les
+ * gérants (spécification, module 5) : elle naît en `pending_review`.
+ */
 export const bookingStatus = pgEnum("booking_status", [
+  "pending_review",
+  "date_proposed",
   "pending_payment",
   "confirmed",
   "picked_up",
@@ -78,7 +92,14 @@ export const customers = pgTable(
     addressLine: text("address_line"),
     postalCode: text("postal_code"),
     city: text("city"),
+    /** Lieu de remise pré-sélectionné dans le tunnel, toujours modifiable à chaque demande. */
+    preferredPickupPointId: uuid("preferred_pickup_point_id").references(() => pickupPoints.id, {
+      onDelete: "set null",
+    }),
     adminNote: text("admin_note"),
+    /** Compte bloqué à la main par les gérants : plus aucune réservation possible. */
+    blocked: boolean("blocked").notNull().default(false),
+    blockedReason: text("blocked_reason"),
     ...timestamps,
   },
   (t) => [uniqueIndex("customers_clerk_user_id_idx").on(t.clerkUserId)],
@@ -101,6 +122,11 @@ export const ratePlans = pgTable("rate_plans", {
   ...timestamps,
 });
 
+/**
+ * Un set = un article du catalogue, tel que présenté au client.
+ * Il peut regrouper plusieurs boîtes officielles (`setNumbers`).
+ * Les exemplaires physiques sont dans `set_copies`.
+ */
 export const sets = pgTable(
   "sets",
   {
@@ -111,12 +137,32 @@ export const sets = pgTable(
       onDelete: "set null",
     }),
     name: text("name").notNull(),
-    setNumber: text("set_number"),
+    /** Marque de la boîte : LEGO le plus souvent, parfois une autre (PANTASY…). */
+    brand: text("brand").notNull().default("LEGO"),
+    /** Numéros officiels des boîtes qui composent l'article (souvent un seul, parfois 2 ou 3). */
+    setNumbers: text("set_numbers")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     theme: text("theme"),
     description: text("description"),
+    /** Commentaire libre affiché au client sur la fiche, en plus de la description. */
+    publicNote: text("public_note"),
     pieces: integer("pieces"),
+    minifigCount: integer("minifig_count"),
+    /** Nombre de notices, toutes boîtes confondues. */
+    instructionCount: integer("instruction_count"),
+    instructionType: instructionType("instruction_type").notNull().default("paper"),
+    /** Dimensions une fois construit, texte libre (« L 84 × l 56 × H 21 cm »). */
+    dimensions: text("dimensions"),
+    /** Temps de montage estimé, texte libre (« 8 à 10 h »). */
+    buildTime: text("build_time"),
     ageMin: integer("age_min"),
+    /** Poids du set complet, en grammes. Usage interne (vérification au retour), jamais affiché. */
+    weightGrams: integer("weight_grams"),
     depositCents: integer("deposit_cents").notNull().default(0),
+    /** Jours de battement entre deux locations. Null = réglage global `turnaround_days`. */
+    turnaroundDays: integer("turnaround_days"),
     status: setStatus("status").notNull().default("draft"),
     featured: boolean("featured").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -168,6 +214,9 @@ export const pickupPoints = pgTable("pickup_points", {
   name: text("name").notNull(),
   address: text("address"),
   instructions: text("instructions"),
+  /** Plage horaire dans laquelle le client peut demander la remise. Vides = toute heure. */
+  openFrom: time("open_from"),
+  openUntil: time("open_until"),
   active: boolean("active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   ...timestamps,
@@ -198,15 +247,20 @@ export const bookings = pgTable(
     setId: uuid("set_id")
       .notNull()
       .references(() => sets.id, { onDelete: "restrict" }),
-    /** Exemplaire attribué. Null tant que la réservation n'est pas confirmée. */
+    /** Exemplaire attribué dès la demande, pour bloquer les dates. Les gérants peuvent le changer. */
     copyId: uuid("copy_id").references(() => setCopies.id, { onDelete: "set null" }),
     pickupPointId: uuid("pickup_point_id").references(() => pickupPoints.id, {
       onDelete: "set null",
     }),
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
+    /** Heure de remise souhaitée par le client, confirmée ou ajustée par les gérants. */
+    pickupTime: time("pickup_time"),
     days: integer("days").notNull(),
-    status: bookingStatus("status").notNull().default("pending_payment"),
+    status: bookingStatus("status").notNull().default("pending_review"),
+    /** Autre date proposée par les gérants, en attente de la réponse du client. */
+    proposedStartDate: date("proposed_start_date"),
+    proposedEndDate: date("proposed_end_date"),
     rentalCents: integer("rental_cents").notNull(),
     depositCents: integer("deposit_cents").notNull(),
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
@@ -215,8 +269,15 @@ export const bookings = pgTable(
     stripeDepositPaymentIntentId: text("stripe_deposit_payment_intent_id"),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
+    /** Motif communiqué au client en cas de refus ou d'annulation. */
+    cancelReason: text("cancel_reason"),
+    /** Acceptation des conditions générales par case à cocher (spécification, module 7). */
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
+    /** État des lieux au retour, commentaire libre des gérants (spécification, module 9). */
+    returnNote: text("return_note"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     ...timestamps,
   },
@@ -315,8 +376,12 @@ export const siteSettings = pgTable("site_settings", {
 /* Relations (pour les requêtes Drizzle `with`)                        */
 /* ------------------------------------------------------------------ */
 
-export const customersRelations = relations(customers, ({ many }) => ({
+export const customersRelations = relations(customers, ({ one, many }) => ({
   bookings: many(bookings),
+  preferredPickupPoint: one(pickupPoints, {
+    fields: [customers.preferredPickupPointId],
+    references: [pickupPoints.id],
+  }),
 }));
 
 export const ratePlansRelations = relations(ratePlans, ({ many }) => ({
@@ -373,3 +438,4 @@ export type BookingStatus = (typeof bookingStatus.enumValues)[number];
 export type GiftVoucher = typeof giftVouchers.$inferSelect;
 export type GiftVoucherOrigin = (typeof giftVoucherOrigin.enumValues)[number];
 export type GiftVoucherStatus = (typeof giftVoucherStatus.enumValues)[number];
+export type InstructionType = (typeof instructionType.enumValues)[number];

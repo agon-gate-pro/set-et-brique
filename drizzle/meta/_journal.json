@@ -22,6 +22,55 @@
       "when": 1788816075641,
       "tag": "0002_cultured_darwin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789550036527,
+      "tag": "0003_conscious_demogoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789552377355,
+      "tag": "0004_booking_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789552887017,
+      "tag": "0005_min_rental_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789556511217,
+      "tag": "0006_customer_preferred_pickup",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789559442976,
+      "tag": "0007_booking_return_note",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789561400166,
+      "tag": "0008_booking_pickup_time",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789562326194,
+      "tag": "0009_pickup_point_opening",
+      "breakpoints": true
     }
   ]
 }

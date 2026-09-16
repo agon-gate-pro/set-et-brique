@@ -11,6 +11,8 @@ import { copySchema, firstError, formToObject, setSchema } from "@/lib/validatio
 import type { ActionState } from "@/components/admin/form";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+/** Limite fixée avec la cliente (spécification, module 1). */
+const MAX_IMAGES_PER_SET = 10;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function revalidateSet(id?: string) {
@@ -44,12 +46,21 @@ export async function createSet(_: ActionState, formData: FormData): Promise<Act
     .values({
       slug: await uniqueSlug(d.name),
       name: d.name,
-      setNumber: d.setNumber,
+      brand: d.brand,
+      setNumbers: d.setNumbers,
       theme: d.theme,
       description: d.description,
+      publicNote: d.publicNote,
       pieces: d.pieces,
+      minifigCount: d.minifigCount,
+      instructionCount: d.instructionCount,
+      instructionType: d.instructionType,
+      dimensions: d.dimensions,
+      buildTime: d.buildTime,
       ageMin: d.ageMin,
+      weightGrams: d.weightGrams,
       depositCents: d.depositEuros,
+      turnaroundDays: d.turnaroundDays,
       ratePlanId: d.ratePlanId,
       status: d.status,
       featured: d.featured,
@@ -79,12 +90,21 @@ export async function updateSet(_: ActionState, formData: FormData): Promise<Act
     .set({
       slug: current.name === d.name ? current.slug : await uniqueSlug(d.name, id),
       name: d.name,
-      setNumber: d.setNumber,
+      brand: d.brand,
+      setNumbers: d.setNumbers,
       theme: d.theme,
       description: d.description,
+      publicNote: d.publicNote,
       pieces: d.pieces,
+      minifigCount: d.minifigCount,
+      instructionCount: d.instructionCount,
+      instructionType: d.instructionType,
+      dimensions: d.dimensions,
+      buildTime: d.buildTime,
       ageMin: d.ageMin,
+      weightGrams: d.weightGrams,
       depositCents: d.depositEuros,
+      turnaroundDays: d.turnaroundDays,
       ratePlanId: d.ratePlanId,
       status: d.status,
       featured: d.featured,
@@ -128,17 +148,20 @@ export async function addSetImage(_: ActionState, formData: FormData): Promise<A
   const [set] = await db.select({ slug: schema.sets.slug }).from(schema.sets).where(eq(schema.sets.id, setId));
   if (!set) return { error: "Set introuvable" };
 
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.setImages)
+    .where(eq(schema.setImages.setId, setId));
+  if (n >= MAX_IMAGES_PER_SET) {
+    return { error: `${MAX_IMAGES_PER_SET} photos maximum par set. Retirez-en une avant d'en ajouter.` };
+  }
+
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const blob = await put(`sets/${set.slug}/${Date.now()}.${ext}`, file, {
     access: "public",
     addRandomSuffix: true,
     contentType: file.type,
   });
-
-  const [{ n }] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(schema.setImages)
-    .where(eq(schema.setImages.setId, setId));
 
   await db.insert(schema.setImages).values({
     setId,

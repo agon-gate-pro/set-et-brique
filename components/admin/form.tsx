@@ -11,7 +11,7 @@ export function SubmitButton({
   className = "",
 }: {
   children: ReactNode;
-  variant?: "brick" | "sun" | "paper";
+  variant?: "brick" | "sun" | "leaf" | "sea" | "paper";
   className?: string;
 }) {
   const { pending } = useFormStatus();
@@ -31,10 +31,13 @@ export function ConfirmButton({
   children,
   confirmLabel = "Confirmer la suppression",
   className = "",
+  form,
 }: {
   children: ReactNode;
   confirmLabel?: string;
   className?: string;
+  /** Id d'un formulaire hors de l'arbre, pour placer le bouton dans un autre formulaire. */
+  form?: string;
 }) {
   const [armed, setArmed] = useState(false);
   const { pending } = useFormStatus();
@@ -54,6 +57,7 @@ export function ConfirmButton({
     <span className="inline-flex items-center gap-3">
       <button
         type="submit"
+        form={form}
         disabled={pending}
         className="btn btn-brick text-sm py-2 px-3"
       >
@@ -75,10 +79,10 @@ export function FormMessage({ state }: { state: ActionState }) {
   return (
     <p
       role="status"
-      className={`mt-4 border-[3px] px-4 py-3 font-semibold ${
+      className={`mt-4 rounded-xl border px-4 py-3 font-semibold ${
         state.error
-          ? "border-brick bg-red-50 text-brick-deep"
-          : "border-ink bg-sky text-ink-deep"
+          ? "border-brick/30 bg-red-50 text-brick-deep"
+          : "border-slate-ink/15 bg-sky text-ink-deep"
       }`}
     >
       {state.error ?? state.ok}
@@ -105,4 +109,4 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full border-[3px] border-ink bg-paper px-3 py-2 text-ink-deep focus:outline-none focus-visible:ring-4 focus-visible:ring-sun";
+  "w-full rounded-xl border border-slate-ink/20 bg-paper px-3 py-2 text-ink-deep focus:outline-none focus-visible:ring-4 focus-visible:ring-sun";

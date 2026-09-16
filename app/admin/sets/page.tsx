@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { formatCents, setStatusLabels } from "@/lib/format";
+import { formatCents, formatSetNumbers, setStatusLabels } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Sets", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -13,14 +13,15 @@ export default async function SetsPage() {
     .select({
       id: schema.sets.id,
       name: schema.sets.name,
-      setNumber: schema.sets.setNumber,
+      brand: schema.sets.brand,
+      setNumbers: schema.sets.setNumbers,
       theme: schema.sets.theme,
       status: schema.sets.status,
       depositCents: schema.sets.depositCents,
-      planName: sql<string | null>`(select name from ${schema.ratePlans} rp where rp.id = ${schema.sets.ratePlanId})`,
-      pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets.ratePlanId}), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
-      copies: sql<number>`(select count(*)::int from ${schema.setCopies} c where c.set_id = ${schema.sets.id})`,
-      cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets.id} order by i.sort_order asc, i.created_at asc limit 1)`,
+      planName: sql<string | null>`(select name from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id)`,
+      pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
+      copies: sql<number>`(select count(*)::int from ${schema.setCopies} c where c.set_id = ${schema.sets}.id)`,
+      cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)
     .orderBy(asc(schema.sets.status), asc(schema.sets.sortOrder), desc(schema.sets.createdAt));
@@ -47,7 +48,7 @@ export default async function SetsPage() {
                 href={`/admin/sets/${s.id}`}
                 className="brick-card p-4 grid gap-4 grid-cols-[5rem_1fr] sm:grid-cols-[5rem_1fr_auto] items-center hover:bg-sky"
               >
-                <span className="block h-20 w-20 bg-sky border-[3px] border-ink overflow-hidden relative">
+                <span className="block h-20 w-20 rounded-xl bg-sky border border-slate-ink/15 overflow-hidden relative">
                   {s.cover ? (
                     <Image src={s.cover} alt="" fill sizes="80px" className="object-cover" />
                   ) : null}
@@ -55,7 +56,12 @@ export default async function SetsPage() {
                 <span>
                   <span className="display text-xl font-semibold block">
                     {s.name}
-                    {s.setNumber ? <span className="ml-2 text-slate-ink font-normal text-base">n° {s.setNumber}</span> : null}
+                    {s.setNumbers.length > 0 ? (
+                      <span className="ml-2 text-slate-ink font-normal text-base">n° {formatSetNumbers(s.setNumbers)}</span>
+                    ) : null}
+                    {s.brand !== "LEGO" ? (
+                      <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-md bg-sky border border-slate-ink/15 align-middle">{s.brand}</span>
+                    ) : null}
                   </span>
                   <span className="block text-slate-ink text-sm">
                     {s.theme ? `${s.theme} · ` : ""}
@@ -64,7 +70,7 @@ export default async function SetsPage() {
                   </span>
                 </span>
                 <span
-                  className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 border-2 border-ink ${
+                  className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 ${
                     s.status === "published" ? "bg-sun" : s.status === "archived" ? "bg-slate-200" : "bg-paper"
                   }`}
                 >

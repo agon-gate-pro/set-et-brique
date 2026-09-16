@@ -30,17 +30,18 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
     <section className="mt-8 brick-card p-6">
       <h2 className="text-2xl font-semibold">Photos</h2>
       <p className="mt-1 text-slate-ink">
-        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, 8 Mo maximum.
+        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, 8 Mo maximum,
+        10 photos par set au plus ({images.length}/10).
       </p>
 
       {images.length > 0 ? (
         <ul className="mt-5 grid gap-4 grid-cols-2 md:grid-cols-4">
           {images.map((img, i) => (
-            <li key={img.id} className="border-[3px] border-ink bg-sky">
+            <li key={img.id} className="rounded-xl overflow-hidden border border-slate-ink/15 bg-sky">
               <div className="relative aspect-square">
                 <Image src={img.url} alt={img.alt ?? ""} fill sizes="(min-width: 768px) 200px, 45vw" className="object-cover" />
                 {i === 0 ? (
-                  <span className="absolute top-2 left-2 text-xs font-bold bg-sun px-2 py-0.5 border-2 border-ink">
+                  <span className="absolute top-2 left-2 text-xs font-bold bg-sun px-2 py-0.5 rounded-md">
                     principale
                   </span>
                 ) : null}
@@ -115,7 +116,7 @@ function CopyRow({ copy }: { copy: SetCopy }) {
   const [editState, editAction] = useActionState(updateCopy, null);
   const [deleteState, deleteAction] = useActionState(deleteCopy, null);
   return (
-    <li className="border-[3px] border-ink p-4">
+    <li className="rounded-xl border border-slate-ink/15 p-4">
       <form action={editAction} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] items-end">
         <input type="hidden" name="id" value={copy.id} />
         <CopyFields copy={copy} />
@@ -141,13 +142,16 @@ export function CopiesSection({ setId, copies }: { setId: string; copies: SetCop
       <p className="mt-1 text-slate-ink">
         Chaque boîte physique est un exemplaire. C&apos;est l&apos;exemplaire qui est
         réservé ; un set avec deux exemplaires peut être loué deux fois en même temps.
+        « En location » et « en battement » ne se règlent pas ici : ils découlent des
+        réservations. Passez un exemplaire « En réparation » pour le bloquer le temps
+        d&apos;un souci, « Retiré » s&apos;il ne reviendra pas.
       </p>
       <ul className="mt-5 space-y-3">
         {copies.map((c) => (
           <CopyRow key={c.id} copy={c} />
         ))}
       </ul>
-      <form action={action} className="mt-5 bg-sky border-[3px] border-ink p-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] items-end">
+      <form action={action} className="mt-5 rounded-xl bg-sky border border-slate-ink/15 p-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] items-end">
         <input type="hidden" name="setId" value={setId} />
         <CopyFields />
         <SubmitButton>Ajouter</SubmitButton>

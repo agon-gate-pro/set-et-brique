@@ -2,7 +2,11 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Routes qui exigent d'être connecté. Le contrôle du rôle (gérant, superadmin)
 // se fait ensuite côté serveur dans app/admin/layout.tsx via lib/auth.ts.
-const isProtectedRoute = createRouteMatcher(["/admin(.*)", "/compte(.*)"]);
+const isProtectedRoute = createRouteMatcher([
+  "/admin(.*)",
+  "/compte(.*)",
+  "/catalogue/(.*)/reserver(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
