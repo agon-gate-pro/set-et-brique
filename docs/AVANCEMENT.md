@@ -1,0 +1,65 @@
+# Set et Brique, avancement
+
+État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
+
+Dernière mise à jour : 16 septembre 2026.
+
+## 1. Où on en est
+
+| Module (spécification) | État | Ce qui est en place | Ce qui manque |
+| --- | --- | --- | --- |
+| 1. Catalogue et stock | **Fait** | Fiche set complète (numéros multiples, marque, notices papier/numérique, figurines, dimensions, temps de montage, commentaire public, poids interne, caution, battement par set), 10 photos max, multi-exemplaires, statuts calculés Disponible / Location / Battement / Réparation / Retiré, catalogue et fiche publics | Saisie des 28 sets par les gérants |
+| 2. Planning des locations | **Fait en partie** | 5 lieux de remise, durée libre à 2 €/jour, jours calendaires, battement entre clients différents et aucun battement pour le même client qui enchaîne, périodes fermées, blocage par set via « En réparation » | Planning propre à chaque lieu (une remise à la fois) non contrôlé : validation manuelle |
+| 3. Comptes clients et suivi | **Fait en partie** | Compte Clerk, fiche client à la première demande avec nom, prénom, téléphone, adresse obligatoires, compte bloqué par les gérants, espace `/compte` avec ses réservations | Suivi « récupéré / à rendre / retard » : les statuts existent, pas encore les actions de remise et de retour |
+| 4. Paiement Stripe | **Pas commencé** | Colonnes Stripe prévues en base, statut `pending_payment` | Tout le paiement, la caution, les délais de blocage (1 h, 15 min). Bloqué par deux questions ouvertes, voir §3 |
+| 5. Tunnel de réservation | **Fait** | Set → dates → lieu → coordonnées → CG → demande en attente ; validation manuelle par les gérants : accepter, refuser, proposer d'autres dates ; réponse du client ; annulation | Paiement (module 4), bon cadeau (module 6) |
+| 6. Bons cadeaux | **Pas commencé** | | Tout |
+| 7. Contrat et CG | **Fait en partie** | Case à cocher obligatoire, horodatée en base | Contrat PDF généré, texte légal définitif |
+| 8. Facturation | **Pas commencé** | | Tout |
+| 9. État des lieux et dommages | **Pas commencé** | Statut « En réparation » et note interne par exemplaire | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits |
+| 10. Notifications | **Pas commencé** | Historique `booking_events` sur lequel se brancher | Fournisseur d'email à choisir (aucune clé dans le projet), templates modifiables |
+| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord, sets, forfaits, lieux, fermetures, réservations. Rôles admin et superadmin | Contenus du site, maintenance, réglages, CA du mois, taux d'occupation, export des ventes |
+| 12. Déploiement et formation | **En cours** | Déploiement Vercel automatique, base Neon partagée | Instance Clerk de production, domaine final, formation |
+
+## 2. Hypothèses prises sans règle explicite
+
+À valider avec la cliente, à corriger si elle tranche autrement.
+
+- La remise ne peut pas être demandée pour le jour même : la première date proposée est demain.
+- Une demande acceptée passe en « acceptée, paiement à venir » (`pending_payment`) et s'arrête là tant que le module 4 n'est pas construit.
+- L'exemplaire est attribué dès la demande, pas à la confirmation, pour bloquer les dates. Les gérants pourront le changer.
+- Le client peut annuler lui-même tant que sa demande n'est pas acceptée ; ensuite il doit contacter les gérants (la politique d'annulation du module 7 s'applique après paiement).
+- « Blocage par set » (module 2) = passer l'exemplaire « En réparation » ; pas de blocage par dates propre à un set.
+
+## 3. Questions ouvertes avec la cliente
+
+Les deux points encore en attente dans la spécification bloquent le module 4 :
+
+1. Le paiement est-il pris **avant ou après** la validation manuelle ? Et en cas de refus d'une demande déjà payée, remboursement automatique ?
+2. Si le loyer est payé par **TPE** sur place, comment se pose la pré-autorisation de la caution ?
+
+Autres points à poser quand l'occasion se présente :
+
+- Délai minimal entre la demande et la remise (aujourd'hui : dès le lendemain).
+- Faut-il une durée minimale de location au-delà d'un jour ? (réglage `min_rental_days`, à 1)
+
+## 4. Prochaines étapes, dans l'ordre proposé
+
+1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée / date proposée. Les gérants doivent pouvoir modifier les textes (module 10).
+2. Actions de remise et de retour dans l'admin (`picked_up`, `returned`), pour boucler le suivi client du module 3.
+3. Paiement Stripe et caution (module 4), une fois les deux questions tranchées.
+4. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
+5. Séquence de retard, état des lieux et barème (module 9), puis facturation (8), contrat PDF (7), bons cadeaux (6), reporting (11).
+
+## 5. Journal
+
+### 16 septembre 2026
+
+- **Base et fiche set** (`a189d0a`). Table `sets` alignée sur la spécification, migration 0003, battement global à 4 jours. Formulaire admin en cinq blocs, 10 photos max. Catalogue public avec statut du jour et fiche set. Correction des sous-requêtes de la liste admin (la photo principale n'apparaissait jamais) et de l'avertissement SSL de `pg` que Next affichait comme une erreur.
+- **Lieux de remise et périodes fermées** (`b7c35cc`). Deux écrans admin, cinq lieux confirmés dans le seed.
+- **Tunnel de réservation jusqu'à la demande en attente** (`6b99e7f`). Statuts `pending_review` et `date_proposed`, migration 0004 (type recréé, l'ajout de valeur d'enum n'étant pas utilisable dans la même transaction) et 0005 (durée minimale à 1 jour, plus de maximum). Tunnel client, espace `/compte`, écran Réservations avec accepter / refuser / proposer d'autres dates, blocage du client. Tests : recherche d'exemplaire libre (12 cas purs), création de demandes sur la base (battement, prolongation, fermetures).
+
+### Avant le 16 septembre 2026
+
+- Site vitrine repris de l'ancien site : accueil, avis, presse, Vinted, contact, mentions légales, CGU, charte graphique.
+- Socle : Next.js 16, Neon + Drizzle, Clerk avec rôles, Vercel Blob, seed, écrans admin Forfaits et Sets (première version).

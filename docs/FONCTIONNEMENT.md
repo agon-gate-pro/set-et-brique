@@ -1,6 +1,12 @@
 # Set et Brique, comment ça fonctionne
 
-Ce document explique le fonctionnement de la plateforme au fur et à mesure de son développement. Il s'adresse aux développeurs qui reprennent le projet. Il est mis à jour à chaque étape.
+Documentation technique de la plateforme, pour les développeurs qui reprennent le projet. Elle décrit l'état actuel du code et de la base, et elle est mise à jour à chaque étape. Trois documents vivent dans `docs/` :
+
+| Document | Rôle |
+| --- | --- |
+| `FONCTIONNEMENT.md` (celui-ci) | comment ça marche : architecture, base, règles implémentées, écrans |
+| `AVANCEMENT.md` | ce qui est fait, ce qui reste, les questions ouvertes, le journal par étape |
+| `specification-fonctionnelle.md` | les règles métier attendues, module par module, avec ce qui est confirmé ou en attente |
 
 ## 1. Vue d'ensemble
 
@@ -28,7 +34,7 @@ vercel env pull --yes                                             # crée .env.l
 pnpm dev
 ```
 
-`.env.local` contient les clés Neon, Clerk et Stripe. Il n'est jamais commité.
+`.env.local` contient les clés Neon, Clerk et Stripe. Il n'est jamais commité. Tant que le site n'est pas public, les environnements Development, Preview et Production de Vercel pointent sur la même base Neon : une migration appliquée en local l'est aussi pour le site déployé, et les données de test sont à nettoyer après usage.
 
 Scripts utiles :
 
@@ -68,7 +74,7 @@ lib/
   db/schema.ts    schéma de la base (source de vérité)
   db/index.ts     connexion et client Drizzle
 drizzle/          migrations SQL générées, à commiter
-docs/             ce document
+docs/             documentation (ce document, AVANCEMENT.md, specification-fonctionnelle.md)
 public/images/    logo et images statiques
 ```
 
@@ -108,7 +114,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 **Contenu éditable**
 
 - `testimonials`, `press_articles` : avis clients et articles de presse affichés sur l'accueil.
-- `site_settings` : réglages et textes modifiables en clé / valeur JSON (rayon de livraison, délai de remise en état, textes d'accueil).
+- `site_settings` : réglages modifiables en clé / valeur JSON. Clés actuelles : `turnaround_days` (battement par défaut, 4), `min_rental_days` (1, pas de maximum), `radius_km`, `contact_email`, `contact_phone`. Les valeurs par défaut sont dans `lib/settings.ts`. Pas encore d'écran admin pour les modifier.
 
 ### Cycle de vie d'une réservation
 
@@ -160,7 +166,7 @@ Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de l
 
 ## 6. Comptes et rôles
 
-Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin` et `/compte`.
+Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin`, `/compte` et le tunnel `/catalogue/<slug>/reserver`.
 
 Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk :
 
@@ -232,7 +238,7 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 ## 8. Catalogue public
 
-`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Tant que le tunnel de réservation n'existe pas, le bouton « Réserver » ouvre un email pré-rempli ; un set indisponible propose « Être prévenu de son retour ».
+`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Un set disponible a un bouton « Réserver ce set » vers le tunnel ; un set indisponible propose « Être prévenu de son retour » (email pré-rempli).
 
 ## 9. Tunnel de réservation
 
@@ -242,11 +248,6 @@ Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clai
 
 Hypothèses prises faute de règle dans la spécification : la remise ne peut pas être demandée pour le jour même, et le planning par lieu (une seule remise à la fois) n'est pas contrôlé automatiquement, c'est la validation manuelle qui s'en charge.
 
-## 10. Étapes suivantes
+## 10. Ce qui reste à faire
 
-- Écrans de l'espace admin restants : contenus, maintenance.
-- Emails transactionnels : aucun fournisseur n'est encore configuré. À brancher sur les transitions de `booking_events` (demande reçue, acceptée, refusée, date proposée).
-- Saisie des 28 sets du catalogue par les gérants (ou import depuis la liste `catalogue-sets-lego.md` quand elle sera dans le dépôt).
-- Paiement Stripe et caution après `pending_payment`, une fois tranché avec la cliente si le paiement précède ou suit la validation.
-- Parcours client : catalogue depuis la base, fiche set, calendrier de disponibilité, réservation et paiement Stripe.
-- Emails transactionnels (confirmation, rappel de retour).
+L'avancement, les prochaines étapes et les questions encore ouvertes avec la cliente sont tenus dans `AVANCEMENT.md`.
