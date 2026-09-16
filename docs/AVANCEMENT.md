@@ -8,7 +8,7 @@ Dernière mise à jour : 16 septembre 2026.
 
 | Module (spécification) | État | Ce qui est en place | Ce qui manque |
 | --- | --- | --- | --- |
-| 1. Catalogue et stock | **Fait** | Fiche set complète (numéros multiples, marque, notices papier/numérique, figurines, dimensions, temps de montage, commentaire public, poids interne, caution, battement par set), 10 photos max, multi-exemplaires, statuts calculés Disponible / Location / Battement / Réparation / Retiré, catalogue et fiche publics | Saisie des 28 sets par les gérants |
+| 1. Catalogue et stock | **Fait** | Fiche set complète (numéros multiples, marque, notices papier/numérique, figurines, dimensions, temps de montage, commentaire public, poids interne, caution, battement par set), 10 photos max, multi-exemplaires, statuts calculés Disponible / Location / Battement / Réparation / Retiré, catalogue et fiche publics, les 28 sets de la grille de la cliente importés | Photos des sets, vérification par la cliente des gammes déduites et des textes |
 | 2. Planning des locations | **Fait en partie** | 5 lieux de remise, durée libre à 2 €/jour, jours calendaires, battement entre clients différents et aucun battement pour le même client qui enchaîne, périodes fermées, blocage par set via « En réparation » | Planning propre à chaque lieu (une remise à la fois) non contrôlé : validation manuelle |
 | 3. Comptes clients et suivi | **Fait en partie** | Compte Clerk, fiche client à la première demande avec nom, prénom, téléphone, adresse obligatoires, compte bloqué par les gérants, espace `/compte` avec ses réservations | Suivi « récupéré / à rendre / retard » : les statuts existent, pas encore les actions de remise et de retour |
 | 4. Paiement Stripe | **Pas commencé** | Colonnes Stripe prévues en base, statut `pending_payment` | Tout le paiement, la caution, les délais de blocage (1 h, 15 min). Bloqué par deux questions ouvertes, voir §3 |
@@ -42,6 +42,7 @@ Autres points à poser quand l'occasion se présente :
 
 - Délai minimal entre la demande et la remise (aujourd'hui : dès le lendemain).
 - Faut-il une durée minimale de location au-delà d'un jour ? (réglage `min_rental_days`, à 1)
+- Grille des sets : la gamme (Star Wars, Ideas, Technic…) a été déduite du numéro de boîte, à vérifier. Trois sets sans gamme : Coupe du Monde (43020), La mine de l'Ouest (Pantasy 85025), Échecs pirate (40158). La description du Faucon Millenium cite le 75105 alors que le numéro saisi est 75257. Le set « Test : voiture de course » reste publié.
 
 ## 4. Prochaines étapes, dans l'ordre proposé
 
@@ -55,6 +56,8 @@ Autres points à poser quand l'occasion se présente :
 
 ### 16 septembre 2026
 
+- **Import des 28 sets de la cliente**. Script `scripts/import-sets.ts` (`pnpm db:import-sets 00/Sets_LEGO.csv`), parseur CSV maison, fusion des lignes de suite (Ninjago = 71720 + 70613), valeurs normalisées, un exemplaire par set, publiés sans photo. Relance sans doublon. Catalogue : 29 sets, tous disponibles.
+- **Filtre par gamme sur le catalogue**. Pastilles avec compteur, paramètre d'URL `?gamme=`, rendu côté serveur.
 - **Base et fiche set** (`a189d0a`). Table `sets` alignée sur la spécification, migration 0003, battement global à 4 jours. Formulaire admin en cinq blocs, 10 photos max. Catalogue public avec statut du jour et fiche set. Correction des sous-requêtes de la liste admin (la photo principale n'apparaissait jamais) et de l'avertissement SSL de `pg` que Next affichait comme une erreur.
 - **Lieux de remise et périodes fermées** (`b7c35cc`). Deux écrans admin, cinq lieux confirmés dans le seed.
 - **Tunnel de réservation jusqu'à la demande en attente** (`6b99e7f`). Statuts `pending_review` et `date_proposed`, migration 0004 (type recréé, l'ajout de valeur d'enum n'étant pas utilisable dans la même transaction) et 0005 (durée minimale à 1 jour, plus de maximum). Tunnel client, espace `/compte`, écran Réservations avec accepter / refuser / proposer d'autres dates, blocage du client. Tests : recherche d'exemplaire libre (12 cas purs), création de demandes sur la base (battement, prolongation, fermetures).

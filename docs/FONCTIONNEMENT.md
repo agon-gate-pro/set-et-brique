@@ -47,6 +47,7 @@ Scripts utiles :
 | `pnpm db:migrate` | Applique les migrations en attente |
 | `pnpm db:studio` | Interface web pour parcourir la base |
 | `pnpm db:seed` | Amorce la base (avis, presse, lieu de remise, réglages, forfait par défaut). Sans effet si déjà fait |
+| `pnpm db:import-sets <fichier.csv> [--dry-run]` | Crée les sets à partir de la grille CSV remplie par la cliente. Ignore les numéros de boîte déjà en base |
 
 ## 3. Organisation du code
 
@@ -209,6 +210,16 @@ Liste, création, modification du nom et du prix, choix du forfait par défaut, 
 - Exemplaires : libellé, état, statut, note interne. Un exemplaire déjà réservé ne se supprime pas : le passer en « Retiré ». Pour bloquer un set le temps d'un souci (retard, casse), le passer en « En réparation ».
 - Suppression d'un set : refusée s'il a déjà été réservé, il faut alors l'archiver.
 
+### Import en masse depuis la grille CSV (`scripts/import-sets.ts`)
+
+La cliente a rempli une grille « Liste des sets LEGO disponibles à la location » (une ligne par set, colonnes Titre, Description, pièces, dimensions, numéro, notices, type de notice, figurines, temps de montage, âge, marque, caution). `pnpm db:import-sets <fichier.csv>` la lit et crée les sets, avec `--dry-run` pour vérifier sans écrire.
+
+- Une ligne **sans titre** est la suite du set précédent : un article de location composé de plusieurs boîtes officielles. Les numéros sont cumulés dans `set_numbers`, les pièces, notices et figurines additionnées, les dimensions concaténées avec « + ».
+- Normalisation : caution « 150 € » ou « 150 » en centimes, « PAPIER » / « NUMERIQUE » en `paper` / `digital`, temps de montage ramené à « N h », âge « 9 ans et + » à 9, marque « Lego » en `LEGO`. Les titres du CSV (souvent en capitales, quelques coquilles) sont remplacés par une forme lisible définie dans le script, qui sert aussi de slug.
+- La gamme (`theme`) n'est pas dans la grille : le script la déduit du premier numéro de boîte avec une table écrite à la main, à faire vérifier par la cliente.
+- Les sets sont créés **publiés**, sans photo (la carte affiche « Photo à venir »), avec un exemplaire « Exemplaire 1 » et le forfait par défaut, comme la création dans l'admin.
+- Idempotent : un set dont le premier numéro de boîte existe déjà est ignoré, on peut relancer sans doublon.
+
 ### Lieux de remise (`/admin/lieux`)
 
 Liste ordonnée (flèches), création, modification, activation, suppression. Un lieu utilisé par une réservation ne se supprime pas : le désactiver. L'heure de remise n'est pas gérée ici, elle se convient avec le client après la réservation (spécification, module 2).
@@ -238,7 +249,7 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 ## 8. Catalogue public
 
-`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Un set disponible a un bouton « Réserver ce set » vers le tunnel ; un set indisponible propose « Être prévenu de son retour » (email pré-rempli).
+`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Un filtre par gamme (pastilles « Toutes », une par gamme avec son nombre de sets, « Autres » pour les sets sans gamme) s'applique par l'URL, `?gamme=harry-potter`, le slug étant dérivé du champ `theme` ; une valeur inconnue revient à « Toutes ». Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Un set disponible a un bouton « Réserver ce set » vers le tunnel ; un set indisponible propose « Être prévenu de son retour » (email pré-rempli).
 
 ## 9. Tunnel de réservation
 
