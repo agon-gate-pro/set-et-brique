@@ -13,14 +13,14 @@ export function ListActions({ bookingId }: { bookingId: string }) {
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <form action={acceptAction}>
         <input type="hidden" name="id" value={bookingId} />
-        <SubmitButton>Accepter</SubmitButton>
+        <SubmitButton variant="leaf">Accepter</SubmitButton>
       </form>
-      <Link href={`/admin/reservations/${bookingId}#decision`} className="btn btn-paper">
+      <Link href={`/admin/reservations/${bookingId}#decision`} className="btn btn-sun">
         Modifier
       </Link>
       <form action={refuseAction} className="inline-flex items-center">
         <input type="hidden" name="id" value={bookingId} />
-        <ConfirmButton confirmLabel="Oui, refuser" className="btn btn-paper no-underline">
+        <ConfirmButton confirmLabel="Oui, refuser" className="btn btn-brick text-paper no-underline">
           Refuser
         </ConfirmButton>
       </form>

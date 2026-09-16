@@ -5,6 +5,8 @@
   --color-brick-deep: #b8000a;
   --color-sun: #fcd54b;
   --color-sun-deep: #eab308;
+  --color-leaf: #16a34a;
+  --color-leaf-deep: #15803d;
   --color-ink: #2b207d;
   --color-ink-deep: #172554;
   --color-ink-deeper: #0f1837;
@@ -105,6 +107,11 @@ h3,
 .btn-sun {
   background: var(--color-sun);
   color: var(--color-ink-deep);
+}
+
+.btn-leaf {
+  background: var(--color-leaf);
+  color: #fff;
 }
 
 .btn-paper {
