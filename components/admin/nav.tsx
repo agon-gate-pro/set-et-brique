@@ -15,13 +15,13 @@ export function AdminNav({ links, role }: { links: AdminLink[]; role: string }) 
   const isActive = (href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
 
   return (
-    <aside className="brick-card p-2 md:p-4 md:sticky md:top-24 -mx-5 md:mx-0 rounded-none md:rounded-2xl border-x-0 md:border-x">
+    <aside className="brick-card min-w-0 w-[calc(100%+2.5rem)] md:w-auto p-2 md:p-4 md:sticky md:top-24 -mx-5 md:mx-0 rounded-none md:rounded-2xl border-x-0 md:border-x">
       <p className="hidden md:block display font-semibold text-brick-deep px-2">
         Gestion · {role === "superadmin" ? "superadmin" : "gérant"}
       </p>
       <nav
         aria-label="Administration"
-        className="flex flex-row gap-1 overflow-x-auto px-3 md:px-0 md:mt-2 md:flex-col md:overflow-visible [scrollbar-width:none]"
+        className="flex flex-row gap-1 overflow-x-auto max-w-full px-3 md:px-0 md:mt-2 md:flex-col md:overflow-visible [scrollbar-width:none]"
       >
         {links.map((l) => {
           const active = isActive(l.href);

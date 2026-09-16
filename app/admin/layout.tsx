@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const links = role === "superadmin" ? [...sections, ...superadminSections] : sections;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 md:px-8 py-6 md:py-14 grid gap-6 md:gap-8 md:grid-cols-[14rem_1fr] items-start">
+    <div className="mx-auto max-w-6xl px-5 md:px-8 py-6 md:py-14 grid gap-6 md:gap-8 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] items-start">
       <AdminNav links={links} role={role} />
       <div className="min-w-0">{children}</div>
     </div>
