@@ -42,6 +42,7 @@ Autres points à poser quand l'occasion se présente :
 
 - Délai minimal entre la demande et la remise (aujourd'hui : dès le lendemain).
 - Faut-il une durée minimale de location au-delà d'un jour ? (réglage `min_rental_days`, à 1)
+- Domaine final du site : lequel, et chez quel registrar ? Nécessaire pour l'instance Clerk de production (voir §4).
 - Grille des sets : la gamme (Star Wars, Ideas, Technic…) a été déduite du numéro de boîte, à vérifier. Trois sets sans gamme : Coupe du Monde (43020), La mine de l'Ouest (Pantasy 85025), Échecs pirate (40158). La description du Faucon Millenium cite le 75105 alors que le numéro saisi est 75257. Le set « Test : voiture de course » reste publié.
 
 ## 4. Prochaines étapes, dans l'ordre proposé
@@ -52,11 +53,23 @@ Autres points à poser quand l'occasion se présente :
 4. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
 5. Séquence de retard, état des lieux et barème (module 9), puis facturation (8), contrat PDF (7), bons cadeaux (6), reporting (11).
 
+### Passage de Clerk en production (module 12)
+
+Clerk reste le service de comptes en production : plan gratuit suffisant, aucun changement de code. La vérification de l'e-mail à l'inscription et les mails de compte (mot de passe oublié, codes) sont envoyés par Clerk, pas par un service à nous. Étapes, dans l'ordre, une fois le domaine connu :
+
+1. Rattacher le domaine au projet Vercel.
+2. Dans le Dashboard Clerk, renommer l'application « Set et Brique » et créer l'instance de production sur ce domaine.
+3. Ajouter les cinq CNAME fournis par Clerk (deux pour l'authentification, trois pour les mails). Si le domaine est chez Vercel, `vercel dns add` suffit ; sinon les saisir chez le registrar. Attendre la validation par Clerk.
+4. Créer des identifiants Google OAuth dans la console Google Cloud et les renseigner dans Clerk : la connexion Google de l'instance de développement ne fonctionne pas en production.
+5. Remplacer `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` dans Vercel (Production), redéployer.
+6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate).
+
 ## 5. Journal
 
 ### 16 septembre 2026
 
 - **Import des 28 sets de la cliente**. Script `scripts/import-sets.ts` (`pnpm db:import-sets 00/Sets_LEGO.csv`), parseur CSV maison, fusion des lignes de suite (Ninjago = 71720 + 70613), valeurs normalisées, un exemplaire par set, publiés sans photo. Relance sans doublon. Catalogue : 29 sets, tous disponibles.
+- **Comptes** : inscription testée avec succès sur l'instance Clerk de développement (e-mail + code de vérification). Plan de passage en production noté en §4.
 - **Filtre par gamme sur le catalogue**. Pastilles avec compteur, paramètre d'URL `?gamme=`, rendu côté serveur.
 - **Base et fiche set** (`a189d0a`). Table `sets` alignée sur la spécification, migration 0003, battement global à 4 jours. Formulaire admin en cinq blocs, 10 photos max. Catalogue public avec statut du jour et fiche set. Correction des sous-requêtes de la liste admin (la photo principale n'apparaissait jamais) et de l'avertissement SSL de `pg` que Next affichait comme une erreur.
 - **Lieux de remise et périodes fermées** (`b7c35cc`). Deux écrans admin, cinq lieux confirmés dans le seed.
