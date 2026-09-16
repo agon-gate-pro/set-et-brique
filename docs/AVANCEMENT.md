@@ -30,6 +30,8 @@ Dernière mise à jour : 16 septembre 2026.
 - L'exemplaire est attribué dès la demande, pas à la confirmation, pour bloquer les dates. Les gérants pourront le changer.
 - Le client peut annuler lui-même tant que sa demande n'est pas acceptée ; ensuite il doit contacter les gérants (la politique d'annulation du module 7 s'applique après paiement).
 - « Blocage par set » (module 2) = passer l'exemplaire « En réparation » ; pas de blocage par dates propre à un set.
+- **Conservation des données clients : 3 ans après la dernière activité** (dernière location terminée ou dernière connexion), ou dès la suppression du compte par le client. Décision du 16 septembre 2026. Les factures, contrats et pièces comptables vivent dans le logiciel comptable, avec leurs propres durées légales (6 ans fiscal, 10 ans comptable) ; la plateforme n'a donc pas à les porter. Passé le délai : suppression du compte Clerk et des coordonnées, réservations conservées anonymisées (statistiques). Reste à faire : la purge elle-même (script ou tâche planifiée), l'export du contrat et de l'acceptation des CG vers l'archive comptable au moment de la facturation, et la mention dans la politique de confidentialité.
+
 
 ## 3. Questions ouvertes avec la cliente
 
@@ -42,7 +44,6 @@ Autres points à poser quand l'occasion se présente :
 
 - Délai minimal entre la demande et la remise (aujourd'hui : dès le lendemain).
 - Faut-il une durée minimale de location au-delà d'un jour ? (réglage `min_rental_days`, à 1)
-- Données personnelles : que faire de la fiche client et des réservations quand un client supprime son compte (conservation pour la facturation, anonymisation au bout d'un délai) ? Voir « Où vivent les données d'un client » dans `FONCTIONNEMENT.md`.
 - Domaine final du site : lequel, et chez quel registrar ? Nécessaire pour l'instance Clerk de production (voir §4).
 - Grille des sets : la gamme (Star Wars, Ideas, Technic…) a été déduite du numéro de boîte, à vérifier. Trois sets sans gamme : Coupe du Monde (43020), La mine de l'Ouest (Pantasy 85025), Échecs pirate (40158). La description du Faucon Millenium cite le 75105 alors que le numéro saisi est 75257. Le set « Test : voiture de course » reste publié.
 

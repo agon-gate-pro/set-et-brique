@@ -212,7 +212,7 @@ La fiche client en base (`customers`) n'est pas créée à l'inscription : elle 
 
 L'e-mail est copié de Clerk dans `customers.email` à chaque enregistrement, pour que les gérants le voient sans appel à Clerk. Rien n'est stocké sur le disque du serveur ni dans le navigateur au-delà du cookie de session Clerk.
 
-Supprimer son compte depuis l'onglet Sécurité efface l'utilisateur chez Clerk, mais pas la ligne `customers` ni les réservations : elles restent pour l'historique et la facturation, rattachées à un identifiant Clerk devenu orphelin. La règle d'effacement ou d'anonymisation (RGPD) est à définir avec la cliente, voir `AVANCEMENT.md`.
+Règle de conservation retenue : 3 ans après la dernière activité du client, ou dès qu'il supprime son compte. Les factures et contrats sont archivés dans le logiciel comptable avec leurs durées légales propres, la plateforme n'en est pas le dépôt. Aujourd'hui, supprimer son compte depuis l'onglet Sécurité efface l'utilisateur chez Clerk mais laisse la ligne `customers` et les réservations, rattachées à un identifiant Clerk orphelin : la purge et l'anonymisation restent à écrire, voir `AVANCEMENT.md` §2.
 
 Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
 
