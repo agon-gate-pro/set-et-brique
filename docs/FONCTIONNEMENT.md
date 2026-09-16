@@ -167,7 +167,16 @@ Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de l
 
 ## 6. Comptes et rôles
 
-Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). La gestion du compte (e-mail, mot de passe, connexion Google, sessions, suppression) est la page `/compte/profil`, composant `UserProfile` de Clerk, atteinte par « Gérer le compte » du bouton utilisateur du header et par le bouton « Gérer mon compte » de `/compte`. Les coordonnées de livraison (téléphone, adresse) ne sont pas dedans : elles vivent dans la fiche client et se corrigent dans le tunnel de réservation. Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin`, `/compte` et le tunnel `/catalogue/<slug>/reserver`.
+Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). La gestion du compte est la page `/compte/profil`, atteinte par « Gérer le compte » du bouton utilisateur du header et par le bouton « Gérer mon compte » de `/compte`. C'est le composant `UserProfile` de Clerk avec quatre onglets :
+
+| Onglet | Qui le fournit | Contenu |
+| --- | --- | --- |
+| Compte | Clerk | photo, nom, adresses e-mail, comptes connectés (lier un compte Google à un compte créé par e-mail, pour se connecter ensuite avec l'un ou l'autre) |
+| Sécurité | Clerk | mot de passe, sessions actives, suppression du compte |
+| Coordonnées | nous (`app/compte/profil/profile-form.tsx`, action `saveCustomerProfile`) | prénom, nom, téléphone, adresse, ville, lieu de remise préféré ; écrit dans `customers` via `upsertCustomer` |
+| Historique | nous | toutes les réservations du client, en lecture ; les actions restent sur `/compte` |
+
+Les onglets à nous sont des `UserProfile.Page` rendues côté serveur et injectées dans le panneau Clerk. Les coordonnées servent au contrat et à la facture ; elles sont pré-remplies dans le tunnel, où le client peut encore les corriger (ce qui met la fiche à jour). Le lieu de remise préféré (`customers.preferred_pickup_point_id`, migration 0006) pré-sélectionne le lieu dans le tunnel, sans l'imposer. Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin`, `/compte` et le tunnel `/catalogue/<slug>/reserver`.
 
 Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk :
 
@@ -187,7 +196,7 @@ pnpm role contact@agon-gate.com superadmin
 pnpm role marion@example.com none      # retirer
 ```
 
-La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première demande de réservation, à partir du compte Clerk et des coordonnées saisies dans le tunnel (mises à jour à chaque demande). Ça évite un webhook et une synchronisation à maintenir. Le tunnel (`/catalogue/<slug>/reserver`) est protégé par `proxy.ts` comme `/compte`.
+La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première demande de réservation ou au premier enregistrement de l'onglet Coordonnées, à partir du compte Clerk et des coordonnées saisies (mises à jour à chaque demande). Ça évite un webhook et une synchronisation à maintenir. Le tunnel (`/catalogue/<slug>/reserver`) est protégé par `proxy.ts` comme `/compte`.
 
 Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
 

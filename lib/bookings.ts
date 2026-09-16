@@ -26,6 +26,7 @@ export type CustomerInput = {
   addressLine: string;
   postalCode: string;
   city: string;
+  preferredPickupPointId?: string | null;
 };
 
 /**

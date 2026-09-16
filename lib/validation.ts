@@ -125,17 +125,31 @@ const positiveInt = (label: string) =>
 const required = (label: string) => z.string().trim().min(1, `${label} : obligatoire`);
 
 /** Demande de réservation faite par le client (spécification, modules 3, 5 et 7). */
-export const bookingRequestSchema = z.object({
-  startDate: isoDate,
-  days: positiveInt("Nombre de jours"),
-  pickupPointId: required("Lieu de remise"),
-  customerNote: optionalText,
+/** Coordonnées du client, nécessaires au contrat et à la facture. */
+const customerFields = {
   firstName: required("Prénom"),
   lastName: required("Nom"),
   phone: required("Téléphone"),
   addressLine: required("Adresse"),
   postalCode: required("Code postal"),
   city: required("Ville"),
+};
+
+/** Onglet « Coordonnées » de la gestion du compte. */
+export const customerProfileSchema = z.object({
+  ...customerFields,
+  preferredPickupPointId: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null)),
+});
+
+export const bookingRequestSchema = z.object({
+  startDate: isoDate,
+  days: positiveInt("Nombre de jours"),
+  pickupPointId: required("Lieu de remise"),
+  customerNote: optionalText,
+  ...customerFields,
   terms: z
     .string()
     .optional()

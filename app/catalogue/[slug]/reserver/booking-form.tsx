@@ -14,7 +14,10 @@ type Props = {
   minDays: number;
   minStartDate: string;
   pickupPoints: Pick<PickupPoint, "id" | "name" | "address">[];
-  customer: Pick<Customer, "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city"> | null;
+  customer: Pick<
+    Customer,
+    "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId"
+  > | null;
   defaults: { firstName: string; lastName: string };
 };
 
@@ -55,7 +58,14 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
           />
         </Field>
         <Field label="Lieu de remise">
-          <select name="pickupPointId" required className={inputClass} defaultValue={pickupPoints[0]?.id ?? ""}>
+          <select
+            name="pickupPointId"
+            required
+            className={inputClass}
+            defaultValue={
+              pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? ""
+            }
+          >
             {pickupPoints.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

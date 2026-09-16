@@ -83,6 +83,10 @@ export const customers = pgTable(
     addressLine: text("address_line"),
     postalCode: text("postal_code"),
     city: text("city"),
+    /** Lieu de remise pré-sélectionné dans le tunnel, toujours modifiable à chaque demande. */
+    preferredPickupPointId: uuid("preferred_pickup_point_id").references(() => pickupPoints.id, {
+      onDelete: "set null",
+    }),
     adminNote: text("admin_note"),
     /** Compte bloqué à la main par les gérants : plus aucune réservation possible. */
     blocked: boolean("blocked").notNull().default(false),
@@ -321,8 +325,12 @@ export const siteSettings = pgTable("site_settings", {
 /* Relations (pour les requêtes Drizzle `with`)                        */
 /* ------------------------------------------------------------------ */
 
-export const customersRelations = relations(customers, ({ many }) => ({
+export const customersRelations = relations(customers, ({ one, many }) => ({
   bookings: many(bookings),
+  preferredPickupPoint: one(pickupPoints, {
+    fields: [customers.preferredPickupPointId],
+    references: [pickupPoints.id],
+  }),
 }));
 
 export const ratePlansRelations = relations(ratePlans, ({ many }) => ({

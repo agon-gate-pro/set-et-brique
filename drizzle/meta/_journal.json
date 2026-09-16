@@ -43,6 +43,13 @@
       "when": 1789552887017,
       "tag": "0005_min_rental_days",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789556511217,
+      "tag": "0006_customer_preferred_pickup",
+      "breakpoints": true
     }
   ]
 }
