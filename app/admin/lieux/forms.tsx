@@ -44,7 +44,7 @@ export function PickupPointCreateForm() {
     <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
       <PickupPointFields />
       <div>
-        <SubmitButton>Ajouter le lieu</SubmitButton>
+        <SubmitButton variant="sea">Ajouter le lieu</SubmitButton>
       </div>
       <div className="sm:col-span-2">
         <FormMessage state={state} />

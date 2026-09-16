@@ -7,6 +7,8 @@
   --color-sun-deep: #eab308;
   --color-leaf: #16a34a;
   --color-leaf-deep: #15803d;
+  --color-sea: #2563eb;
+  --color-sea-deep: #1d4ed8;
   --color-ink: #2b207d;
   --color-ink-deep: #172554;
   --color-ink-deeper: #0f1837;
@@ -111,6 +113,11 @@ h3,
 
 .btn-leaf {
   background: var(--color-leaf);
+  color: #fff;
+}
+
+.btn-sea {
+  background: var(--color-sea);
   color: #fff;
 }
 

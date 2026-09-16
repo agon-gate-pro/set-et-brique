@@ -11,7 +11,7 @@ export function SubmitButton({
   className = "",
 }: {
   children: ReactNode;
-  variant?: "brick" | "sun" | "leaf" | "paper";
+  variant?: "brick" | "sun" | "leaf" | "sea" | "paper";
   className?: string;
 }) {
   const { pending } = useFormStatus();
