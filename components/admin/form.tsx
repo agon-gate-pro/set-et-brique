@@ -31,10 +31,13 @@ export function ConfirmButton({
   children,
   confirmLabel = "Confirmer la suppression",
   className = "",
+  form,
 }: {
   children: ReactNode;
   confirmLabel?: string;
   className?: string;
+  /** Id d'un formulaire hors de l'arbre, pour placer le bouton dans un autre formulaire. */
+  form?: string;
 }) {
   const [armed, setArmed] = useState(false);
   const { pending } = useFormStatus();
@@ -54,6 +57,7 @@ export function ConfirmButton({
     <span className="inline-flex items-center gap-3">
       <button
         type="submit"
+        form={form}
         disabled={pending}
         className="btn btn-brick text-sm py-2 px-3"
       >

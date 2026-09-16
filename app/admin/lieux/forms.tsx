@@ -28,10 +28,12 @@ function PickupPointFields({ point }: { point?: PickupPoint }) {
           <input name="openUntil" type="time" step={900} defaultValue={formatTime(point?.openUntil) ?? ""} className={inputClass} aria-label="Heure de fin" />
         </div>
       </Field>
-      <label className="flex items-center gap-3 self-end pb-2">
-        <input type="checkbox" name="active" defaultChecked={point?.active ?? true} className="h-5 w-5 accent-brick" />
-        <span className="font-bold">Proposé aux clients</span>
-      </label>
+      {point ? null : (
+        <label className="flex items-center gap-3 self-end pb-2">
+          <input type="checkbox" name="active" defaultChecked className="h-5 w-5 accent-brick" />
+          <span className="font-bold">Proposé aux clients</span>
+        </label>
+      )}
     </>
   );
 }
@@ -97,11 +99,20 @@ export function PickupPointRow({
         <div className="sm:col-span-2">
           <FormMessage state={editState} />
         </div>
+        <div className="sm:col-span-2 mt-2 pt-4 border-t border-slate-ink/10 flex flex-wrap items-center justify-between gap-4">
+          <label className="flex items-center gap-3">
+            <input type="checkbox" name="active" defaultChecked={point.active} className="h-5 w-5 accent-brick" />
+            <span className="font-bold">Proposé aux clients</span>
+          </label>
+          {/* Le bouton vit dans le formulaire de modification mais soumet celui de suppression (attribut form). */}
+          <ConfirmButton form={`delete-${point.id}`} className="btn btn-paper border-brick !text-brick-deep no-underline">
+            Supprimer ce lieu
+          </ConfirmButton>
+        </div>
       </form>
 
-      <form action={deleteAction} className="mt-3">
+      <form id={`delete-${point.id}`} action={deleteAction}>
         <input type="hidden" name="id" value={point.id} />
-        <ConfirmButton>Supprimer ce lieu</ConfirmButton>
         <FormMessage state={deleteState} />
       </form>
     </li>
