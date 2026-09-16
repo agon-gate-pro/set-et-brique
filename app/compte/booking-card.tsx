@@ -10,8 +10,8 @@ import { acceptProposedDate, cancelRequest } from "./actions";
 const badge: Record<Booking["status"], string> = {
   pending_review: "bg-sun",
   date_proposed: "bg-sun",
-  pending_payment: "bg-sky",
-  confirmed: "bg-sky",
+  pending_payment: "badge-gold",
+  confirmed: "badge-gold",
   picked_up: "bg-ink text-paper",
   returned: "bg-slate-200",
   cancelled: "bg-slate-200",
@@ -77,7 +77,9 @@ export function BookingCard({
 
       {booking.status === "pending_payment" || booking.status === "confirmed" ? (
         <p className="mt-4 text-slate-ink">
-          Remise prévue le {formatDate(booking.startDate)}. L&apos;heure exacte se convient avec nous par téléphone ou email.
+          Remise prévue le {formatDate(booking.startDate)}
+          {booking.pickupTime ? ` à ${formatTime(booking.pickupTime)}` : ""}. Nous vous contactons si l&apos;heure doit
+          être ajustée.
         </p>
       ) : null}
 

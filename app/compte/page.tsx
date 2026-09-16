@@ -63,7 +63,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
       ) : null}
 
       <div className="mt-10 flex flex-wrap gap-4">
-        <Link href="/catalogue" className="btn btn-brick">
+        <Link href="/catalogue" className="btn btn-sea">
           Voir le catalogue
         </Link>
         <Link href="/compte/profil" className="btn btn-paper">

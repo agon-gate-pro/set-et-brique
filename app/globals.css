@@ -74,6 +74,27 @@ h3,
   }
 }
 
+/* Badge doré qui brille : demandes acceptées, vue client. */
+@layer components {
+  .badge-gold {
+    color: var(--color-ink-deep);
+    border-color: #d4a017;
+    background: linear-gradient(110deg, #f2c94c 0%, #fbe38a 35%, #fff6c8 50%, #fbe38a 65%, #f2c94c 100%);
+    background-size: 250% 100%;
+    box-shadow: 0 1px 6px rgb(212 160 23 / 0.45);
+    animation: badge-shine 3.2s ease-in-out infinite;
+  }
+}
+
+@keyframes badge-shine {
+  0%, 20% { background-position: 100% 0; }
+  60%, 100% { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-gold { animation: none; }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
