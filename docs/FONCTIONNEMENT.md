@@ -169,7 +169,7 @@ Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de l
 
 ## 6. Comptes et rôles
 
-Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). La gestion du compte est la page `/compte/profil`, atteinte par « Gérer le compte » du bouton utilisateur du header et par le bouton « Gérer mon compte » de `/compte`. C'est le composant `UserProfile` de Clerk avec quatre onglets :
+Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). Après l'inscription, le nouveau client arrive sur l'onglet Coordonnées de son compte (`forceRedirectUrl` du composant `SignUp`) ; s'il venait d'une page de réservation, elle est gardée en paramètre `retour` et il y revient une fois les coordonnées enregistrées. Seuls les chemins internes sont acceptés comme retour (`safeReturnPath()`). La gestion du compte est la page `/compte/profil`, atteinte par « Gérer le compte » du bouton utilisateur du header et par le bouton « Gérer mon compte » de `/compte`. C'est le composant `UserProfile` de Clerk avec quatre onglets :
 
 | Onglet | Qui le fournit | Contenu |
 | --- | --- | --- |
@@ -284,7 +284,7 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 ## 9. Tunnel de réservation
 
-Depuis la fiche d'un set disponible, « Réserver ce set » mène à `/catalogue/<slug>/reserver` (connexion requise). Le client choisit la date de remise (à partir de demain), le nombre de jours (libre, minimum `min_rental_days`, pas de maximum), le lieu de remise parmi les lieux actifs, laisse un message facultatif, renseigne ses coordonnées et coche les conditions générales. Le total (prix par jour × jours) et la date de retour s'affichent en direct ; la fin est comptée en jours calendaires (mardi + 4 jours = vendredi). Aucun paiement à cette étape.
+Depuis la fiche d'un set disponible, « Réserver ce set » mène à `/catalogue/<slug>/reserver` (connexion requise). Si la fiche client est incomplète (nom, prénom, téléphone, adresse, code postal, ville : `isCustomerComplete()`), la page affiche à la place un message et un bouton « Compléter mes coordonnées » qui mène à l'onglet Coordonnées puis ramène ici. Le client choisit la date de remise (à partir de demain), le nombre de jours (libre, minimum `min_rental_days`, pas de maximum), le lieu de remise parmi les lieux actifs, laisse un message facultatif, renseigne ses coordonnées et coche les conditions générales. Le total (prix par jour × jours) et la date de retour s'affichent en direct ; la fin est comptée en jours calendaires (mardi + 4 jours = vendredi). Aucun paiement à cette étape.
 
 Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clair si : le set n'est plus publié, le lieu n'est pas actif, la remise ou le retour tombe dans une fermeture, aucun exemplaire n'est libre, ou le compte est bloqué. Sinon la réservation est créée en `pending_review` avec sa référence, et le client est redirigé vers `/compte`, où il suit ses demandes, accepte une date proposée ou annule. Chaque carte lui dit où en est la location : remise prévue le, set récupéré le et à rendre le, retour en retard (avec invitation à contacter les gérants), set rendu le (spécification, module 3).
 

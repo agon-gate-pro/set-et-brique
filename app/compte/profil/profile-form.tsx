@@ -13,16 +13,18 @@ type Props = {
   > | null;
   defaults: { firstName: string; lastName: string };
   pickupPoints: Pick<PickupPoint, "id" | "name" | "address">[];
+  /** Page vers laquelle revenir après l'enregistrement (réservation en cours). */
+  returnTo?: string | null;
 };
 
-export function ProfileForm({ customer, defaults, pickupPoints }: Props) {
+export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null }: Props) {
   const [state, action] = useActionState(saveCustomerProfile, null as ActionState);
 
   return (
-    <form action={action} className="grid gap-5 sm:grid-cols-2">
-      <p className="sm:col-span-2 text-slate-ink">
-        Ces coordonnées figurent sur le contrat de location et la facture. Elles sont
-        pré-remplies à chaque demande de réservation, où vous pouvez encore les corriger.
+    <form action={action} className="grid gap-4 sm:grid-cols-2">
+      {returnTo ? <input type="hidden" name="retour" value={returnTo} /> : null}
+      <p className="sm:col-span-2 text-sm text-slate-ink">
+        Pour le contrat de location et la facture. Pré-remplies à chaque réservation, modifiables à ce moment-là.
       </p>
       <Field label="Prénom">
         <input name="firstName" required defaultValue={customer?.firstName ?? defaults.firstName} className={inputClass} />
@@ -58,7 +60,7 @@ export function ProfileForm({ customer, defaults, pickupPoints }: Props) {
         </Field>
       </div>
       <div className="sm:col-span-2">
-        <SubmitButton>Enregistrer</SubmitButton>
+        <SubmitButton>{returnTo ? "Enregistrer et reprendre ma réservation" : "Enregistrer"}</SubmitButton>
       </div>
       <div className="sm:col-span-2">
         <FormMessage state={state} />

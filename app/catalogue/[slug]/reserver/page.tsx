@@ -5,7 +5,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, asc, eq } from "drizzle-orm";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
 import { addDays, loadAvailability, todayIso } from "@/lib/availability";
-import { findCustomerByClerkId } from "@/lib/bookings";
+import { coordinatesUrl, findCustomerByClerkId, isCustomerComplete } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { BookingForm } from "./booking-form";
@@ -51,6 +51,17 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
         <p className="mt-8 brick-card p-6 bg-red-50 border-brick font-semibold text-brick-deep">
           Votre compte ne permet plus de réserver. Contactez-nous pour en discuter.
         </p>
+      ) : !isCustomerComplete(customer) ? (
+        <div className="mt-8 brick-card p-6 bg-sun/40">
+          <h2 className="text-2xl font-semibold">Vos coordonnées d&apos;abord</h2>
+          <p className="mt-3 text-slate-ink max-w-xl">
+            Pour réserver, nous avons besoin de vos nom, prénom, téléphone et adresse : ils figurent sur le
+            contrat de location et la facture. C&apos;est à faire une seule fois, vous reviendrez ensuite sur cette page.
+          </p>
+          <Link href={coordinatesUrl(`/catalogue/${set.slug}/reserver`)} className="btn btn-brick mt-5 inline-block">
+            Compléter mes coordonnées
+          </Link>
+        </div>
       ) : pricePerDay == null || pickupPoints.length === 0 ? (
         <p className="mt-8 brick-card p-6 bg-sky">
           La réservation en ligne n&apos;est pas encore possible pour ce set. Contactez-nous.

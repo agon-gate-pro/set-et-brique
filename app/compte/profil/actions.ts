@@ -3,7 +3,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { upsertCustomer } from "@/lib/bookings";
+import { redirect } from "next/navigation";
+import { safeReturnPath, upsertCustomer } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { customerProfileSchema, firstError, formToObject } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
@@ -30,5 +31,7 @@ export async function saveCustomerProfile(_: ActionState, formData: FormData): P
   await upsertCustomer(user, { ...input, preferredPickupPointId: pickupPointId });
   revalidatePath("/compte");
   revalidatePath("/compte/profil");
+  const returnTo = safeReturnPath(formData.get("retour"));
+  if (returnTo) redirect(returnTo);
   return { ok: "Coordonnées enregistrées." };
 }

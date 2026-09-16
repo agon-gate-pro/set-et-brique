@@ -78,6 +78,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 - **Gestion du compte** : « Gérer le compte » du bouton utilisateur envoyait vers la page des locations. Nouvelle page `/compte/profil` avec le composant Clerk `UserProfile`, lien depuis `/compte`.
 - **Coordonnées et historique dans la gestion du compte**. Onglet Coordonnées (identité, adresse, téléphone pour contrat et facture, lieu de remise préféré pré-sélectionné dans le tunnel), onglet Historique des réservations. Migration 0006 (`customers.preferred_pickup_point_id`). Correctif : les onglets n'apparaissaient pas en ligne, Clerk exige qu'ils soient déclarés dans un composant client.
 - **Remise et retour dans l'admin**. Actions « Set remis » (dès l'acceptation, le loyer pouvant être réglé par TPE) et « Set rendu » avec date et état des lieux libre (migration 0007, `bookings.return_note`). Liste admin en cinq groupes, retard calculé à partir de J+1 et affiché en rouge, alerte sur le tableau de bord. Un set dehors non rendu reste indisponible au catalogue et pour les demandes. Suivi côté client sur chaque carte. Tests : retard et fin effective (unitaires), set en retard sur la base (indisponible, puis libre une fois rendu).
+- **Coordonnées obligatoires avant de réserver**. L'inscription mène à l'onglet Coordonnées ; la page de réservation renvoie vers cet onglet tant que la fiche est incomplète, puis ramène à la réservation. Cadre Clerk sans défilement interne, téléphone au format 06 12 34 56 78.
 
 ### Avant le 16 septembre 2026
 

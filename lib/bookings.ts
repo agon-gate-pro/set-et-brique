@@ -10,6 +10,7 @@ import {
   withLateReturn,
 } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
+import type { Customer } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings";
 
 /** Référence courte lisible, sans caractères ambigus (0/O, 1/I). */
@@ -49,6 +50,24 @@ export async function upsertCustomer(user: User, input: CustomerInput) {
     })
     .returning();
   return customer;
+}
+
+/** Champs obligatoires pour réserver : contrat et facture (spécification, modules 3 et 7). */
+export function isCustomerComplete(
+  c: Pick<Customer, "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city"> | null | undefined,
+) {
+  return !!c && [c.firstName, c.lastName, c.phone, c.addressLine, c.postalCode, c.city].every((v) => v && v.trim() !== "");
+}
+
+/** Chemin de retour interne (« /catalogue/x/reserver ») ; tout le reste est ignoré. */
+export function safeReturnPath(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return /^\/(?!\/)[^\s]*$/.test(value) ? value : null;
+}
+
+/** Adresse de la page Coordonnées, avec retour vers une page une fois enregistrées. */
+export function coordinatesUrl(returnTo?: string | null) {
+  return returnTo ? `/compte/profil/coordonnees?retour=${encodeURIComponent(returnTo)}` : "/compte/profil/coordonnees";
 }
 
 export async function findCustomerByClerkId(clerkUserId: string) {
