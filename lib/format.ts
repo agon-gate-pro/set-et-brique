@@ -19,7 +19,8 @@ export function formatPhone(input: string) {
   let digits = raw.replace(/[\s.\-()]/g, "");
   if (digits.startsWith("+33")) digits = `0${digits.slice(3)}`;
   else if (digits.startsWith("0033")) digits = `0${digits.slice(4)}`;
-  if (/^0\d{9}$/.test(digits)) return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+  // Numéro français, complet ou en cours de saisie : groupes de deux chiffres.
+  if (/^0\d{0,9}$/.test(digits)) return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
   return raw.replace(/\s+/g, " ");
 }
 

@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
-import { formatPhone } from "@/lib/format";
+import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
 import { saveCustomerProfile } from "./actions";
 
@@ -33,7 +33,7 @@ export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null 
         <input name="lastName" required defaultValue={customer?.lastName ?? defaults.lastName} className={inputClass} />
       </Field>
       <Field label="Téléphone">
-        <input name="phone" type="tel" required defaultValue={customer?.phone ? formatPhone(customer.phone) : ""} className={inputClass} placeholder="06 12 34 56 78" />
+        <PhoneInput name="phone" defaultValue={customer?.phone ?? ""} />
       </Field>
       <div className="sm:col-span-2">
         <Field label="Adresse">
