@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
+import { bookingStatusLabels, formatCents, formatDate, formatPhone, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
 import { AdminNoteForm, CustomerBlockForm, HandoverActions, ReviewActions } from "./forms";
 
@@ -91,8 +91,8 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
             </Row>
             <Row label="Téléphone">
               {customer.phone ? (
-                <a href={`tel:${customer.phone.replace(/\s/g, "")}`} className="underline underline-offset-4">
-                  {customer.phone}
+                <a href={phoneHref(customer.phone)} className="underline underline-offset-4">
+                  {formatPhone(customer.phone)}
                 </a>
               ) : (
                 "—"

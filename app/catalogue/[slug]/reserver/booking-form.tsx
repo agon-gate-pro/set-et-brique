@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
-import { centsToInput, formatCents, formatDate } from "@/lib/format";
+import { centsToInput, formatCents, formatDate, formatPhone } from "@/lib/format";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
 import { submitBookingRequest } from "./actions";
 
@@ -101,7 +101,7 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
           <input name="lastName" required defaultValue={customer?.lastName ?? defaults.lastName} className={inputClass} />
         </Field>
         <Field label="Téléphone">
-          <input name="phone" type="tel" required defaultValue={customer?.phone ?? ""} className={inputClass} placeholder="06 12 34 56 78" />
+          <input name="phone" type="tel" required defaultValue={customer?.phone ? formatPhone(customer.phone) : ""} className={inputClass} placeholder="06 12 34 56 78" />
         </Field>
         <div className="sm:col-span-2">
           <Field label="Adresse">

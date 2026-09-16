@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatPhone } from "@/lib/format";
 
 /** Euros saisis en texte ("12,50") vers centimes entiers. */
 export const eurosToCents = z
@@ -129,7 +130,7 @@ const required = (label: string) => z.string().trim().min(1, `${label} : obligat
 const customerFields = {
   firstName: required("Prénom"),
   lastName: required("Nom"),
-  phone: required("Téléphone"),
+  phone: required("Téléphone").transform(formatPhone),
   addressLine: required("Adresse"),
   postalCode: required("Code postal"),
   city: required("Ville"),
