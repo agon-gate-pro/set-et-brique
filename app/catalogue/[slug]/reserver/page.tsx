@@ -28,7 +28,13 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
     currentUser(),
     findCustomerByClerkId(userId),
     db
-      .select({ id: schema.pickupPoints.id, name: schema.pickupPoints.name, address: schema.pickupPoints.address })
+      .select({
+        id: schema.pickupPoints.id,
+        name: schema.pickupPoints.name,
+        address: schema.pickupPoints.address,
+        openFrom: schema.pickupPoints.openFrom,
+        openUntil: schema.pickupPoints.openUntil,
+      })
       .from(schema.pickupPoints)
       .where(eq(schema.pickupPoints.active, true))
       .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt)),

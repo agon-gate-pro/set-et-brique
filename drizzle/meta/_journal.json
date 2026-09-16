@@ -64,6 +64,13 @@
       "when": 1789561400166,
       "tag": "0008_booking_pickup_time",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789562326194,
+      "tag": "0009_pickup_point_opening",
+      "breakpoints": true
     }
   ]
 }

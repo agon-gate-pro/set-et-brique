@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
+import { formatTime } from "@/lib/format";
 import type { PickupPoint } from "@/lib/db/schema";
 import { createPickupPoint, deletePickupPoint, movePickupPoint, updatePickupPoint } from "./actions";
 
@@ -17,6 +18,14 @@ function PickupPointFields({ point }: { point?: PickupPoint }) {
       <div className="sm:col-span-2">
         <Field label="Consignes" hint="Affichées au client après la réservation">
           <textarea name="instructions" rows={2} defaultValue={point?.instructions ?? ""} className={inputClass} />
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Remise possible de" hint="Vide : toute heure">
+          <input name="openFrom" type="time" step={900} defaultValue={formatTime(point?.openFrom) ?? ""} className={inputClass} />
+        </Field>
+        <Field label="jusqu'à">
+          <input name="openUntil" type="time" step={900} defaultValue={formatTime(point?.openUntil) ?? ""} className={inputClass} />
         </Field>
       </div>
       <label className="flex items-center gap-3 self-end pb-2">

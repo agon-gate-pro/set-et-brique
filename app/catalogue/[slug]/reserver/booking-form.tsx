@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
-import { centsToInput, formatCents, formatDate } from "@/lib/format";
+import { centsToInput, formatCents, formatDate, formatTime } from "@/lib/format";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
 import { submitBookingRequest } from "./actions";
@@ -14,7 +14,7 @@ type Props = {
   pricePerDay: number;
   minDays: number;
   minStartDate: string;
-  pickupPoints: Pick<PickupPoint, "id" | "name" | "address">[];
+  pickupPoints: Pick<PickupPoint, "id" | "name" | "address" | "openFrom" | "openUntil">[];
   customer: Pick<
     Customer,
     "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId"
@@ -26,6 +26,15 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
   const [state, action] = useActionState(submitBookingRequest, null as ActionState);
   const [startDate, setStartDate] = useState(minStartDate);
   const [days, setDays] = useState(Math.max(minDays, 7));
+  const [pickupPointId, setPickupPointId] = useState(
+    () => pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? "",
+  );
+  const point = pickupPoints.find((p) => p.id === pickupPointId);
+  const openFrom = formatTime(point?.openFrom);
+  const openUntil = formatTime(point?.openUntil);
+  const [pickupTime, setPickupTime] = useState("10:00");
+  // Heure ramenée dans la plage du lieu choisi.
+  const clampedTime = openFrom && pickupTime < openFrom ? openFrom : openUntil && pickupTime > openUntil ? openUntil : pickupTime;
   const validDays = Number.isInteger(days) && days >= minDays;
   const endDate = validDays && startDate ? addDays(startDate, days - 1) : null;
 
@@ -58,17 +67,13 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
             className={inputClass}
           />
         </Field>
-        <Field label="Heure de remise souhaitée" hint="Nous la confirmons ou vous proposons un autre créneau">
-          <input name="pickupTime" type="time" required step={900} defaultValue="10:00" className={inputClass} />
-        </Field>
         <Field label="Lieu de remise">
           <select
             name="pickupPointId"
             required
             className={inputClass}
-            defaultValue={
-              pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? ""
-            }
+            value={pickupPointId}
+            onChange={(e) => setPickupPointId(e.target.value)}
           >
             {pickupPoints.map((p) => (
               <option key={p.id} value={p.id}>
@@ -77,6 +82,26 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
               </option>
             ))}
           </select>
+        </Field>
+        <Field
+          label="Heure de remise souhaitée"
+          hint={
+            openFrom && openUntil
+              ? `Entre ${openFrom} et ${openUntil} à ce lieu. Nous la confirmons ou vous proposons un autre créneau`
+              : "Nous la confirmons ou vous proposons un autre créneau"
+          }
+        >
+          <input
+            name="pickupTime"
+            type="time"
+            required
+            step={900}
+            min={openFrom ?? undefined}
+            max={openUntil ?? undefined}
+            value={clampedTime}
+            onChange={(e) => setPickupTime(e.target.value)}
+            className={inputClass}
+          />
         </Field>
         <div className="rounded-xl bg-sky border border-slate-ink/15 p-4 self-end">
           <p className="text-sm text-slate-ink">Retour prévu</p>

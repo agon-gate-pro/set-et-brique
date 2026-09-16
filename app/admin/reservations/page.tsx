@@ -33,8 +33,8 @@ export default async function BookingsPage() {
     <>
       <h1 className="text-3xl md:text-4xl font-bold">Réservations</h1>
       <p className="mt-3 text-slate-ink max-w-xl">
-        Chaque demande passe par vous avant d&apos;être confirmée. L&apos;heure de remise se
-        convient directement avec le client, par téléphone ou email.
+        Chaque demande passe par vous avant d&apos;être confirmée. Le client propose une heure
+        de remise, vous la confirmez ou en proposez une autre.
       </p>
 
       {groups.map((g) => {

@@ -92,12 +92,31 @@ const isoDate = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date attendue (aaaa-mm-jj)");
 
-export const pickupPointSchema = z.object({
-  name: z.string().trim().min(1, "Le nom est obligatoire"),
-  address: optionalText,
-  instructions: optionalText,
-  active: checkbox,
-});
+const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure attendue (hh:mm)");
+const optionalClockTime = z
+  .string()
+  .trim()
+  .transform((s) => (s === "" ? null : s))
+  .nullable()
+  .refine((v) => v === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(v), "Heure attendue (hh:mm)");
+
+export const pickupPointSchema = z
+  .object({
+    name: z.string().trim().min(1, "Le nom est obligatoire"),
+    address: optionalText,
+    instructions: optionalText,
+    openFrom: optionalClockTime,
+    openUntil: optionalClockTime,
+    active: checkbox,
+  })
+  .refine((p) => (p.openFrom === null) === (p.openUntil === null), {
+    message: "Renseignez les deux heures de la plage, ou aucune",
+    path: ["openUntil"],
+  })
+  .refine((p) => p.openFrom === null || p.openUntil === null || p.openFrom < p.openUntil, {
+    message: "L'heure de fin doit être après l'heure de début",
+    path: ["openUntil"],
+  });
 
 export const blackoutSchema = z
   .object({
@@ -144,8 +163,6 @@ export const customerProfileSchema = z.object({
     .optional()
     .transform((v) => (v ? v : null)),
 });
-
-const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure de remise attendue (hh:mm)");
 
 export const bookingRequestSchema = z.object({
   startDate: isoDate,
