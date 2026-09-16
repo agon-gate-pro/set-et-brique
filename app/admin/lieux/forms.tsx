@@ -20,14 +20,14 @@ function PickupPointFields({ point }: { point?: PickupPoint }) {
           <textarea name="instructions" rows={2} defaultValue={point?.instructions ?? ""} className={inputClass} />
         </Field>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Remise possible de" hint="Vide : toute heure">
-          <input name="openFrom" type="time" step={900} defaultValue={formatTime(point?.openFrom) ?? ""} className={inputClass} />
-        </Field>
-        <Field label="jusqu'à">
-          <input name="openUntil" type="time" step={900} defaultValue={formatTime(point?.openUntil) ?? ""} className={inputClass} />
-        </Field>
-      </div>
+      <Field label="Heures de remise possibles" hint="Vide : toute heure">
+        <div className="flex items-center gap-3">
+          <span className="text-slate-ink">de</span>
+          <input name="openFrom" type="time" step={900} defaultValue={formatTime(point?.openFrom) ?? ""} className={inputClass} aria-label="Heure de début" />
+          <span className="text-slate-ink">à</span>
+          <input name="openUntil" type="time" step={900} defaultValue={formatTime(point?.openUntil) ?? ""} className={inputClass} aria-label="Heure de fin" />
+        </div>
+      </Field>
       <label className="flex items-center gap-3 self-end pb-2">
         <input type="checkbox" name="active" defaultChecked={point?.active ?? true} className="h-5 w-5 accent-brick" />
         <span className="font-bold">Proposé aux clients</span>
