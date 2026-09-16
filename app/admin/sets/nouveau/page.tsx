@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
 import { createSet } from "../actions";
 import { SetForm } from "../set-form";
 
@@ -18,6 +19,7 @@ export default async function NewSetPage() {
     })
     .from(schema.ratePlans)
     .orderBy(asc(schema.ratePlans.sortOrder));
+  const defaultTurnaroundDays = await getSetting("turnaround_days");
 
   return (
     <>
@@ -30,7 +32,7 @@ export default async function NewSetPage() {
         suivante. Un premier exemplaire est créé automatiquement.
       </p>
       <div className="mt-8 brick-card p-6">
-        <SetForm action={createSet} ratePlans={ratePlans} submitLabel="Créer le set" />
+        <SetForm action={createSet} ratePlans={ratePlans} defaultTurnaroundDays={defaultTurnaroundDays} submitLabel="Créer le set" />
       </div>
     </>
   );

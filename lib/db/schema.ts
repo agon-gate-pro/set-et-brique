@@ -19,6 +19,9 @@ import {
 
 export const setStatus = pgEnum("set_status", ["draft", "published", "archived"]);
 
+/** Notices papier ou numériques (dans ce cas, avertir le client qu'il faut un accès internet). */
+export const instructionType = pgEnum("instruction_type", ["paper", "digital"]);
+
 export const copyCondition = pgEnum("copy_condition", [
   "new",
   "very_good",
@@ -26,6 +29,10 @@ export const copyCondition = pgEnum("copy_condition", [
   "worn",
 ]);
 
+/**
+ * Statut saisi par les gérants. Les états « en location » et « en battement »
+ * ne sont pas stockés : ils se déduisent des réservations en cours.
+ */
 export const copyStatus = pgEnum("copy_status", [
   "available",
   "maintenance",
@@ -93,6 +100,11 @@ export const ratePlans = pgTable("rate_plans", {
   ...timestamps,
 });
 
+/**
+ * Un set = un article du catalogue, tel que présenté au client.
+ * Il peut regrouper plusieurs boîtes officielles (`setNumbers`).
+ * Les exemplaires physiques sont dans `set_copies`.
+ */
 export const sets = pgTable(
   "sets",
   {
@@ -103,12 +115,32 @@ export const sets = pgTable(
       onDelete: "set null",
     }),
     name: text("name").notNull(),
-    setNumber: text("set_number"),
+    /** Marque de la boîte : LEGO le plus souvent, parfois une autre (PANTASY…). */
+    brand: text("brand").notNull().default("LEGO"),
+    /** Numéros officiels des boîtes qui composent l'article (souvent un seul, parfois 2 ou 3). */
+    setNumbers: text("set_numbers")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     theme: text("theme"),
     description: text("description"),
+    /** Commentaire libre affiché au client sur la fiche, en plus de la description. */
+    publicNote: text("public_note"),
     pieces: integer("pieces"),
+    minifigCount: integer("minifig_count"),
+    /** Nombre de notices, toutes boîtes confondues. */
+    instructionCount: integer("instruction_count"),
+    instructionType: instructionType("instruction_type").notNull().default("paper"),
+    /** Dimensions une fois construit, texte libre (« L 84 × l 56 × H 21 cm »). */
+    dimensions: text("dimensions"),
+    /** Temps de montage estimé, texte libre (« 8 à 10 h »). */
+    buildTime: text("build_time"),
     ageMin: integer("age_min"),
+    /** Poids du set complet, en grammes. Usage interne (vérification au retour), jamais affiché. */
+    weightGrams: integer("weight_grams"),
     depositCents: integer("deposit_cents").notNull().default(0),
+    /** Jours de battement entre deux locations. Null = réglage global `turnaround_days`. */
+    turnaroundDays: integer("turnaround_days"),
     status: setStatus("status").notNull().default("draft"),
     featured: boolean("featured").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -327,3 +359,4 @@ export type BookingEvent = typeof bookingEvents.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type PressArticle = typeof pressArticles.$inferSelect;
 export type BookingStatus = (typeof bookingStatus.enumValues)[number];
+export type InstructionType = (typeof instructionType.enumValues)[number];

@@ -37,14 +37,41 @@ export const ratePlanSchema = z.object({
   priceEuros: eurosToCents,
 });
 
+/** « 75192, 75193 » ou une référence par ligne vers une liste sans doublon. */
+const setNumberList = z
+  .string()
+  .trim()
+  .transform((s) =>
+    Array.from(
+      new Set(
+        s
+          .split(/[\s,;\/]+/)
+          .map((n) => n.trim())
+          .filter(Boolean),
+      ),
+    ),
+  );
+
 export const setSchema = z.object({
   name: z.string().trim().min(1, "Le nom est obligatoire"),
-  setNumber: optionalText,
+  brand: z
+    .string()
+    .trim()
+    .transform((s) => s || "LEGO"),
+  setNumbers: setNumberList,
   theme: optionalText,
   description: optionalText,
+  publicNote: optionalText,
   pieces: optionalInt,
+  minifigCount: optionalInt,
+  instructionCount: optionalInt,
+  instructionType: z.enum(["paper", "digital"]),
+  dimensions: optionalText,
+  buildTime: optionalText,
   ageMin: optionalInt,
+  weightGrams: optionalInt,
   depositEuros: eurosToCents,
+  turnaroundDays: optionalInt,
   ratePlanId: z
     .string()
     .trim()

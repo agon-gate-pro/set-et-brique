@@ -47,19 +47,22 @@ Scripts utiles :
 ```
 app/              pages et layouts (App Router)
   page.tsx        accueil
-  catalogue/      catalogue public
+  catalogue/      catalogue public depuis la base, et fiche set `[slug]/`
   admin/          espace de gestion (rôles admin et superadmin)
     forfaits/, sets/   écrans + actions.ts (Server Actions)
   compte/         espace client
   connexion/, inscription/   pages Clerk
   qui-sommes-nous/, mentions-legales/, cgu/
 components/       en-tête, pied de page, composants réutilisables
+  catalogue/      pastille de disponibilité
 proxy.ts          protection des routes (Clerk)
 lib/
   auth.ts         rôles et gardes d'accès
   validation.ts   schémas zod des formulaires
   format.ts       euros, slugs, libellés des statuts
   site.ts         constantes du site (contact, liens, textes de secours)
+  settings.ts     lecture des réglages `site_settings` avec leurs valeurs par défaut
+  availability.ts statut d'un set (disponible, en location, en battement…) déduit des exemplaires et réservations
   db/schema.ts    schéma de la base (source de vérité)
   db/index.ts     connexion et client Drizzle
 drizzle/          migrations SQL générées, à commiter
@@ -75,7 +78,7 @@ Les couleurs viennent du logo : rouge brique `#e63b2e`, jaune `#ffd23f`, bleu en
 
 Le schéma est dans `lib/db/schema.ts`. Toute modification passe par ce fichier, puis `pnpm db:generate` (crée un fichier SQL dans `drizzle/`) et `pnpm db:migrate`. Ne jamais modifier la base à la main.
 
-Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'application) et `DATABASE_URL_UNPOOLED` (directe, utilisée par les migrations). C'est la recommandation de Neon.
+Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'application) et `DATABASE_URL_UNPOOLED` (directe, utilisée par les migrations). C'est la recommandation de Neon. Les deux arrivent avec `sslmode=require`, que le code réécrit en `sslmode=verify-full` avant de se connecter (`lib/db/index.ts`, `drizzle.config.ts`) : c'est le même comportement pour `pg` 8, sans l'avertissement que Next affichait en dev comme une erreur sur la première page touchant la base.
 
 ### Tables
 
@@ -85,9 +88,9 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Catalogue**
 
-- `sets` : un modèle de set (nom, numéro, thème, pièces, âge, caution, statut `draft` / `published` / `archived`). Seuls les sets `published` apparaissent sur le site.
-- `set_images` : photos d'un set, ordonnées.
-- `set_copies` : les exemplaires physiques d'un set. Un set peut exister en plusieurs exemplaires, chacun avec son état (`new`, `very_good`, `good`, `worn`) et son statut (`available`, `maintenance`, `retired`). C'est l'exemplaire qui est réservé, pas le modèle.
+- `sets` : un article du catalogue, tel que le client le voit. Il regroupe parfois plusieurs boîtes officielles (`set_numbers`, une liste : le NINJAGO en combine 2, la gare et le train 3). Champs de la fiche, tous issus de la spécification (module 1) : nom, marque (`brand`, LEGO par défaut, PANTASY pour la mine de l'ouest), thème, description, commentaire public (`public_note`), pièces, figurines, nombre et type de notices (`instruction_type` : `paper` ou `digital`, et dans ce cas le client devra être prévenu qu'il faut un écran et internet), dimensions construit, temps de montage, âge conseillé, poids en grammes (`weight_grams`, **interne, jamais affiché** pour ne pas révéler le contenu des sachets pesés), caution, forfait, battement propre au set (`turnaround_days`, vide = réglage global) et statut de publication `draft` / `published` / `archived`. Seuls les sets `published` apparaissent sur le site.
+- `set_images` : photos d'un set, ordonnées, 10 au maximum (décision de la cliente).
+- `set_copies` : les exemplaires physiques d'un set. Un set peut exister en plusieurs exemplaires (un seul aujourd'hui, mais rien n'est codé en dur), chacun avec son état (`new`, `very_good`, `good`, `worn`) et son statut saisi par les gérants (`available`, `maintenance` = en réparation, `retired`). C'est l'exemplaire qui est réservé, pas le modèle. Les deux autres statuts de la spécification, « en location » et « en battement », ne sont pas stockés : ils se déduisent des réservations en cours et du délai de battement.
 - `rate_plans` : les forfaits de location, chacun avec un nom et un prix par jour. Un forfait est marqué par défaut (`is_default`). Chaque set pointe vers un forfait via `sets.rate_plan_id` ; s'il est vide, le forfait par défaut s'applique.
 
 **Logistique**
@@ -121,7 +124,23 @@ pending_payment ──paiement Stripe──▶ confirmed ──remise──▶ p
 
 ### Disponibilité
 
-Un exemplaire est disponible sur une période si aucune réservation `pending_payment`, `confirmed` ou `picked_up` ne le chevauche, en ajoutant un délai de remise en état entre deux locations (réglage `turnaround_days` dans `site_settings`). Un set est disponible si au moins un de ses exemplaires `available` l'est. Les `blackout_periods` interdisent les dates de début et de fin qui tombent dedans.
+Un exemplaire est disponible sur une période si aucune réservation `pending_payment`, `confirmed` ou `picked_up` ne le chevauche, en ajoutant un délai de battement entre deux locations. Ce délai est `sets.turnaround_days` s'il est renseigné, sinon le réglage global `turnaround_days` de `site_settings` (4 jours par défaut, valeur de la spécification). Il ne s'applique pas quand le même client enchaîne deux réservations sur le même exemplaire sans le rendre (prolongation). Un set est disponible si au moins un de ses exemplaires `available` l'est. Les `blackout_periods` interdisent les dates de début et de fin qui tombent dedans.
+
+Les réglages sont lus avec `getSetting()` de `lib/settings.ts`, qui renvoie la valeur par défaut si la ligne manque ; c'est aussi de là que le seed tire ses valeurs.
+
+### Statut affiché au client
+
+Le catalogue affiche pour chaque set un des cinq statuts de la spécification. Il est calculé à chaque affichage par `computeSetAvailability()` (`lib/availability.ts`), fonction pure sans accès à la base, à partir des exemplaires et des réservations bloquantes (`pending_payment`, `confirmed`, `picked_up`) :
+
+| Statut | Quand |
+| --- | --- |
+| Disponible | au moins un exemplaire `available` sans réservation qui le couvre aujourd'hui |
+| En battement | un exemplaire a fini une location il y a moins de N jours (N = battement du set, sinon global) |
+| En location | une réservation couvre aujourd'hui ; les réservations sans exemplaire attribué occupent chacune un exemplaire libre |
+| En réparation | exemplaire en `maintenance` |
+| Retiré | tous les exemplaires `retired`, ou aucun exemplaire |
+
+L'ordre de priorité est celui du tableau : un set avec un exemplaire libre est « Disponible » même si un autre est loué. Pour « En location » et « En battement », la date de retour affichée est le premier jour où un exemplaire redevient libre (fin de location + battement + 1). `loadAvailability()` fait le même calcul pour une liste de sets en deux requêtes. Le jour de référence est la date à Paris.
 
 ### Prix
 
@@ -165,15 +184,32 @@ Liste, création, modification du nom et du prix, choix du forfait par défaut, 
 
 ### Sets (`/admin/sets`)
 
-- Liste avec photo principale, exemplaires, forfait effectif, caution et statut.
-- Création : la fiche (nom, numéro, thème, pièces, âge, caution, forfait, description, statut, mise en avant). Le `slug` de l'adresse publique est dérivé du nom, unique, et ne change que si le nom change. Un premier exemplaire est créé automatiquement.
+- Liste avec photo principale, numéros de boîtes, marque si autre que LEGO, exemplaires, forfait effectif, caution et statut.
+- Création : la fiche, en cinq blocs (identité, contenu, location, textes affichés au client, publication). Les numéros de boîtes se saisissent en une ligne séparés par des virgules ; ils sont stockés en liste, sans doublon. Le `slug` de l'adresse publique est dérivé du nom, unique, et ne change que si le nom change. Un premier exemplaire est créé automatiquement.
 - Fiche : modification, photos, exemplaires, suppression.
-- Photos : envoyées sur Vercel Blob (store `set-et-brique-images`, accès public, variable `BLOB_READ_WRITE_TOKEN`), JPEG, PNG ou WebP jusqu'à 8 Mo. La première de la liste est la photo principale ; l'ordre se règle avec les flèches. Supprimer une photo la retire aussi du stockage.
-- Exemplaires : libellé, état, statut, note interne. Un exemplaire déjà réservé ne se supprime pas : le passer en « Retiré ».
+- Photos : envoyées sur Vercel Blob (store `set-et-brique-images`, accès public, variable `BLOB_READ_WRITE_TOKEN`), JPEG, PNG ou WebP jusqu'à 8 Mo, 10 photos par set au plus. La première de la liste est la photo principale ; l'ordre se règle avec les flèches. Supprimer une photo la retire aussi du stockage.
+- Exemplaires : libellé, état, statut, note interne. Un exemplaire déjà réservé ne se supprime pas : le passer en « Retiré ». Pour bloquer un set le temps d'un souci (retard, casse), le passer en « En réparation ».
 - Suppression d'un set : refusée s'il a déjà été réservé, il faut alors l'archiver.
 
-## 8. Étapes suivantes
+### Où vit un set
 
-- Écrans de l'espace admin restants : lieux de remise, périodes fermées, réservations, contenus, maintenance.
+| Quoi | Où | Forme |
+| --- | --- | --- |
+| La fiche (textes, chiffres, caution, forfait, statut) | Postgres Neon, table `sets` | une ligne par article |
+| Les photos | Vercel Blob, chemin `sets/<slug>/<horodatage>.<ext>` avec suffixe aléatoire | fichiers publics, l'URL est gardée dans `set_images` |
+| Les boîtes physiques | Postgres, table `set_copies` | une ligne par exemplaire, rattachée au set |
+| Les réglages communs (battement par défaut) | Postgres, table `site_settings` | une ligne par clé, valeur JSON |
+
+Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persistance. Supprimer un set supprime ses photos du Blob et ses exemplaires (cascade en base).
+
+## 8. Catalogue public
+
+`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Tant que le tunnel de réservation n'existe pas, le bouton « Réserver » ouvre un email pré-rempli ; un set indisponible propose « Être prévenu de son retour ».
+
+## 9. Étapes suivantes
+
+- Écrans de l'espace admin restants : lieux de remise (5 lieux confirmés dans la spécification), périodes fermées, réservations, contenus, maintenance.
+- Saisie des 28 sets du catalogue par les gérants (ou import depuis la liste `catalogue-sets-lego.md` quand elle sera dans le dépôt).
+- Tunnel de réservation : remplacer le bouton « Réserver » de la fiche (email) par le choix des dates, du lieu de remise et le paiement.
 - Parcours client : catalogue depuis la base, fiche set, calendrier de disponibilité, réservation et paiement Stripe.
 - Emails transactionnels (confirmation, rappel de retour).

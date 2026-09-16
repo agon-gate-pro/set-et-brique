@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
 import { setStatusLabels } from "@/lib/format";
 import { updateSet } from "../actions";
 import { SetForm } from "../set-form";
@@ -31,6 +32,7 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
     })
     .from(schema.ratePlans)
     .orderBy(asc(schema.ratePlans.sortOrder));
+  const defaultTurnaroundDays = await getSetting("turnaround_days");
 
   const { images, copies, ...setRow } = set;
 
@@ -49,7 +51,7 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
       <section className="mt-8 brick-card p-6">
         <h2 className="text-2xl font-semibold">Fiche</h2>
         <div className="mt-4">
-          <SetForm action={updateSet} set={setRow} ratePlans={ratePlans} submitLabel="Enregistrer" />
+          <SetForm action={updateSet} set={setRow} ratePlans={ratePlans} defaultTurnaroundDays={defaultTurnaroundDays} submitLabel="Enregistrer" />
         </div>
       </section>
 

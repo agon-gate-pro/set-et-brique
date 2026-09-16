@@ -30,7 +30,8 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
     <section className="mt-8 brick-card p-6">
       <h2 className="text-2xl font-semibold">Photos</h2>
       <p className="mt-1 text-slate-ink">
-        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, 8 Mo maximum.
+        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, 8 Mo maximum,
+        10 photos par set au plus ({images.length}/10).
       </p>
 
       {images.length > 0 ? (
@@ -141,6 +142,9 @@ export function CopiesSection({ setId, copies }: { setId: string; copies: SetCop
       <p className="mt-1 text-slate-ink">
         Chaque boîte physique est un exemplaire. C&apos;est l&apos;exemplaire qui est
         réservé ; un set avec deux exemplaires peut être loué deux fois en même temps.
+        « En location » et « en battement » ne se règlent pas ici : ils découlent des
+        réservations. Passez un exemplaire « En réparation » pour le bloquer le temps
+        d&apos;un souci, « Retiré » s&apos;il ne reviendra pas.
       </p>
       <ul className="mt-5 space-y-3">
         {copies.map((c) => (

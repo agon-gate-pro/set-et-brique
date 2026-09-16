@@ -7,6 +7,7 @@
 import { eq, sql } from "drizzle-orm";
 import { db, schema } from "../lib/db";
 import { press, reviews, site } from "../lib/site";
+import { settingDefaults } from "../lib/settings";
 
 async function main() {
   const [{ count: testimonialCount }] = await db
@@ -68,10 +69,7 @@ async function main() {
   }
 
   const settings: Record<string, unknown> = {
-    turnaround_days: 1,
-    min_rental_days: 3,
-    max_rental_days: 30,
-    radius_km: site.radiusKm,
+    ...settingDefaults,
     contact_email: site.email,
     contact_phone: site.phone,
   };

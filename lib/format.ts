@@ -34,9 +34,35 @@ export const copyConditionLabels = {
 
 export const copyStatusLabels = {
   available: "Disponible",
-  maintenance: "En maintenance",
+  maintenance: "En réparation",
   retired: "Retiré",
 } as const;
+
+/** Statuts vus par le client (spécification, module 1). */
+export const setAvailabilityLabels = {
+  available: "Disponible",
+  rented: "En location",
+  turnaround: "En battement",
+  repair: "En réparation",
+  retired: "Retiré",
+} as const;
+
+const dateLong = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
+
+/** « 12 octobre » à partir d'une date ISO (aaaa-mm-jj). */
+export function formatDay(iso: string) {
+  return dateLong.format(new Date(`${iso}T12:00:00Z`));
+}
+
+export const instructionTypeLabels = {
+  paper: "Papier",
+  digital: "Numérique",
+} as const;
+
+/** « 75192 » ou « 71741 + 71742 » pour l'affichage. */
+export function formatSetNumbers(numbers: string[]) {
+  return numbers.join(" + ");
+}
 
 export const bookingStatusLabels = {
   pending_payment: "En attente de paiement",
