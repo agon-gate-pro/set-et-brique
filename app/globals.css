@@ -60,11 +60,14 @@ h3,
 }
 
 /* Soft rounded card, replaces the old hard-edged brick block. */
-.brick-card {
-  border: 1px solid rgb(51 65 85 / 0.12);
-  border-radius: 1rem;
-  box-shadow: var(--shadow-brick-sm);
-  background: var(--color-paper);
+/* Dans la couche components pour que les utilitaires (bg-sun, hover:bg-sky…) puissent le surcharger. */
+@layer components {
+  .brick-card {
+    border: 1px solid rgb(51 65 85 / 0.12);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-brick-sm);
+    background: var(--color-paper);
+  }
 }
 
 .btn {

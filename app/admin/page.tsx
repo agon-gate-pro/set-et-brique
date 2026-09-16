@@ -37,12 +37,12 @@ export default async function AdminHome() {
     <>
       <h1 className="text-3xl md:text-4xl font-bold">Tableau de bord</h1>
       {pending.n > 0 ? (
-        <Link href="/admin/reservations" className="mt-6 block brick-card bg-sun/40 p-5 font-semibold text-ink-deep hover:bg-sun/60">
+        <Link href="/admin/reservations" className="mt-6 block brick-card bg-sun p-5 font-semibold text-ink-deep hover:bg-sun-deep transition-colors">
           {pending.n} demande{pending.n > 1 ? "s" : ""} de réservation à traiter
         </Link>
       ) : null}
       {late.n > 0 ? (
-        <Link href="/admin/reservations" className="mt-4 block brick-card bg-brick/10 border-brick p-5 font-semibold text-brick-deep hover:bg-brick/20">
+        <Link href="/admin/reservations" className="mt-4 block brick-card bg-brick/10 border-brick p-5 font-semibold text-brick-deep hover:bg-brick/25 transition-colors">
           {late.n} set{late.n > 1 ? "s" : ""} en retard de retour
         </Link>
       ) : null}
