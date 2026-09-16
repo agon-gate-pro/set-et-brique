@@ -42,6 +42,7 @@ Autres points à poser quand l'occasion se présente :
 
 - Délai minimal entre la demande et la remise (aujourd'hui : dès le lendemain).
 - Faut-il une durée minimale de location au-delà d'un jour ? (réglage `min_rental_days`, à 1)
+- Données personnelles : que faire de la fiche client et des réservations quand un client supprime son compte (conservation pour la facturation, anonymisation au bout d'un délai) ? Voir « Où vivent les données d'un client » dans `FONCTIONNEMENT.md`.
 - Domaine final du site : lequel, et chez quel registrar ? Nécessaire pour l'instance Clerk de production (voir §4).
 - Grille des sets : la gamme (Star Wars, Ideas, Technic…) a été déduite du numéro de boîte, à vérifier. Trois sets sans gamme : Coupe du Monde (43020), La mine de l'Ouest (Pantasy 85025), Échecs pirate (40158). La description du Faucon Millenium cite le 75105 alors que le numéro saisi est 75257. Le set « Test : voiture de course » reste publié.
 

@@ -198,6 +198,22 @@ pnpm role marion@example.com none      # retirer
 
 La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première demande de réservation ou au premier enregistrement de l'onglet Coordonnées, à partir du compte Clerk et des coordonnées saisies (mises à jour à chaque demande). Ça évite un webhook et une synchronisation à maintenir. Le tunnel (`/catalogue/<slug>/reserver`) est protégé par `proxy.ts` comme `/compte`.
 
+### Où vivent les données d'un client
+
+| Quoi | Où | Forme |
+| --- | --- | --- |
+| Identité de connexion : e-mail, mot de passe (haché), compte Google lié, prénom et nom saisis chez Clerk, photo, sessions actives | Clerk (serveurs Clerk, instance de développement aujourd'hui) | un utilisateur Clerk, identifié par `clerk_user_id` |
+| Rôle gérant ou superadmin | Clerk, `publicMetadata.role` de l'utilisateur | attribué par `pnpm role` |
+| Coordonnées de facturation et de contrat : prénom, nom, téléphone, adresse, code postal, ville | Postgres Neon, table `customers` | une ligne par client, créée à la première demande ou au premier enregistrement de l'onglet Coordonnées, reliée à Clerk par `clerk_user_id` |
+| Lieu de remise préféré, blocage du compte et sa raison, note interne des gérants | Postgres, table `customers` | mêmes lignes |
+| Réservations : set, exemplaire, dates, lieu, montants, statut, message du client, horodatage de l'acceptation des CG | Postgres, table `bookings` | une ligne par demande, rattachée à `customers.id` |
+| Historique des changements de statut | Postgres, table `booking_events` | une ligne par transition |
+| Paiements et caution (à venir, module 4) | Stripe, et les identifiants Stripe dans `bookings` | rien en base au-delà des identifiants |
+
+L'e-mail est copié de Clerk dans `customers.email` à chaque enregistrement, pour que les gérants le voient sans appel à Clerk. Rien n'est stocké sur le disque du serveur ni dans le navigateur au-delà du cookie de session Clerk.
+
+Supprimer son compte depuis l'onglet Sécurité efface l'utilisateur chez Clerk, mais pas la ligne `customers` ni les réservations : elles restent pour l'historique et la facturation, rattachées à un identifiant Clerk devenu orphelin. La règle d'effacement ou d'anonymisation (RGPD) est à définir avec la cliente, voir `AVANCEMENT.md`.
+
 Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
 
 ## 7. Espace de gestion
