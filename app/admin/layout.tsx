@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminNav } from "@/components/admin/nav";
 import { requireRole } from "@/lib/auth";
 
 const sections = [
@@ -18,23 +18,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const links = role === "superadmin" ? [...sections, ...superadminSections] : sections;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 md:px-8 py-10 md:py-14 grid gap-8 md:grid-cols-[14rem_1fr] items-start">
-      <aside className="brick-card p-4 md:sticky md:top-24">
-        <p className="display font-semibold text-brick-deep px-2">
-          Gestion · {role === "superadmin" ? "superadmin" : "gérant"}
-        </p>
-        <nav className="mt-2 flex flex-col" aria-label="Administration">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="px-2 py-2 font-bold text-ink-deep hover:bg-sky"
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
+    <div className="mx-auto max-w-6xl px-5 md:px-8 py-6 md:py-14 grid gap-6 md:gap-8 md:grid-cols-[14rem_1fr] items-start">
+      <AdminNav links={links} role={role} />
       <div className="min-w-0">{children}</div>
     </div>
   );
