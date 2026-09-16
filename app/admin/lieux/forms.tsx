@@ -105,7 +105,7 @@ export function PickupPointRow({
             <span className="font-bold">Proposé aux clients</span>
           </label>
           {/* Le bouton vit dans le formulaire de modification mais soumet celui de suppression (attribut form). */}
-          <ConfirmButton form={`delete-${point.id}`} className="btn btn-paper border-brick !text-brick-deep no-underline">
+          <ConfirmButton form={`delete-${point.id}`} className="btn btn-brick text-paper no-underline">
             Supprimer ce lieu
           </ConfirmButton>
         </div>
