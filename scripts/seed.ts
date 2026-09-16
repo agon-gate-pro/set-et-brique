@@ -45,13 +45,22 @@ async function main() {
     .select({ count: sql<number>`count(*)::int` })
     .from(schema.pickupPoints);
   if (pickupCount === 0) {
-    await db.insert(schema.pickupPoints).values({
-      name: "Lorient, lieu convenu ensemble",
-      address: "Lorient",
-      instructions:
-        "Le lieu et l'heure exacts sont fixés par message après la réservation, jusqu'à 30 km autour de Lorient.",
-    });
-    console.log("+ 1 lieu de remise");
+    // Les cinq lieux confirmés par la cliente (spécification, module 2).
+    const points = [
+      { name: "Aire de covoiturage de Lanester", address: "Lanester, à côté du McDonald's" },
+      { name: "Aire de covoiturage de Guidel", address: "Guidel" },
+      { name: "Aire de covoiturage de Kerizan", address: "Brec'h" },
+      { name: "Intermarché Drive de Monistrol", address: "Lorient" },
+      { name: "Aire de covoiturage de Plouay", address: "Plouay" },
+    ];
+    await db.insert(schema.pickupPoints).values(
+      points.map((pt, i) => ({
+        ...pt,
+        instructions: "L'heure exacte de remise est convenue par téléphone ou email après la réservation.",
+        sortOrder: i,
+      })),
+    );
+    console.log(`+ ${points.length} lieux de remise`);
   }
 
   const [{ count: planCount }] = await db

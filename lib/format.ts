@@ -49,6 +49,19 @@ export const setAvailabilityLabels = {
 
 const dateLong = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
 
+const dateFull = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "short",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "Europe/Paris",
+});
+
+/** « lun. 12 octobre 2026 » à partir d'une date ISO (aaaa-mm-jj). */
+export function formatDate(iso: string) {
+  return dateFull.format(new Date(`${iso}T12:00:00Z`));
+}
+
 /** « 12 octobre » à partir d'une date ISO (aaaa-mm-jj). */
 export function formatDay(iso: string) {
   return dateLong.format(new Date(`${iso}T12:00:00Z`));

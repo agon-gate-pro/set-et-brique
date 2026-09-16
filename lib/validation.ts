@@ -32,6 +32,11 @@ const optionalInt = z
     return n;
   });
 
+const checkbox = z
+  .string()
+  .optional()
+  .transform((v) => v === "on");
+
 export const ratePlanSchema = z.object({
   name: z.string().trim().min(1, "Le nom est obligatoire"),
   priceEuros: eurosToCents,
@@ -78,11 +83,31 @@ export const setSchema = z.object({
     .transform((s) => (s === "" ? null : s))
     .nullable(),
   status: z.enum(["draft", "published", "archived"]),
-  featured: z
-    .string()
-    .optional()
-    .transform((v) => v === "on"),
+  featured: checkbox,
 });
+
+const isoDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date attendue (aaaa-mm-jj)");
+
+export const pickupPointSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire"),
+  address: optionalText,
+  instructions: optionalText,
+  active: checkbox,
+});
+
+export const blackoutSchema = z
+  .object({
+    startDate: isoDate,
+    endDate: isoDate,
+    reason: optionalText,
+  })
+  .refine((d) => d.endDate >= d.startDate, {
+    path: ["endDate"],
+    message: "La fin doit être après le début",
+  });
 
 export const copySchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire"),

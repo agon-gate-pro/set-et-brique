@@ -49,7 +49,7 @@ app/              pages et layouts (App Router)
   page.tsx        accueil
   catalogue/      catalogue public depuis la base, et fiche set `[slug]/`
   admin/          espace de gestion (rôles admin et superadmin)
-    forfaits/, sets/   écrans + actions.ts (Server Actions)
+    forfaits/, sets/, lieux/, fermetures/   écrans + actions.ts (Server Actions)
   compte/         espace client
   connexion/, inscription/   pages Clerk
   qui-sommes-nous/, mentions-legales/, cgu/
@@ -95,8 +95,8 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Logistique**
 
-- `pickup_points` : lieux de remise en main propre proposés au client.
-- `blackout_periods` : périodes sans remise ni retour (vacances des gérants).
+- `pickup_points` : lieux de remise en main propre proposés au client, dans l'ordre `sort_order`. Un lieu `active = false` n'est plus proposé mais reste dans l'historique des réservations. Le seed crée les cinq lieux confirmés par la cliente (Lanester, Guidel, Kerizan, Monistrol, Plouay).
+- `blackout_periods` : périodes sans remise ni retour (vacances des gérants), bornes incluses. Un set déjà chez un client peut y rester pendant la période.
 
 **Réservations**
 
@@ -191,6 +191,14 @@ Liste, création, modification du nom et du prix, choix du forfait par défaut, 
 - Exemplaires : libellé, état, statut, note interne. Un exemplaire déjà réservé ne se supprime pas : le passer en « Retiré ». Pour bloquer un set le temps d'un souci (retard, casse), le passer en « En réparation ».
 - Suppression d'un set : refusée s'il a déjà été réservé, il faut alors l'archiver.
 
+### Lieux de remise (`/admin/lieux`)
+
+Liste ordonnée (flèches), création, modification, activation, suppression. Un lieu utilisé par une réservation ne se supprime pas : le désactiver. L'heure de remise n'est pas gérée ici, elle se convient avec le client après la réservation (spécification, module 2).
+
+### Périodes fermées (`/admin/fermetures`)
+
+Fermetures à venir modifiables, création, suppression ; les périodes passées sont listées en bas pour mémoire. Si une réservation active a sa remise ou son retour dans la période, l'écran l'indique en rouge : c'est aux gérants de contacter le client, rien n'est annulé automatiquement. Pour bloquer un seul set (retard, casse), on passe son exemplaire « En réparation » depuis la fiche du set, ce qui couvre le « blocage par set » de la spécification.
+
 ### Où vit un set
 
 | Quoi | Où | Forme |
@@ -208,7 +216,7 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 ## 9. Étapes suivantes
 
-- Écrans de l'espace admin restants : lieux de remise (5 lieux confirmés dans la spécification), périodes fermées, réservations, contenus, maintenance.
+- Écrans de l'espace admin restants : réservations, contenus, maintenance.
 - Saisie des 28 sets du catalogue par les gérants (ou import depuis la liste `catalogue-sets-lego.md` quand elle sera dans le dépôt).
 - Tunnel de réservation : remplacer le bouton « Réserver » de la fiche (email) par le choix des dates, du lieu de remise et le paiement.
 - Parcours client : catalogue depuis la base, fiche set, calendrier de disponibilité, réservation et paiement Stripe.
