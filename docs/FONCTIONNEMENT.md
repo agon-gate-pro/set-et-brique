@@ -56,7 +56,7 @@ app/              pages et layouts (App Router)
   page.tsx        accueil
   catalogue/      catalogue public depuis la base, fiche set `[slug]/`, tunnel `[slug]/reserver/`
   admin/          espace de gestion (rôles admin et superadmin)
-    forfaits/, sets/, lieux/, fermetures/, reservations/   écrans + actions.ts (Server Actions)
+    forfaits/, sets/, lieux/, fermetures/, reservations/, bons-cadeaux/   écrans + actions.ts (Server Actions)
   compte/         espace client : ses réservations, réponse aux dates proposées, annulation
   connexion/, inscription/   pages Clerk
   qui-sommes-nous/, mentions-legales/, cgu/
@@ -72,6 +72,7 @@ lib/
   dates.ts        dates ISO (jour à Paris, ajout de jours, fin de location), sans dépendance serveur
   availability.ts statut d'un set (disponible, en location, en battement…) et recherche d'un exemplaire libre sur une période
   bookings.ts     fiche client, référence, création d'une demande de réservation (verrou sur les exemplaires)
+  gift-vouchers.ts   génération de codes, statut affiché (valide/utilisé/expiré/annulé)
   db/schema.ts    schéma de la base (source de vérité)
   db/index.ts     connexion et client Drizzle
 drizzle/          migrations SQL générées, à commiter
@@ -111,6 +112,10 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 - `bookings` : une réservation = un client, un set, des dates, un exemplaire attribué dès la demande, un lieu de remise, les montants (`rental_cents`, `deposit_cents`) et les identifiants Stripe. Les montants sont en centimes d'euro, en entiers, pour éviter les erreurs d'arrondi. Le champ `reference` est un code court (`SB-` + 5 caractères sans ambiguïté) communiqué au client. `proposed_start_date` / `proposed_end_date` portent une autre date proposée par les gérants, `cancel_reason` le motif visible du client, `terms_accepted_at` l'acceptation des conditions générales.
 - `booking_events` : historique des changements de statut et des actions, avec l'auteur (`customer`, `admin`, `system`).
+
+**Bons cadeaux**
+
+- `gift_vouchers` : un bon = un code unique (`code`), un montant en centimes (`amount_cents`), une origine (`origin` : `admin` couvre les avoirs offerts et les lots créés pour un événement, `purchase` correspondra aux bons achetés en ligne une fois le module 4 en place) et un statut (`status` : `valid`, `used`, `cancelled`). `batch_label` retrouve les codes créés ensemble pour un événement, `note` est un motif interne non affiché au client. `expires_at` est obligatoire ; l'état « expiré » n'est pas stocké, il se déduit de `status = "valid"` et `expires_at` dépassée (`giftVoucherDisplayStatus()` de `lib/gift-vouchers.ts`).
 
 **Contenu éditable**
 
@@ -266,6 +271,10 @@ Liste en cinq groupes : à traiter (`pending_review`), en attente du client (`da
 - **Set rendu** : `picked_up` → `returned`, avec la date (pas avant la remise, pas dans le futur) et l'état des lieux en commentaire libre, jamais visible du client. Le retard éventuel est écrit dans l'historique.
 
 Pas d'annulation d'une remise ou d'un retour enregistrés par erreur pour l'instant : le passer par la maintenance si ça arrive.
+
+### Bons cadeaux (`/admin/bons-cadeaux`)
+
+Génération à l'unité ou en lot (jusqu'à 200 bons du même montant en une fois), avec étiquette de lot et note interne facultatives ; chaque bon reçoit un code unique. Liste filtrable par état (valide, utilisé, expiré, annulé), origine et recherche (code ou lot). Actions sur un bon valide : marquer utilisé, annuler (deux clics, sans motif). Pas encore de vente en ligne ni d'utilisation comme moyen de paiement dans le tunnel : ces bons servent aujourd'hui aux avoirs et aux lots papier remis à la main.
 
 ### Où vit un set
 
