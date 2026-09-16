@@ -69,6 +69,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 ### 16 septembre 2026
 
 - **Import des 28 sets de la cliente**. Script `scripts/import-sets.ts` (`pnpm db:import-sets 00/Sets_LEGO.csv`), parseur CSV maison, fusion des lignes de suite (Ninjago = 71720 + 70613), valeurs normalisées, un exemplaire par set, publiés sans photo. Relance sans doublon. Catalogue : 29 sets, tous disponibles.
+- **Gestion du compte** : « Gérer le compte » du bouton utilisateur envoyait vers la page des locations. Nouvelle page `/compte/profil` avec le composant Clerk `UserProfile`, lien depuis `/compte`.
 - **Comptes** : inscription testée avec succès sur l'instance Clerk de développement (e-mail + code de vérification). Plan de passage en production noté en §4.
 - **Filtre par gamme sur le catalogue**. Pastilles avec compteur, paramètre d'URL `?gamme=`, rendu côté serveur.
 - **Base et fiche set** (`a189d0a`). Table `sets` alignée sur la spécification, migration 0003, battement global à 4 jours. Formulaire admin en cinq blocs, 10 photos max. Catalogue public avec statut du jour et fiche set. Correction des sous-requêtes de la liste admin (la photo principale n'apparaissait jamais) et de l'avertissement SSL de `pg` que Next affichait comme une erreur.

@@ -66,6 +66,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         <Link href="/catalogue" className="btn btn-brick">
           Voir le catalogue
         </Link>
+        <Link href="/compte/profil" className="btn btn-paper">
+          Gérer mon compte
+        </Link>
         {admin ? (
           <Link href="/admin" className="btn btn-sun">
             Espace de gestion

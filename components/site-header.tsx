@@ -54,7 +54,7 @@ export function SiteHeader() {
           <Show when="signed-in">
             <UserButton
               userProfileMode="navigation"
-              userProfileUrl="/compte"
+              userProfileUrl="/compte/profil"
               appearance={{ elements: { avatarBox: "h-9 w-9 border-2 border-slate-ink/15 rounded-full" } }}
             />
           </Show>

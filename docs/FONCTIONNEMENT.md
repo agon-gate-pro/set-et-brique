@@ -167,7 +167,7 @@ Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de l
 
 ## 6. Comptes et rôles
 
-Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin`, `/compte` et le tunnel `/catalogue/<slug>/reserver`.
+Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` affichent les composants Clerk (en français, aux couleurs du site). La gestion du compte (e-mail, mot de passe, connexion Google, sessions, suppression) est la page `/compte/profil`, composant `UserProfile` de Clerk, atteinte par « Gérer le compte » du bouton utilisateur du header et par le bouton « Gérer mon compte » de `/compte`. Les coordonnées de livraison (téléphone, adresse) ne sont pas dedans : elles vivent dans la fiche client et se corrigent dans le tunnel de réservation. Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin`, `/compte` et le tunnel `/catalogue/<slug>/reserver`.
 
 Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk :
 
