@@ -1,8 +1,9 @@
 const euro = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
+const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
 
-export function formatDate(date: Date | string) {
-  return dateFormatter.format(typeof date === "string" ? new Date(date) : date);
+/** « 12 oct. 2026 » à partir d'un timestamp complet (`Date` ou ISO avec heure). */
+export function formatDateTime(date: Date | string) {
+  return dateTimeFormatter.format(typeof date === "string" ? new Date(date) : date);
 }
 
 export function formatCents(cents: number) {

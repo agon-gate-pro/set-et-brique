@@ -3,7 +3,7 @@ import { and, desc, eq, gte, ilike, lt, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import {
   formatCents,
-  formatDate,
+  formatDateTime,
   giftVoucherOriginLabels,
   giftVoucherStatusLabels,
 } from "@/lib/format";
@@ -127,9 +127,9 @@ export default async function GiftVouchersPage({
                 </p>
                 {v.note ? <p className="mt-1 text-slate-ink italic">{v.note}</p> : null}
                 <p className="mt-1 text-sm text-slate-ink">
-                  Créé le {formatDate(v.createdAt)} · expire le {formatDate(v.expiresAt)}
-                  {v.usedAt ? ` · utilisé le ${formatDate(v.usedAt)}` : ""}
-                  {v.cancelledAt ? ` · annulé le ${formatDate(v.cancelledAt)}` : ""}
+                  Créé le {formatDateTime(v.createdAt)} · expire le {formatDateTime(v.expiresAt)}
+                  {v.usedAt ? ` · utilisé le ${formatDateTime(v.usedAt)}` : ""}
+                  {v.cancelledAt ? ` · annulé le ${formatDateTime(v.cancelledAt)}` : ""}
                 </p>
                 <GiftVoucherActions
                   id={v.id}
