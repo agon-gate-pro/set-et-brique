@@ -94,7 +94,7 @@ export function PickupPointRow({
         <input type="hidden" name="id" value={point.id} />
         <PickupPointFields point={point} />
         <div>
-          <SubmitButton variant="paper">Enregistrer</SubmitButton>
+          <SubmitButton variant="leaf">Enregistrer</SubmitButton>
         </div>
         <div className="sm:col-span-2">
           <FormMessage state={editState} />
