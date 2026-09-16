@@ -78,7 +78,9 @@ export function formatSetNumbers(numbers: string[]) {
 }
 
 export const bookingStatusLabels = {
-  pending_payment: "En attente de paiement",
+  pending_review: "Demande en attente",
+  date_proposed: "Autre date proposée",
+  pending_payment: "Acceptée, paiement à venir",
   confirmed: "Confirmée",
   picked_up: "En cours",
   returned: "Rendue",

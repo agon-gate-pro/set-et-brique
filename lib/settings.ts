@@ -8,8 +8,8 @@ import { db, schema } from "@/lib/db";
 export const settingDefaults = {
   /** Jours de battement entre deux locations d'un même exemplaire (spécification, module 1). */
   turnaround_days: 4,
+  /** Durée minimale d'une location, en jours. Pas de maximum (spécification, module 2). */
   min_rental_days: 1,
-  max_rental_days: 30,
   radius_km: 30,
 } as const;
 

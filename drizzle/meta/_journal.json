@@ -29,6 +29,20 @@
       "when": 1789550036527,
       "tag": "0003_conscious_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789552377355,
+      "tag": "0004_booking_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789552887017,
+      "tag": "0005_min_rental_days",
+      "breakpoints": true
     }
   ]
 }

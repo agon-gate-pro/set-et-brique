@@ -109,6 +109,50 @@ export const blackoutSchema = z
     message: "La fin doit être après le début",
   });
 
+const positiveInt = (label: string) =>
+  z
+    .string()
+    .trim()
+    .transform((s, ctx) => {
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < 1) {
+        ctx.addIssue({ code: "custom", message: `${label} : nombre entier attendu` });
+        return z.NEVER;
+      }
+      return n;
+    });
+
+const required = (label: string) => z.string().trim().min(1, `${label} : obligatoire`);
+
+/** Demande de réservation faite par le client (spécification, modules 3, 5 et 7). */
+export const bookingRequestSchema = z.object({
+  startDate: isoDate,
+  days: positiveInt("Nombre de jours"),
+  pickupPointId: required("Lieu de remise"),
+  customerNote: optionalText,
+  firstName: required("Prénom"),
+  lastName: required("Nom"),
+  phone: required("Téléphone"),
+  addressLine: required("Adresse"),
+  postalCode: required("Code postal"),
+  city: required("Ville"),
+  terms: z
+    .string()
+    .optional()
+    .refine((v) => v === "on", "Vous devez accepter les conditions générales"),
+});
+
+/** Proposition d'une autre date par les gérants. */
+export const proposeDateSchema = z.object({
+  startDate: isoDate,
+  days: positiveInt("Nombre de jours"),
+  message: optionalText,
+});
+
+export const refuseBookingSchema = z.object({
+  reason: optionalText,
+});
+
 export const copySchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire"),
   condition: z.enum(["new", "very_good", "good", "worn"]),

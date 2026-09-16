@@ -123,9 +123,9 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
 
               <div className="mt-8 flex flex-wrap gap-4">
                 {a && isBookable(a) ? (
-                  <a href={`mailto:${site.email}?subject=${encodeURIComponent(`Réservation : ${set.name}`)}`} className="btn btn-brick">
+                  <Link href={`/catalogue/${set.slug}/reserver`} className="btn btn-brick">
                     Réserver ce set
-                  </a>
+                  </Link>
                 ) : (
                   <a href={`mailto:${site.email}?subject=${encodeURIComponent(`Disponibilité : ${set.name}`)}`} className="btn btn-paper">
                     Être prévenu de son retour

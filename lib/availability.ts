@@ -1,6 +1,9 @@
 import { and, gte, inArray } from "drizzle-orm";
+import { addDays, todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
+
+export { addDays, endDateFor, todayIso } from "@/lib/dates";
 
 /**
  * Statut d'un set tel que le client le voit (spécification, module 1) :
@@ -20,19 +23,11 @@ export type SetAvailabilityResult = {
 type CopyInput = { id: string; status: "available" | "maintenance" | "retired" };
 type BookingInput = { copyId: string | null; startDate: string; endDate: string };
 
-/** Réservations qui bloquent un exemplaire. */
-export const BLOCKING_BOOKING_STATUSES = ["pending_payment", "confirmed", "picked_up"] as const;
+/** Réservations qui occupent un exemplaire aujourd'hui (statut affiché au catalogue). */
+export const OCCUPYING_STATUSES = ["pending_payment", "confirmed", "picked_up"] as const;
 
-/** Date du jour à Paris, au format ISO (aaaa-mm-jj), comparable aux colonnes `date`. */
-export function todayIso() {
-  return new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris" }).format(new Date());
-}
-
-export function addDays(iso: string, days: number) {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+/** Réservations qui réservent des dates, demandes en attente comprises. */
+export const RESERVING_STATUSES = ["pending_review", "date_proposed", ...OCCUPYING_STATUSES] as const;
 
 /**
  * Calcul pur, sans base : exemplaires du set, réservations bloquantes, battement en jours.
@@ -128,7 +123,7 @@ export async function loadAvailability(
       .where(
         and(
           inArray(schema.bookings.setId, ids),
-          inArray(schema.bookings.status, [...BLOCKING_BOOKING_STATUSES]),
+          inArray(schema.bookings.status, [...OCCUPYING_STATUSES]),
           // Seules les réservations récentes ou à venir peuvent bloquer aujourd'hui.
           gte(schema.bookings.endDate, addDays(today, -(maxTurnaround + 1))),
         ),
@@ -147,6 +142,61 @@ export async function loadAvailability(
     );
   }
   return result;
+}
+
+/* ------------------------------------------------------------------ */
+/* Disponibilité sur une période, pour le tunnel de réservation         */
+/* ------------------------------------------------------------------ */
+
+type RangeBooking = {
+  id: string;
+  copyId: string | null;
+  customerId: string;
+  startDate: string;
+  endDate: string;
+  proposedStartDate: string | null;
+  proposedEndDate: string | null;
+};
+
+/** Dates effectivement réservées : la proposition des gérants si elle existe. */
+export function bookedRange(b: Pick<RangeBooking, "startDate" | "endDate" | "proposedStartDate" | "proposedEndDate">) {
+  return b.proposedStartDate && b.proposedEndDate
+    ? { start: b.proposedStartDate, end: b.proposedEndDate }
+    : { start: b.startDate, end: b.endDate };
+}
+
+/**
+ * Premier exemplaire libre du `startDate` au `endDate` inclus, calcul pur.
+ * Entre deux clients différents, le battement s'ajoute avant et après.
+ * Le même client qui enchaîne sur le même exemplaire n'a pas de battement
+ * (prolongation, spécification module 2). `excludeBookingId` ignore la
+ * réservation en cours de modification.
+ */
+export function findFreeCopy(
+  copies: CopyInput[],
+  bookings: RangeBooking[],
+  turnaroundDays: number,
+  startDate: string,
+  endDate: string,
+  customerId: string | null,
+  excludeBookingId?: string,
+): CopyInput | null {
+  const conflicts = (b: RangeBooking) => {
+    if (b.id === excludeBookingId) return false;
+    const r = bookedRange(b);
+    const sameCustomer = customerId !== null && b.customerId === customerId;
+    const pad = sameCustomer ? 0 : turnaroundDays;
+    return r.start <= addDays(endDate, pad) && r.end >= addDays(startDate, -pad);
+  };
+  const unassigned = bookings.filter((b) => b.copyId === null && conflicts(b)).length;
+  const free = copies.filter(
+    (c) => c.status === "available" && !bookings.some((b) => b.copyId === c.id && conflicts(b)),
+  );
+  return free.length > unassigned ? free[unassigned] : null;
+}
+
+export function isInBlackout(date: string, blackouts: { startDate: string; endDate: string }[]) {
+  return blackouts.some((b) => b.startDate <= date && date <= b.endDate);
 }
 
 /** Un set se réserve seulement s'il a un exemplaire libre aujourd'hui. */

@@ -39,7 +39,13 @@ export const copyStatus = pgEnum("copy_status", [
   "retired",
 ]);
 
+/**
+ * Cycle de vie d'une réservation. Toute demande est validée à la main par les
+ * gérants (spécification, module 5) : elle naît en `pending_review`.
+ */
 export const bookingStatus = pgEnum("booking_status", [
+  "pending_review",
+  "date_proposed",
   "pending_payment",
   "confirmed",
   "picked_up",
@@ -78,6 +84,9 @@ export const customers = pgTable(
     postalCode: text("postal_code"),
     city: text("city"),
     adminNote: text("admin_note"),
+    /** Compte bloqué à la main par les gérants : plus aucune réservation possible. */
+    blocked: boolean("blocked").notNull().default(false),
+    blockedReason: text("blocked_reason"),
     ...timestamps,
   },
   (t) => [uniqueIndex("customers_clerk_user_id_idx").on(t.clerkUserId)],
@@ -222,7 +231,7 @@ export const bookings = pgTable(
     setId: uuid("set_id")
       .notNull()
       .references(() => sets.id, { onDelete: "restrict" }),
-    /** Exemplaire attribué. Null tant que la réservation n'est pas confirmée. */
+    /** Exemplaire attribué dès la demande, pour bloquer les dates. Les gérants peuvent le changer. */
     copyId: uuid("copy_id").references(() => setCopies.id, { onDelete: "set null" }),
     pickupPointId: uuid("pickup_point_id").references(() => pickupPoints.id, {
       onDelete: "set null",
@@ -230,7 +239,10 @@ export const bookings = pgTable(
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
     days: integer("days").notNull(),
-    status: bookingStatus("status").notNull().default("pending_payment"),
+    status: bookingStatus("status").notNull().default("pending_review"),
+    /** Autre date proposée par les gérants, en attente de la réponse du client. */
+    proposedStartDate: date("proposed_start_date"),
+    proposedEndDate: date("proposed_end_date"),
     rentalCents: integer("rental_cents").notNull(),
     depositCents: integer("deposit_cents").notNull(),
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
@@ -239,6 +251,11 @@ export const bookings = pgTable(
     stripeDepositPaymentIntentId: text("stripe_deposit_payment_intent_id"),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
+    /** Motif communiqué au client en cas de refus ou d'annulation. */
+    cancelReason: text("cancel_reason"),
+    /** Acceptation des conditions générales par case à cocher (spécification, module 7). */
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),

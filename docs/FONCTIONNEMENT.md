@@ -47,10 +47,10 @@ Scripts utiles :
 ```
 app/              pages et layouts (App Router)
   page.tsx        accueil
-  catalogue/      catalogue public depuis la base, et fiche set `[slug]/`
+  catalogue/      catalogue public depuis la base, fiche set `[slug]/`, tunnel `[slug]/reserver/`
   admin/          espace de gestion (rôles admin et superadmin)
-    forfaits/, sets/, lieux/, fermetures/   écrans + actions.ts (Server Actions)
-  compte/         espace client
+    forfaits/, sets/, lieux/, fermetures/, reservations/   écrans + actions.ts (Server Actions)
+  compte/         espace client : ses réservations, réponse aux dates proposées, annulation
   connexion/, inscription/   pages Clerk
   qui-sommes-nous/, mentions-legales/, cgu/
 components/       en-tête, pied de page, composants réutilisables
@@ -62,7 +62,9 @@ lib/
   format.ts       euros, slugs, libellés des statuts
   site.ts         constantes du site (contact, liens, textes de secours)
   settings.ts     lecture des réglages `site_settings` avec leurs valeurs par défaut
-  availability.ts statut d'un set (disponible, en location, en battement…) déduit des exemplaires et réservations
+  dates.ts        dates ISO (jour à Paris, ajout de jours, fin de location), sans dépendance serveur
+  availability.ts statut d'un set (disponible, en location, en battement…) et recherche d'un exemplaire libre sur une période
+  bookings.ts     fiche client, référence, création d'une demande de réservation (verrou sur les exemplaires)
   db/schema.ts    schéma de la base (source de vérité)
   db/index.ts     connexion et client Drizzle
 drizzle/          migrations SQL générées, à commiter
@@ -84,7 +86,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Clients et comptes**
 
-- `customers` : un client par compte Clerk (`clerk_user_id`). Coordonnées et note interne. Le compte de connexion vit chez Clerk, la fiche client vit ici.
+- `customers` : un client par compte Clerk (`clerk_user_id`). Coordonnées (nom, prénom, téléphone, adresse : obligatoires à la première demande, spécification module 3), note interne, et `blocked` : compte bloqué à la main par les gérants, plus aucune réservation possible. Le compte de connexion vit chez Clerk, la fiche client vit ici.
 
 **Catalogue**
 
@@ -100,7 +102,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Réservations**
 
-- `bookings` : une réservation = un client, un set, des dates, un exemplaire attribué, un lieu de remise, les montants (`rental_cents`, `deposit_cents`) et les identifiants Stripe. Les montants sont en centimes d'euro, en entiers, pour éviter les erreurs d'arrondi. Le champ `reference` est un code court communiqué au client.
+- `bookings` : une réservation = un client, un set, des dates, un exemplaire attribué dès la demande, un lieu de remise, les montants (`rental_cents`, `deposit_cents`) et les identifiants Stripe. Les montants sont en centimes d'euro, en entiers, pour éviter les erreurs d'arrondi. Le champ `reference` est un code court (`SB-` + 5 caractères sans ambiguïté) communiqué au client. `proposed_start_date` / `proposed_end_date` portent une autre date proposée par les gérants, `cancel_reason` le motif visible du client, `terms_accepted_at` l'acceptation des conditions générales.
 - `booking_events` : historique des changements de statut et des actions, avec l'auteur (`customer`, `admin`, `system`).
 
 **Contenu éditable**
@@ -111,22 +113,32 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 ### Cycle de vie d'une réservation
 
 ```
-pending_payment ──paiement Stripe──▶ confirmed ──remise──▶ picked_up ──retour──▶ returned
-       │                                 │
-       └──────── annulation ─────────────┴──▶ cancelled
+                    ┌── proposer une autre date ──▶ date_proposed ──client accepte──┐
+                    │                                     │                          ▼
+demande ──▶ pending_review ──accepter──────────────────────┼───────────────────▶ pending_payment ──paiement──▶ confirmed ──remise──▶ picked_up ──retour──▶ returned
+                    │                                     │                          │
+                    └── refuser / client annule ──────────┴──── client annule ───────┴──▶ cancelled
 ```
 
-- `pending_payment` : créée quand le client lance le paiement. Bloque l'exemplaire pendant un court délai (session Stripe), puis expire.
-- `confirmed` : paiement reçu, exemplaire attribué, client prévenu.
+- `pending_review` : demande envoyée par le client depuis le tunnel. Toute demande est validée à la main par les gérants (spécification, module 5). L'exemplaire est attribué tout de suite pour bloquer les dates.
+- `date_proposed` : les gérants proposent d'autres dates ; le client les accepte depuis son compte (elles remplacent les siennes, le prix est recalculé) ou annule.
+- `pending_payment` : demande acceptée. Le moment du paiement (avant ou après validation) est encore en attente de la cliente, cette étape est donc un point d'arrêt pour l'instant.
+- `confirmed` : paiement reçu, client prévenu.
 - `picked_up` : remise faite, empreinte de caution posée.
 - `returned` : set rendu et vérifié, empreinte libérée (ou capturée partiellement en cas de pièces manquantes).
-- `cancelled` : annulation par le client ou par les gérants.
+- `cancelled` : refus des gérants, annulation par le client (possible tant que la demande n'est pas acceptée) ou par les gérants. `cancel_reason` est montré au client.
+
+Chaque changement est tracé dans `booking_events` avec son auteur.
 
 ### Disponibilité
 
 Un exemplaire est disponible sur une période si aucune réservation `pending_payment`, `confirmed` ou `picked_up` ne le chevauche, en ajoutant un délai de battement entre deux locations. Ce délai est `sets.turnaround_days` s'il est renseigné, sinon le réglage global `turnaround_days` de `site_settings` (4 jours par défaut, valeur de la spécification). Il ne s'applique pas quand le même client enchaîne deux réservations sur le même exemplaire sans le rendre (prolongation). Un set est disponible si au moins un de ses exemplaires `available` l'est. Les `blackout_periods` interdisent les dates de début et de fin qui tombent dedans.
 
 Les réglages sont lus avec `getSetting()` de `lib/settings.ts`, qui renvoie la valeur par défaut si la ligne manque ; c'est aussi de là que le seed tire ses valeurs.
+
+### Exemplaire libre sur une période
+
+`findFreeCopy()` (`lib/availability.ts`, fonction pure) cherche le premier exemplaire `available` sans réservation qui chevauche la période demandée, élargie du battement avant et après. Les réservations prises en compte sont celles qui réservent des dates : `pending_review`, `date_proposed` (sur les dates proposées), `pending_payment`, `confirmed`, `picked_up`. Exception de la spécification (module 2) : le même client qui enchaîne sur le même set n'a pas de battement, seul le chevauchement strict compte. Les dates de remise et de retour ne doivent pas tomber dans une `blackout_period`. La création d'une demande verrouille les exemplaires du set (`SELECT … FOR UPDATE`) pour que deux demandes simultanées ne prennent pas le même.
 
 ### Statut affiché au client
 
@@ -168,7 +180,7 @@ pnpm role contact@agon-gate.com superadmin
 pnpm role marion@example.com none      # retirer
 ```
 
-La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première réservation, à partir du compte Clerk. Ça évite un webhook et une synchronisation à maintenir.
+La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première demande de réservation, à partir du compte Clerk et des coordonnées saisies dans le tunnel (mises à jour à chaque demande). Ça évite un webhook et une synchronisation à maintenir. Le tunnel (`/catalogue/<slug>/reserver`) est protégé par `proxy.ts` comme `/compte`.
 
 Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
 
@@ -199,6 +211,14 @@ Liste ordonnée (flèches), création, modification, activation, suppression. Un
 
 Fermetures à venir modifiables, création, suppression ; les périodes passées sont listées en bas pour mémoire. Si une réservation active a sa remise ou son retour dans la période, l'écran l'indique en rouge : c'est aux gérants de contacter le client, rien n'est annulé automatiquement. Pour bloquer un seul set (retard, casse), on passe son exemplaire « En réparation » depuis la fiche du set, ce qui couvre le « blocage par set » de la spécification.
 
+### Réservations (`/admin/reservations`)
+
+Liste en quatre groupes : à traiter (`pending_review`), en attente du client (`date_proposed`), acceptées et en cours, terminées et annulées. Le tableau de bord affiche le nombre de demandes à traiter. La fiche d'une réservation montre la location, le client (avec blocage et déblocage du compte), la note interne, les décisions possibles et l'historique.
+
+- **Accepter** : `pending_review` → `pending_payment`. Rien d'autre n'est déclenché pour l'instant (pas d'email, pas de paiement).
+- **Proposer d'autres dates** : vérifie qu'un exemplaire est libre sur les nouvelles dates (battement compris, en ignorant la réservation elle-même), puis `date_proposed` avec un message facultatif au client.
+- **Refuser** : `cancelled` avec un motif visible du client, possible aussi sur une demande déjà acceptée tant qu'elle n'est pas payée.
+
 ### Où vit un set
 
 | Quoi | Où | Forme |
@@ -214,10 +234,19 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 `/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Tant que le tunnel de réservation n'existe pas, le bouton « Réserver » ouvre un email pré-rempli ; un set indisponible propose « Être prévenu de son retour ».
 
-## 9. Étapes suivantes
+## 9. Tunnel de réservation
 
-- Écrans de l'espace admin restants : réservations, contenus, maintenance.
+Depuis la fiche d'un set disponible, « Réserver ce set » mène à `/catalogue/<slug>/reserver` (connexion requise). Le client choisit la date de remise (à partir de demain), le nombre de jours (libre, minimum `min_rental_days`, pas de maximum), le lieu de remise parmi les lieux actifs, laisse un message facultatif, renseigne ses coordonnées et coche les conditions générales. Le total (prix par jour × jours) et la date de retour s'affichent en direct ; la fin est comptée en jours calendaires (mardi + 4 jours = vendredi). Aucun paiement à cette étape.
+
+Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clair si : le set n'est plus publié, le lieu n'est pas actif, la remise ou le retour tombe dans une fermeture, aucun exemplaire n'est libre, ou le compte est bloqué. Sinon la réservation est créée en `pending_review` avec sa référence, et le client est redirigé vers `/compte`, où il suit ses demandes, accepte une date proposée ou annule.
+
+Hypothèses prises faute de règle dans la spécification : la remise ne peut pas être demandée pour le jour même, et le planning par lieu (une seule remise à la fois) n'est pas contrôlé automatiquement, c'est la validation manuelle qui s'en charge.
+
+## 10. Étapes suivantes
+
+- Écrans de l'espace admin restants : contenus, maintenance.
+- Emails transactionnels : aucun fournisseur n'est encore configuré. À brancher sur les transitions de `booking_events` (demande reçue, acceptée, refusée, date proposée).
 - Saisie des 28 sets du catalogue par les gérants (ou import depuis la liste `catalogue-sets-lego.md` quand elle sera dans le dépôt).
-- Tunnel de réservation : remplacer le bouton « Réserver » de la fiche (email) par le choix des dates, du lieu de remise et le paiement.
+- Paiement Stripe et caution après `pending_payment`, une fois tranché avec la cliente si le paiement précède ou suit la validation.
 - Parcours client : catalogue depuis la base, fiche set, calendrier de disponibilité, réservation et paiement Stripe.
 - Emails transactionnels (confirmation, rappel de retour).
