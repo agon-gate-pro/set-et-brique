@@ -70,14 +70,14 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ### 16 septembre 2026
 
-- **Import des 28 sets de la cliente**. Script `scripts/import-sets.ts` (`pnpm db:import-sets 00/Sets_LEGO.csv`), parseur CSV maison, fusion des lignes de suite (Ninjago = 71720 + 70613), valeurs normalisées, un exemplaire par set, publiés sans photo. Relance sans doublon. Catalogue : 29 sets, tous disponibles.
-- **Gestion du compte** : « Gérer le compte » du bouton utilisateur envoyait vers la page des locations. Nouvelle page `/compte/profil` avec le composant Clerk `UserProfile`, lien depuis `/compte`.
-- **Coordonnées et historique dans la gestion du compte**. Onglet Coordonnées (identité, adresse, téléphone pour contrat et facture, lieu de remise préféré pré-sélectionné dans le tunnel), onglet Historique des réservations. Migration 0006 (`customers.preferred_pickup_point_id`). Correctif : les onglets n'apparaissaient pas en ligne, Clerk exige qu'ils soient déclarés dans un composant client.
-- **Comptes** : inscription testée avec succès sur l'instance Clerk de développement (e-mail + code de vérification). Plan de passage en production noté en §4.
-- **Filtre par gamme sur le catalogue**. Pastilles avec compteur, paramètre d'URL `?gamme=`, rendu côté serveur.
 - **Base et fiche set** (`a189d0a`). Table `sets` alignée sur la spécification, migration 0003, battement global à 4 jours. Formulaire admin en cinq blocs, 10 photos max. Catalogue public avec statut du jour et fiche set. Correction des sous-requêtes de la liste admin (la photo principale n'apparaissait jamais) et de l'avertissement SSL de `pg` que Next affichait comme une erreur.
 - **Lieux de remise et périodes fermées** (`b7c35cc`). Deux écrans admin, cinq lieux confirmés dans le seed.
 - **Tunnel de réservation jusqu'à la demande en attente** (`6b99e7f`). Statuts `pending_review` et `date_proposed`, migration 0004 (type recréé, l'ajout de valeur d'enum n'étant pas utilisable dans la même transaction) et 0005 (durée minimale à 1 jour, plus de maximum). Tunnel client, espace `/compte`, écran Réservations avec accepter / refuser / proposer d'autres dates, blocage du client. Tests : recherche d'exemplaire libre (12 cas purs), création de demandes sur la base (battement, prolongation, fermetures).
+- **Import des 28 sets de la cliente**. Script `scripts/import-sets.ts` (`pnpm db:import-sets 00/Sets_LEGO.csv`), parseur CSV maison, fusion des lignes de suite (Ninjago = 71720 + 70613), valeurs normalisées, un exemplaire par set, publiés sans photo. Relance sans doublon. Catalogue : 29 sets, tous disponibles.
+- **Filtre par gamme sur le catalogue**. Pastilles avec compteur, paramètre d'URL `?gamme=`, rendu côté serveur.
+- **Comptes** : inscription testée avec succès sur l'instance Clerk de développement (e-mail + code de vérification). Plan de passage en production noté en §4.
+- **Gestion du compte** : « Gérer le compte » du bouton utilisateur envoyait vers la page des locations. Nouvelle page `/compte/profil` avec le composant Clerk `UserProfile`, lien depuis `/compte`.
+- **Coordonnées et historique dans la gestion du compte**. Onglet Coordonnées (identité, adresse, téléphone pour contrat et facture, lieu de remise préféré pré-sélectionné dans le tunnel), onglet Historique des réservations. Migration 0006 (`customers.preferred_pickup_point_id`). Correctif : les onglets n'apparaissaient pas en ligne, Clerk exige qu'ils soient déclarés dans un composant client.
 
 ### Avant le 16 septembre 2026
 
