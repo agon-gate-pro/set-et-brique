@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 16 septembre 2026.
+Dernière mise à jour : 17 septembre 2026.
 
 ## 1. Où on en est
 
@@ -51,7 +51,7 @@ Autres points à poser quand l'occasion se présente :
 
 ## 4. Prochaines étapes, dans l'ordre proposé
 
-1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée / date proposée. Les gérants doivent pouvoir modifier les textes (module 10).
+1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée, puis set remis / set rendu. Les gérants doivent pouvoir modifier les textes (module 10).
 2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées.
 3. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
 4. Séquence de retard, état des lieux et barème (module 9), puis facturation (8), contrat PDF (7), bons cadeaux (6), reporting (11).
