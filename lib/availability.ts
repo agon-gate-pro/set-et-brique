@@ -215,3 +215,91 @@ export function isInBlackout(date: string, blackouts: { startDate: string; endDa
 export function isBookable(a: SetAvailabilityResult) {
   return a.status === "available" && a.freeCopies > 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Calendrier de disponibilité, pour la fiche d'un set                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * État d'un jour du calendrier :
+ * - `free` : au moins un exemplaire peut être loué ce jour-là ;
+ * - `booked` : tous les exemplaires sont pris, en battement ou indisponibles ;
+ * - `closed` : période fermée définie par les gérants ;
+ * - `past` : jour déjà passé (ou aujourd'hui : la remise commence demain).
+ */
+export type DayAvailability = "free" | "booked" | "closed" | "past";
+
+/**
+ * Calcul pur, jour par jour du `from` au `to` inclus. Le battement s'applique
+ * toujours : on ne connaît pas encore le client qui regarde la fiche.
+ * Une période fermée prime sur le reste.
+ */
+export function computeDayAvailability(
+  copies: CopyInput[],
+  bookings: RangeBooking[],
+  blackouts: { startDate: string; endDate: string }[],
+  turnaroundDays: number,
+  from: string,
+  to: string,
+  today: string = todayIso(),
+): Record<string, DayAvailability> {
+  const days: Record<string, DayAvailability> = {};
+  for (let day = from; day <= to; day = addDays(day, 1)) {
+    if (day <= today) days[day] = "past";
+    else if (isInBlackout(day, blackouts)) days[day] = "closed";
+    else days[day] = findFreeCopy(copies, bookings, turnaroundDays, day, day, null) ? "free" : "booked";
+  }
+  return days;
+}
+
+/** Premier jour du mois d'une date ISO, décalé de `offset` mois. */
+export function monthStart(iso: string, offset = 0) {
+  const d = new Date(`${iso.slice(0, 7)}-01T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Disponibilité d'un set jour par jour, du mois courant jusqu'à `months` mois
+ * plus tard inclus : trois requêtes (exemplaires, réservations qui réservent
+ * des dates, périodes fermées).
+ */
+export async function loadDayAvailability(
+  set: { id: string; turnaroundDays: number | null },
+  months = 5,
+  today: string = todayIso(),
+) {
+  const from = monthStart(today);
+  const to = addDays(monthStart(today, months + 1), -1);
+  const [copies, bookings, blackouts, globalTurnaround] = await Promise.all([
+    db
+      .select({ id: schema.setCopies.id, status: schema.setCopies.status })
+      .from(schema.setCopies)
+      .where(eq(schema.setCopies.setId, set.id)),
+    db
+      .select({
+        id: schema.bookings.id,
+        copyId: schema.bookings.copyId,
+        customerId: schema.bookings.customerId,
+        status: schema.bookings.status,
+        startDate: schema.bookings.startDate,
+        endDate: schema.bookings.endDate,
+        proposedStartDate: schema.bookings.proposedStartDate,
+        proposedEndDate: schema.bookings.proposedEndDate,
+      })
+      .from(schema.bookings)
+      .where(and(eq(schema.bookings.setId, set.id), inArray(schema.bookings.status, [...RESERVING_STATUSES]))),
+    db.select({ startDate: schema.blackoutPeriods.startDate, endDate: schema.blackoutPeriods.endDate }).from(schema.blackoutPeriods),
+    getSetting("turnaround_days"),
+  ]);
+  const days = computeDayAvailability(
+    copies,
+    bookings.map((b) => withLateReturn(b, today)),
+    blackouts,
+    set.turnaroundDays ?? globalTurnaround,
+    from,
+    to,
+    today,
+  );
+  return { from, to, days };
+}

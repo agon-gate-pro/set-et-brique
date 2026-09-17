@@ -168,6 +168,10 @@ Le catalogue affiche pour chaque set un des cinq statuts de la spécification. I
 
 L'ordre de priorité est celui du tableau : un set avec un exemplaire libre est « Disponible » même si un autre est loué. Pour « En location » et « En battement », la date de retour affichée est le premier jour où un exemplaire redevient libre (fin de location + battement + 1). `loadAvailability()` fait le même calcul pour une liste de sets en deux requêtes. Le jour de référence est la date à Paris.
 
+### Calendrier de la fiche
+
+La fiche d'un set affiche un calendrier mensuel des jours où il peut être loué, du mois courant à cinq mois plus tard (`loadDayAvailability()`, `lib/availability.ts`). Le calcul est pur (`computeDayAvailability()`) : un jour est « Disponible » si `findFreeCopy()` trouve un exemplaire libre ce jour-là, en comptant le battement avant et après chaque réservation (`RESERVING_STATUSES`, demandes en attente comprises, dates proposées par les gérants si elles existent) ; « Fermé » s'il tombe dans une `blackout_period` ; « Déjà loué » sinon. Le battement s'applique toujours, le visiteur n'étant pas identifié. Les jours passés et aujourd'hui sont grisés, la remise commençant demain. Le composant client `AvailabilityCalendar` reçoit la table jour → état et ne fait que la navigation entre mois.
+
 ### Prix
 
 Chaque set est rattaché à un forfait, sinon au forfait par défaut. Total de la location = nombre de jours × prix par jour du forfait. Au démarrage, un seul forfait existe, « Forfait 1 » à 2 € par jour, marqué par défaut ; les gérants créent les autres forfaits depuis l'admin et les affectent set par set. La caution est un montant fixe par set (`sets.deposit_cents`) ; elle n'est pas débitée mais bloquée sur la carte au moment de la remise.
@@ -293,7 +297,7 @@ Rien n'est stocké sur le disque du serveur : Vercel n'en garantit pas la persis
 
 ## 8. Catalogue public
 
-`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Un filtre par gamme (pastilles « Toutes », une par gamme avec son nombre de sets, « Autres » pour les sets sans gamme) s'applique par l'URL, `?gamme=harry-potter`, le slug étant dérivé du champ `theme` ; une valeur inconnue revient à « Toutes ». Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Un set disponible a un bouton « Réserver ce set » vers le tunnel ; un set indisponible propose « Être prévenu de son retour » (email pré-rempli).
+`/catalogue` liste les sets `published`, coups de cœur d'abord, avec photo principale, statut du jour, prix par jour (forfait du set ou forfait par défaut) et caution. Un filtre par gamme (pastilles « Toutes », une par gamme avec son nombre de sets, « Autres » pour les sets sans gamme) s'applique par l'URL, `?gamme=harry-potter`, le slug étant dérivé du champ `theme` ; une valeur inconnue revient à « Toutes ». Sans set publié, la page renvoie vers Poppins et le contact. `/catalogue/<slug>` est la fiche : photos, statut et date de retour, prix, caution, description, commentaire public (« Bon à savoir »), et le calendrier des disponibilités (voir §5) et le bloc « En bref » (pièces, figurines, notices, dimensions, temps de montage, âge, marque, numéros). Une notice numérique déclenche l'encart d'avertissement demandé par la cliente. Le poids n'est jamais affiché. Un set disponible a un bouton « Réserver ce set » vers le tunnel ; un set indisponible propose « Être prévenu de son retour » (email pré-rempli).
 
 ## 9. Tunnel de réservation
 

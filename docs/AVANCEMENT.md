@@ -73,6 +73,8 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 - **Revue de sécurité, deux correctifs**. Les notes internes des gérants (`customers.adminNote`, `customers.blockedReason`, `bookings.adminNote`, `bookings.returnNote`) partaient dans la charge RSC de `/compte`, `/compte/profil` et du tunnel : les lignes entières étaient passées en prop à des composants client. Projection explicite des colonnes (`customerPublicColumns`, `bookingCustomerColumns` dans `lib/bookings.ts`), type `CustomerBooking` sur la carte de réservation. `safeReturnPath()` acceptait `/\hôte`, lu comme une origine externe par le navigateur : redirection ouverte fermée.
 
+- **Calendrier de disponibilités sur la fiche set**. Cadre « Disponibilités » avec un mois à la fois, navigation sur six mois, trois états (disponible, déjà loué, fermé) et jours passés grisés. Calcul pur jour par jour (`computeDayAvailability()`), réutilisant la recherche d'exemplaire libre du tunnel : locations prévues, demandes en attente, battement et périodes fermées sont exclus.
+
 ### 16 septembre 2026
 
 - **Base et fiche set** (`a189d0a`). Table `sets` alignée sur la spécification, migration 0003, battement global à 4 jours. Formulaire admin en cinq blocs, 10 photos max. Catalogue public avec statut du jour et fiche set. Correction des sous-requêtes de la liste admin (la photo principale n'apparaissait jamais) et de l'avertissement SSL de `pg` que Next affichait comme une erreur.

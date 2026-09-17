@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { MonitorSmartphone } from "lucide-react";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
-import { isBookable, loadAvailability } from "@/lib/availability";
+import { AvailabilityCalendar } from "@/components/catalogue/availability-calendar";
+import { isBookable, loadAvailability, loadDayAvailability } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
 import { formatCents, formatSetNumbers, instructionTypeLabels } from "@/lib/format";
 import { site } from "@/lib/site";
@@ -37,8 +38,9 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
   const set = await loadSet(slug);
   if (!set) notFound();
 
-  const [availability, defaultPlan] = await Promise.all([
+  const [availability, calendar, defaultPlan] = await Promise.all([
     loadAvailability([set]),
+    loadDayAvailability(set),
     db.query.ratePlans.findFirst({ where: eq(schema.ratePlans.isDefault, true) }),
   ]);
   const a = availability.get(set.id);
@@ -156,17 +158,20 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
           ) : null}
         </div>
 
-        <dl className="brick-card p-6 grid gap-3">
-          <h2 className="text-2xl font-semibold">En bref</h2>
-          {facts
-            .filter((f): f is [string, string] => f[1] !== null)
-            .map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-4 border-b border-slate-ink/10 pb-2 last:border-0">
-                <dt className="text-slate-ink">{label}</dt>
-                <dd className="font-semibold text-right">{value}</dd>
-              </div>
-            ))}
-        </dl>
+        <div className="grid gap-10">
+          <AvailabilityCalendar from={calendar.from} to={calendar.to} days={calendar.days} />
+          <dl className="brick-card p-6 grid gap-3">
+            <h2 className="text-2xl font-semibold">En bref</h2>
+            {facts
+              .filter((f): f is [string, string] => f[1] !== null)
+              .map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4 border-b border-slate-ink/10 pb-2 last:border-0">
+                  <dt className="text-slate-ink">{label}</dt>
+                  <dd className="font-semibold text-right">{value}</dd>
+                </div>
+              ))}
+          </dl>
+        </div>
       </section>
     </>
   );
