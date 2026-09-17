@@ -199,6 +199,25 @@ export const returnSchema = z.object({
   returnNote: optionalText,
 });
 
+const giftVoucherQuantity = z
+  .string()
+  .trim()
+  .transform((s, ctx) => {
+    const n = s === "" ? 1 : Number(s);
+    if (!Number.isInteger(n) || n < 1 || n > 200) {
+      ctx.addIssue({ code: "custom", message: "Quantité invalide (entre 1 et 200)" });
+      return z.NEVER;
+    }
+    return n;
+  });
+
+export const giftVoucherCreateSchema = z.object({
+  amountEuros: eurosToCents.refine((n) => n > 0, "Le montant doit être supérieur à 0"),
+  quantity: giftVoucherQuantity,
+  batchLabel: optionalText,
+  note: optionalText,
+});
+
 export const copySchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire"),
   condition: z.enum(["new", "very_good", "good", "worn"]),

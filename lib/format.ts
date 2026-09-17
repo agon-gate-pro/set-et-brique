@@ -1,4 +1,10 @@
 const euro = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
+
+/** « 12 oct. 2026 » à partir d'un timestamp complet (`Date` ou ISO avec heure). */
+export function formatDateTime(date: Date | string) {
+  return dateTimeFormatter.format(typeof date === "string" ? new Date(date) : date);
+}
 
 export function formatCents(cents: number) {
   return euro.format(cents / 100);
@@ -116,4 +122,17 @@ export const bookingStatusLabels = {
   picked_up: "En cours de location",
   returned: "Rendue",
   cancelled: "Annulée",
+} as const;
+
+/** `expired` n'est pas stocké en base : il se déduit de `status` + `expiresAt`. */
+export const giftVoucherStatusLabels = {
+  valid: "Valide",
+  used: "Utilisé",
+  cancelled: "Annulé",
+  expired: "Expiré",
+} as const;
+
+export const giftVoucherOriginLabels = {
+  purchase: "Acheté en ligne",
+  admin: "Émis par Set et Brique",
 } as const;

@@ -8,6 +8,7 @@ const sections = [
   { href: "/admin/forfaits", label: "Forfaits" },
   { href: "/admin/lieux", label: "Lieux de remise" },
   { href: "/admin/fermetures", label: "Périodes fermées" },
+  { href: "/admin/bons-cadeaux", label: "Bons cadeaux" },
   { href: "/admin/contenus", label: "Contenus du site" },
 ];
 
