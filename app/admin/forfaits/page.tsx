@@ -3,10 +3,12 @@ import { asc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { RatePlanCreateForm, RatePlanRow } from "./forms";
 import { setDefaultRatePlan } from "./actions";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Forfaits", robots: { index: false } };
 
 export default async function RatePlansPage() {
+  await requireRole("admin");
   const plans = await db
     .select({
       id: schema.ratePlans.id,

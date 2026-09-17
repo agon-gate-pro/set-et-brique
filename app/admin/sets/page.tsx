@@ -4,11 +4,13 @@ import Link from "next/link";
 import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { formatCents, formatSetNumbers, setStatusLabels } from "@/lib/format";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Sets", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function SetsPage() {
+  await requireRole("admin");
   const rows = await db
     .select({
       id: schema.sets.id,

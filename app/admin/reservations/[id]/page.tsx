@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
 import { AdminNoteForm, CustomerBlockForm, HandoverActions, ReviewActions } from "./forms";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Réservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ const actorLabels = { customer: "client", admin: "gérants", system: "système" 
 const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
 
 export default async function BookingPage({ params }: PageProps<"/admin/reservations/[id]">) {
+  await requireRole("admin");
   const { id } = await params;
   const booking = await db.query.bookings.findFirst({
     where: eq(schema.bookings.id, id),

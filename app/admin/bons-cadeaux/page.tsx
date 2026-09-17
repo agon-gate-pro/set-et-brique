@@ -10,6 +10,7 @@ import {
 import { giftVoucherDisplayStatus, type GiftVoucherDisplayStatus } from "@/lib/gift-vouchers";
 import { inputClass } from "@/components/admin/form";
 import { GiftVoucherActions, GiftVoucherCreateForm } from "./forms";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Bons cadeaux", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function GiftVouchersPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  await requireRole("admin");
   const params = await searchParams;
   const status = typeof params.status === "string" ? params.status : "";
   const origin = typeof params.origin === "string" ? params.origin : "";

@@ -5,11 +5,13 @@ import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { createSet } from "../actions";
 import { SetForm } from "../set-form";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Nouveau set", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function NewSetPage() {
+  await requireRole("admin");
   const ratePlans = await db
     .select({
       id: schema.ratePlans.id,

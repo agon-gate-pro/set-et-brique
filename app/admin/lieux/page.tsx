@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { asc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { PickupPointCreateForm, PickupPointRow } from "./forms";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Lieux de remise", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function PickupPointsPage() {
+  await requireRole("admin");
   const points = await db
     .select({
       point: schema.pickupPoints,

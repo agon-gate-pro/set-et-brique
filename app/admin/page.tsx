@@ -3,10 +3,12 @@ import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { todayIso } from "@/lib/dates";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Gestion", robots: { index: false } };
 
 export default async function AdminHome() {
+  await requireRole("admin");
   const today = todayIso();
   const [[sets], [copies], [bookings], [customers], [pending], [late]] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.sets),

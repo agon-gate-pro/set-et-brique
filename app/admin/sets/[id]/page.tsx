@@ -8,11 +8,13 @@ import { setStatusLabels } from "@/lib/format";
 import { updateSet } from "../actions";
 import { SetForm } from "../set-form";
 import { CopiesSection, DeleteSetForm, ImagesSection } from "./sections";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Fiche set", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id]">) {
+  await requireRole("admin");
   const { id } = await params;
   const set = await db.query.sets.findFirst({
     where: eq(schema.sets.id, id),

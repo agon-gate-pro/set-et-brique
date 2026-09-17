@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage({ searchParams }: PageProps<"/compte">) {
   const { demande } = await searchParams;
-  const { userId } = await auth();
+  // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
+  const { userId } = await auth.protect();
   const [user, admin, customer] = await Promise.all([
     currentUser(),
     isAdmin(),

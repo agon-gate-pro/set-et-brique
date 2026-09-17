@@ -6,6 +6,7 @@ import { daysLate, todayIso } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDateShort, formatPhone, formatTime } from "@/lib/format";
 import { ListActions } from "./list-actions";
 import type { BookingStatus } from "@/lib/db/schema";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Réservations", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ const groups: { title: string; statuses: BookingStatus[]; hint?: string }[] = [
 ];
 
 export default async function BookingsPage() {
+  await requireRole("admin");
   const today = todayIso();
   const bookings = await db.query.bookings.findMany({
     with: {

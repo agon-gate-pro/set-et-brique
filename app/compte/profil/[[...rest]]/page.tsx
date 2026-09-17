@@ -20,7 +20,8 @@ export const dynamic = "force-dynamic";
 export default async function ProfilePage({ searchParams }: PageProps<"/compte/profil/[[...rest]]">) {
   const { retour } = await searchParams;
   const returnTo = safeReturnPath(retour);
-  const { userId } = await auth();
+  // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
+  const { userId } = await auth.protect();
   const [user, customer, pickupPoints] = await Promise.all([
     currentUser(),
     userId ? findCustomerByClerkId(userId) : null,

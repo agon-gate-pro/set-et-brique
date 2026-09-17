@@ -62,7 +62,7 @@ app/              pages et layouts (App Router)
   qui-sommes-nous/, mentions-legales/, cgu/
 components/       en-tête, pied de page, composants réutilisables
   catalogue/      pastille de disponibilité
-proxy.ts          protection des routes (Clerk)
+proxy.ts          contexte d'authentification Clerk (ne protège plus les routes)
 lib/
   auth.ts         rôles et gardes d'accès
   validation.ts   schémas zod des formulaires
@@ -187,7 +187,15 @@ Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` aff
 | Coordonnées | nous (`app/compte/profil/profile-form.tsx`, action `saveCustomerProfile`) | prénom, nom, téléphone, adresse, ville, lieu de remise préféré ; écrit dans `customers` via `upsertCustomer` |
 | Historique | nous | toutes les réservations du client, en lecture ; les actions restent sur `/compte` |
 
-Les onglets à nous sont des `UserProfile.Page` déclarées dans un composant client (`profile-panel.tsx`) : Clerk les reconnaît en comparant le type des éléments enfants, ce qui échoue si les éléments sont créés côté serveur. Leur contenu, lui, est rendu côté serveur et passé en props. Le téléphone est normalisé à l'enregistrement (`formatPhone()` de `lib/format.ts` : « 06 12 34 56 78 », les formes +33 ou avec points ramenées à celle-ci, les numéros étrangers gardés tels quels) et affiché ainsi partout, avec un lien `tel:`. Les coordonnées servent au contrat et à la facture ; elles sont pré-remplies dans le tunnel, où le client peut encore les corriger (ce qui met la fiche à jour). Le lieu de remise préféré (`customers.preferred_pickup_point_id`, migration 0006) pré-sélectionne le lieu dans le tunnel, sans l'imposer. Le fichier `proxy.ts` à la racine (l'équivalent du middleware dans Next.js 16) exige une session pour `/admin`, `/compte` et le tunnel `/catalogue/<slug>/reserver`.
+Les onglets à nous sont des `UserProfile.Page` déclarées dans un composant client (`profile-panel.tsx`) : Clerk les reconnaît en comparant le type des éléments enfants, ce qui échoue si les éléments sont créés côté serveur. Leur contenu, lui, est rendu côté serveur et passé en props. Le téléphone est normalisé à l'enregistrement (`formatPhone()` de `lib/format.ts` : « 06 12 34 56 78 », les formes +33 ou avec points ramenées à celle-ci, les numéros étrangers gardés tels quels) et affiché ainsi partout, avec un lien `tel:`. Les coordonnées servent au contrat et à la facture ; elles sont pré-remplies dans le tunnel, où le client peut encore les corriger (ce qui met la fiche à jour). Le lieu de remise préféré (`customers.preferred_pickup_point_id`, migration 0006) pré-sélectionne le lieu dans le tunnel, sans l'imposer. Les pages `/compte` et `/compte/profil` appellent `auth.protect()` de Clerk en tête : un visiteur anonyme est renvoyé vers `/connexion` avec le chemin courant en retour. Le tunnel fait sa propre redirection explicite. Voir §6.1 pour la raison.
+
+### 6.1 Où se fait la protection, et pourquoi pas dans le proxy
+
+Chaque ressource serveur se garde elle-même : les pages de `/admin` et les Server Actions par `requireRole("admin")`, les pages `/compte` par `auth.protect()`, le tunnel par une redirection explicite. `proxy.ts` ne fait plus que poser le contexte d'authentification que lisent `auth()` et `currentUser()`.
+
+Jusqu'au 17 septembre 2026, `proxy.ts` protégeait `/admin`, `/compte` et le tunnel par motif d'URL (`createRouteMatcher` + `auth.protect()`). Clerk a déprécié ce mécanisme, et pour une raison qui nous concernait directement : un motif raisonne sur des chemins, alors qu'en navigation côté client le routeur Next peut ne demander au serveur que le segment d'une page, sans réexécuter le layout parent. Le `requireRole()` de `app/admin/layout.tsx` n'était donc pas une barrière suffisante à lui seul — il l'était uniquement parce que le motif du proxy couvrait le trou en amont. Retirer le motif sans garder chaque page aurait rendu les listes de réservations et de clients, notes internes comprises, lisibles par une requête RSC forgée par un visiteur anonyme. Les écritures, elles, seraient restées protégées par les contrôles des Server Actions.
+
+D'où la règle : **toute nouvelle page sous `/admin` commence par `await requireRole("admin")`**, même si son layout le fait déjà. Un layout n'est pas une frontière de sécurité.
 
 Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk :
 
@@ -197,7 +205,7 @@ Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk
 | `admin` | les gérants (Marion et Gaëtan) | `/admin` : sets, exemplaires, réservations, forfaits, contenus |
 | `superadmin` | Agon-Gate | tout `admin`, plus `/admin/maintenance` (réglages techniques, rôles) |
 
-Le contrôle du rôle se fait côté serveur dans `app/admin/layout.tsx` via `requireRole()` de `lib/auth.ts`. Le rôle est lu dans le jeton de session si le Dashboard Clerk expose `metadata` dans les claims (Sessions > Customize session token : `{"metadata": "{{user.public_metadata}}"}`), sinon via l'API Clerk. Les deux chemins fonctionnent, le premier évite un appel réseau par page.
+Le contrôle du rôle se fait côté serveur avec `requireRole()` de `lib/auth.ts`, appelé en tête de **chacune** des pages de `/admin` et de chaque Server Action, et non dans le seul `app/admin/layout.tsx` (voir §6.1). Le rôle est lu dans le jeton de session si le Dashboard Clerk expose `metadata` dans les claims (Sessions > Customize session token : `{"metadata": "{{user.public_metadata}}"}`), sinon via l'API Clerk. Les deux chemins fonctionnent, le premier évite un appel réseau par page.
 
 Attribuer un rôle, une fois que la personne a créé son compte sur le site :
 
@@ -207,7 +215,7 @@ pnpm role contact@agon-gate.com superadmin
 pnpm role marion@example.com none      # retirer
 ```
 
-La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première demande de réservation ou au premier enregistrement de l'onglet Coordonnées, à partir du compte Clerk et des coordonnées saisies (mises à jour à chaque demande). Ça évite un webhook et une synchronisation à maintenir. Le tunnel (`/catalogue/<slug>/reserver`) est protégé par `proxy.ts` comme `/compte`.
+La fiche client en base (`customers`) n'est pas créée à l'inscription : elle est créée à la première demande de réservation ou au premier enregistrement de l'onglet Coordonnées, à partir du compte Clerk et des coordonnées saisies (mises à jour à chaque demande). Ça évite un webhook et une synchronisation à maintenir. Le tunnel (`/catalogue/<slug>/reserver`) se protège lui-même, comme `/compte`.
 
 ### Où vivent les données d'un client
 

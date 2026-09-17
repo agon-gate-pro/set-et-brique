@@ -4,11 +4,13 @@ import { todayIso } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { BlackoutCreateForm, BlackoutRow } from "./forms";
+import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Périodes fermées", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function BlackoutsPage() {
+  await requireRole("admin");
   const today = todayIso();
   const rows = await db
     .select({
