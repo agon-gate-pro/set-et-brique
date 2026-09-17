@@ -3,7 +3,7 @@ import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
-import { findCustomerByClerkId } from "@/lib/bookings";
+import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { BookingCard } from "./booking-card";
 
@@ -21,6 +21,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
 
   const bookings = customer
     ? await db.query.bookings.findMany({
+        columns: bookingCustomerColumns,
         where: eq(schema.bookings.customerId, customer.id),
         with: { set: { columns: { name: true, slug: true } }, pickupPoint: { columns: { name: true } } },
         orderBy: [desc(schema.bookings.createdAt)],

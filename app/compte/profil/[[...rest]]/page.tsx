@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { asc, desc, eq } from "drizzle-orm";
-import { findCustomerByClerkId, safeReturnPath } from "@/lib/bookings";
+import { bookingCustomerColumns, findCustomerByClerkId, safeReturnPath } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
 import { ProfileForm } from "../profile-form";
@@ -32,6 +32,7 @@ export default async function ProfilePage({ searchParams }: PageProps<"/compte/p
   ]);
   const bookings = customer
     ? await db.query.bookings.findMany({
+        columns: bookingCustomerColumns,
         where: eq(schema.bookings.customerId, customer.id),
         with: { set: { columns: { name: true, slug: true } }, pickupPoint: { columns: { name: true } } },
         orderBy: [desc(schema.bookings.createdAt)],

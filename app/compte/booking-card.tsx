@@ -5,6 +5,7 @@ import { ConfirmButton, FormMessage, SubmitButton } from "@/components/admin/for
 import { daysLate, todayIso } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDate, formatTime } from "@/lib/format";
 import type { Booking } from "@/lib/db/schema";
+import type { CustomerBooking } from "@/lib/bookings";
 import { acceptProposedDate, cancelRequest } from "./actions";
 
 const badge: Record<Booking["status"], string> = {
@@ -23,7 +24,7 @@ export function BookingCard({
   setSlug,
   pickupPoint,
 }: {
-  booking: Booking;
+  booking: CustomerBooking;
   setName: string;
   setSlug: string;
   pickupPoint: string | null;

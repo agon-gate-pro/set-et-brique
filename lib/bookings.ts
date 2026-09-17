@@ -10,7 +10,7 @@ import {
   withLateReturn,
 } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
-import type { Customer } from "@/lib/db/schema";
+import type { Booking, Customer } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings";
 
 /** Référence courte lisible, sans caractères ambigus (0/O, 1/I). */
@@ -72,7 +72,8 @@ export function isCustomerComplete(
 /** Chemin de retour interne (« /catalogue/x/reserver ») ; tout le reste est ignoré. */
 export function safeReturnPath(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  return /^\/(?!\/)[^\s]*$/.test(value) ? value : null;
+  // Refuse « //hôte » et « /\hôte » : le navigateur normalise l'antislash en barre oblique.
+  return /^\/(?![/\\])[^\s\\]*$/.test(value) ? value : null;
 }
 
 /** Adresse de la page Coordonnées, avec retour vers une page une fois enregistrées. */
@@ -80,8 +81,55 @@ export function coordinatesUrl(returnTo?: string | null) {
   return returnTo ? `/compte/profil/coordonnees?retour=${encodeURIComponent(returnTo)}` : "/compte/profil/coordonnees";
 }
 
+/**
+ * Colonnes du client transmissibles au navigateur. Les notes internes
+ * (`adminNote`, `blockedReason`) restent réservées aux pages admin, qui
+ * lisent la table directement.
+ */
+export const customerPublicColumns = {
+  id: true,
+  clerkUserId: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  phone: true,
+  addressLine: true,
+  postalCode: true,
+  city: true,
+  preferredPickupPointId: true,
+  blocked: true,
+} as const satisfies Partial<Record<keyof Customer, true>>;
+
+/**
+ * Colonnes d'une réservation visibles par le client. `adminNote` et
+ * `returnNote` sont des notes internes : jamais envoyées au navigateur.
+ */
+export const bookingCustomerColumns = {
+  id: true,
+  reference: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  pickupTime: true,
+  days: true,
+  rentalCents: true,
+  depositCents: true,
+  proposedStartDate: true,
+  proposedEndDate: true,
+  customerNote: true,
+  cancelReason: true,
+  pickedUpAt: true,
+  returnedAt: true,
+} as const satisfies Partial<Record<keyof Booking, true>>;
+
+export type CustomerBooking = Pick<Booking, keyof typeof bookingCustomerColumns>;
+
+/** Client courant, sans les notes internes (voir `customerPublicColumns`). */
 export async function findCustomerByClerkId(clerkUserId: string) {
-  return db.query.customers.findFirst({ where: eq(schema.customers.clerkUserId, clerkUserId) });
+  return db.query.customers.findFirst({
+    columns: customerPublicColumns,
+    where: eq(schema.customers.clerkUserId, clerkUserId),
+  });
 }
 
 export class BookingError extends Error {}
