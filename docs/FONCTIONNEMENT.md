@@ -187,7 +187,7 @@ Les comptes sont gérés par Clerk. Les pages `/connexion` et `/inscription` aff
 | Coordonnées | nous (`app/compte/profil/profile-form.tsx`, action `saveCustomerProfile`) | prénom, nom, téléphone, adresse, ville, lieu de remise préféré ; écrit dans `customers` via `upsertCustomer` |
 | Historique | nous | toutes les réservations du client, en lecture ; les actions restent sur `/compte` |
 
-Les onglets à nous sont des `UserProfile.Page` déclarées dans un composant client (`profile-panel.tsx`) : Clerk les reconnaît en comparant le type des éléments enfants, ce qui échoue si les éléments sont créés côté serveur. Leur contenu, lui, est rendu côté serveur et passé en props. Le téléphone est normalisé à l'enregistrement (`formatPhone()` de `lib/format.ts` : « 06 12 34 56 78 », les formes +33 ou avec points ramenées à celle-ci, les numéros étrangers gardés tels quels) et affiché ainsi partout, avec un lien `tel:`. Les coordonnées servent au contrat et à la facture ; elles sont pré-remplies dans le tunnel, où le client peut encore les corriger (ce qui met la fiche à jour). Le lieu de remise préféré (`customers.preferred_pickup_point_id`, migration 0006) pré-sélectionne le lieu dans le tunnel, sans l'imposer. Les pages `/compte` et `/compte/profil` appellent `auth.protect()` de Clerk en tête : un visiteur anonyme est renvoyé vers `/connexion` avec le chemin courant en retour. Le tunnel fait sa propre redirection explicite. Voir §6.1 pour la raison.
+Les onglets à nous sont des `UserProfile.Page` déclarées dans un composant client (`profile-panel.tsx`) : Clerk les reconnaît en comparant le type des éléments enfants, ce qui échoue si les éléments sont créés côté serveur. Leur contenu, lui, est rendu côté serveur et passé en props. Le téléphone est normalisé à l'enregistrement (`formatPhone()` de `lib/format.ts` : « 06 12 34 56 78 », les formes +33 ou avec points ramenées à celle-ci, les numéros étrangers gardés tels quels) et affiché ainsi partout, avec un lien `tel:`. Les coordonnées servent au contrat et à la note ; elles sont pré-remplies dans le tunnel, où le client peut encore les corriger (ce qui met la fiche à jour). Le lieu de remise préféré (`customers.preferred_pickup_point_id`, migration 0006) pré-sélectionne le lieu dans le tunnel, sans l'imposer. Les pages `/compte` et `/compte/profil` appellent `auth.protect()` de Clerk en tête : un visiteur anonyme est renvoyé vers `/connexion` avec le chemin courant en retour. Le tunnel fait sa propre redirection explicite. Voir §6.1 pour la raison.
 
 ### 6.1 Où se fait la protection, et pourquoi pas dans le proxy
 
@@ -223,7 +223,7 @@ La fiche client en base (`customers`) n'est pas créée à l'inscription : elle 
 | --- | --- | --- |
 | Identité de connexion : e-mail, mot de passe (haché), compte Google lié, prénom et nom saisis chez Clerk, photo, sessions actives | Clerk (serveurs Clerk, instance de développement aujourd'hui) | un utilisateur Clerk, identifié par `clerk_user_id` |
 | Rôle gérant ou superadmin | Clerk, `publicMetadata.role` de l'utilisateur | attribué par `pnpm role` |
-| Coordonnées de facturation et de contrat : prénom, nom, téléphone, adresse, code postal, ville | Postgres Neon, table `customers` | une ligne par client, créée à la première demande ou au premier enregistrement de l'onglet Coordonnées, reliée à Clerk par `clerk_user_id` |
+| Coordonnées portées sur la note et le contrat : prénom, nom, téléphone, adresse, code postal, ville | Postgres Neon, table `customers` | une ligne par client, créée à la première demande ou au premier enregistrement de l'onglet Coordonnées, reliée à Clerk par `clerk_user_id` |
 | Lieu de remise préféré, blocage du compte et sa raison, note interne des gérants | Postgres, table `customers` | mêmes lignes |
 | Réservations : set, exemplaire, dates, lieu, montants, statut, message du client, horodatage de l'acceptation des CG | Postgres, table `bookings` | une ligne par demande, rattachée à `customers.id` |
 | Historique des changements de statut | Postgres, table `booking_events` | une ligne par transition |
@@ -235,7 +235,7 @@ L'e-mail est copié de Clerk dans `customers.email` à chaque enregistrement, po
 
 Une ligne Drizzle passée en prop à un composant client est sérialisée entière dans la réponse, quel que soit le type TypeScript affiché sur le prop. Les pages client projettent donc les colonnes à la requête : `findCustomerByClerkId()` ne lit que `customerPublicColumns` (jamais `adminNote` ni `blockedReason`), et les listes de réservations de `/compte` et `/compte/profil` ne lisent que `bookingCustomerColumns` (jamais `adminNote` ni `returnNote`, ni les identifiants Stripe). `BookingCard` est typé sur `CustomerBooking`, dérivé de cette projection. Les pages admin lisent les lignes complètes. Le chemin de retour `retour` n'accepte qu'un chemin interne : `safeReturnPath()` refuse `//hôte` et `/\hôte`, que le navigateur lit comme une origine externe.
 
-Règle de conservation retenue : 3 ans après la dernière activité du client, ou dès qu'il supprime son compte. Les factures et contrats sont archivés dans le logiciel comptable avec leurs durées légales propres, la plateforme n'en est pas le dépôt. Aujourd'hui, supprimer son compte depuis l'onglet Sécurité efface l'utilisateur chez Clerk mais laisse la ligne `customers` et les réservations, rattachées à un identifiant Clerk orphelin : la purge et l'anonymisation restent à écrire, voir `AVANCEMENT.md` §2.
+Règle de conservation retenue : 3 ans après la dernière activité du client, ou dès qu'il supprime son compte. Les notes et les contrats sont archivés dans le logiciel comptable avec leurs durées légales propres, la plateforme n'en est pas le dépôt : elle les émet et permet de les exporter. Aujourd'hui, supprimer son compte depuis l'onglet Sécurité efface l'utilisateur chez Clerk mais laisse la ligne `customers` et les réservations, rattachées à un identifiant Clerk orphelin : la purge et l'anonymisation restent à écrire, voir `AVANCEMENT.md` §2.
 
 Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
 
@@ -284,7 +284,7 @@ Liste en cinq groupes : à traiter (`pending_review`), en attente du client (`da
 - **Modifier la remise** : lieu (parmi les lieux actifs) et heure seulement, sans changement de statut ; les dates et la durée restent celles du client. La modification est tracée dans l'historique et visible du client dans son espace. Possible tant que le set n'est pas remis.
 - **Refuser** : `cancelled` avec un motif visible du client, possible aussi sur une demande déjà acceptée tant qu'elle n'est pas payée.
 - **Set remis** : `pending_payment` ou `confirmed` → `picked_up`, avec la date (aujourd'hui par défaut, jamais dans le futur) et une précision facultative pour l'historique (« loyer encaissé par TPE »). Refusé si aucun exemplaire n'est attribué.
-- **Set rendu** : `picked_up` → `returned`, avec la date (pas avant la remise, pas dans le futur) et l'état des lieux en commentaire libre, jamais visible du client. Le retard éventuel est écrit dans l'historique.
+- **Set rendu** : `picked_up` → `returned`, avec la date (pas avant la remise, pas dans le futur) et l'état des lieux en commentaire libre, jamais visible du client. Le retard éventuel est écrit dans l'historique. À construire (spécification, module 9, révision du 18 septembre 2026) : le solde de la restitution par deux boutons exclusifs, **Restitution conforme** ou **Établir une note complémentaire** (retard, forfait démontage, retenues du barème) — voir §10.
 
 Pas d'annulation d'une remise ou d'un retour enregistrés par erreur pour l'instant : le passer par la maintenance si ça arrive.
 
@@ -315,6 +315,28 @@ Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clai
 
 Hypothèses prises faute de règle dans la spécification : la remise ne peut pas être demandée pour le jour même, et le planning par lieu (une seule remise à la fois) n'est pas contrôlé automatiquement, c'est la validation manuelle qui s'en charge.
 
-## 10. Ce qui reste à faire
+## 10. Documents émis au client (à construire)
+
+Rien n'est encore développé ici ; la décision de cadrage, elle, est prise et vaut d'être écrite avant d'y toucher.
+
+**Le site n'est pas un logiciel de facturation.** Il n'émet pas de factures. Il émet des **notes** — le document de vente destiné à un particulier, aux obligations allégées (spécification, module 8, révision du 18 septembre 2026). Une note porte : la date de sa rédaction, le nom et l'adresse de l'entreprise, le nom du client sauf opposition de sa part, la date et le lieu d'exécution de la prestation (les dates de location et le lieu de remise, déjà en base dans `bookings`), le décompte détaillé en quantité et en prix, et la somme totale à payer.
+
+Le décompte n'est pas une simple ligne de prix : il identifie la prestation par les **références du set** (titre et numéro(s) de boîte — un set en regroupe parfois plusieurs, cf. `set_numbers`) et par la **période de location**. La note **renvoie au contrat** (module 7) pour les conditions particulières, qu'elle ne reprend pas ; le renvoi se fait par `bookings.reference`, qui identifie déjà la réservation et donc son contrat.
+
+Une note ne devient disponible **qu'après le paiement** de la prestation : automatiquement pour un paiement en ligne ou par bon cadeau, et après que les gérants aient marqué la réservation payée pour un règlement au TPE. Le contrat (module 7), lui, est généré à l'acceptation des conditions générales, dont l'horodatage est déjà en base. Les deux documents partagent le même moteur de génération PDF, un fichier par document.
+
+Le numéro d'une note suit le format **`aaaa-mm-##`** — année, mois, numéro séquentiel repartant à `01` à chaque mois (la séquence est mensuelle, pas annuelle : le compteur se lit et s'incrémente par couple année-mois). Il s'attribue **à l'émission**, donc au paiement : une demande refusée ou jamais payée ne consomme pas de numéro, la séquence n'a pas de trou. Techniquement, ça suppose que l'attribution du numéro et l'enregistrement du paiement tiennent dans la même transaction, avec le compteur verrouillé le temps de la lecture et de l'écriture — deux paiements simultanés ne doivent pas obtenir le même numéro.
+
+Ce qu'une note porte découle de son moment d'émission : établie au paiement, elle ne contient que ce qui est connu alors — la location, et le **forfait démontage de 20 € si le client l'a choisi à la réservation** (le forfait devient donc une option du tunnel, pas seulement une pénalité constatée au retour). Tout ce qui se découvre plus tard — indemnité de retard, démontage constaté au retour, retenues du barème de pertes — fait l'objet d'une **note complémentaire**, portant son propre numéro.
+
+Cette note complémentaire ne facture que les montants découverts après coup — indemnité de retard, forfait démontage quand le set revient monté sans avoir été sélectionné, retenues du barème — mais elle **rappelle la note initiale** : son numéro, sa date, les références du set et la période de location, sans quoi le retard flotterait sans rattachement à sa location. Elle suppose donc un lien en base vers la note initiale, et une note initiale peut en porter plusieurs.
+
+Son émission se décide **à la restitution**, dans l'écran Réservations : l'action « Set rendu » d'aujourd'hui se dédouble en deux boutons exclusifs — **« Restitution conforme »**, qui clôt sans rien émettre, ou **« Établir une note complémentaire »**, qui ouvre la saisie des montants dus. L'un des deux est obligatoire : c'est ce geste qui clôt l'état des lieux, et le laisser facultatif laisserait des restitutions dans un état indéterminé.
+
+Le nom du client figure sur la note **sauf opposition de sa part**, exprimée par un réglage de son espace client. Cette opposition ne vaut que pour la note : le récapitulatif des ventes du back-office garde le nom, puisqu'il sert au recoupement comptable.
+
+Deux exports depuis l'admin les accompagnent (module 11) : l'**export des ventes** sur une période — chiffre d'affaires total, puis une ligne par client avec la date de paiement et le set loué — et l'**export des notes** émises sur une période, par lot, dans un zip. La période se choisit avec deux champs **début** et **fin**, doublés d'un **bouton « année civile »** et de son sélecteur d'année qui remplit les deux champs.
+
+## 11. Ce qui reste à faire
 
 L'avancement, les prochaines étapes et les questions encore ouvertes avec la cliente sont tenus dans `AVANCEMENT.md`.

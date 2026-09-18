@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 17 septembre 2026.
+Dernière mise à jour : 18 septembre 2026.
 
 ## 1. Où on en est
 
@@ -15,10 +15,10 @@ Dernière mise à jour : 17 septembre 2026.
 | 5. Tunnel de réservation | **Fait** | Set → dates → lieu → coordonnées → CG → demande en attente ; validation manuelle par les gérants : accepter, refuser, proposer d'autres dates ; réponse du client ; annulation | Paiement (module 4), bon cadeau (module 6) |
 | 6. Bons cadeaux | **Commencé** | Table `gift_vouchers` (migration 0010) : montant, origine achat/admin, statut valide/utilisé/annulé, lot, note interne, expiration. Écran admin `/admin/bons-cadeaux` : génération à l'unité ou en lot, liste avec filtres, marquer utilisé, annuler | Achat en ligne par le client (paiement, module 4), utilisation comme moyen de paiement dans le tunnel de réservation, email d'envoi du bon |
 | 7. Contrat et CG | **Fait en partie** | Case à cocher obligatoire, horodatée en base | Contrat PDF généré, texte légal définitif |
-| 8. Facturation | **Pas commencé** | | Tout |
-| 9. État des lieux et dommages | **Commencé** | Statut « En réparation » et note interne par exemplaire, état des lieux en commentaire libre au retour, retard calculé et affiché | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits |
+| 8. Notes | **Pas commencé** | | Tout. La facturation est remplacée par l'émission de notes (révision de la spécification du 18 septembre 2026) : génération au paiement, mentions allégées, numéro `aaaa-mm-##`, note complémentaire pour le retard, export par lot en zip |
+| 9. État des lieux et dommages | **Commencé** | Statut « En réparation » et note interne par exemplaire, état des lieux en commentaire libre au retour, retard calculé et affiché | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits, et le solde de la restitution par deux boutons (Restitution conforme / Établir une note complémentaire) |
 | 10. Notifications | **Pas commencé** | Historique `booking_events` sur lequel se brancher | Fournisseur d'email à choisir (aucune clé dans le projet), templates modifiables |
-| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord, sets, forfaits, lieux, fermetures, réservations, bons cadeaux. Rôles admin et superadmin | Contenus du site, maintenance, réglages, CA du mois, taux d'occupation, export des ventes |
+| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord, sets, forfaits, lieux, fermetures, réservations, bons cadeaux. Rôles admin et superadmin | Contenus du site, maintenance, réglages, CA du mois, taux d'occupation, export des ventes sur une période (champs début et fin, bouton année civile ; CA total + une ligne par client) et export des notes par lot en zip |
 | 12. Déploiement et formation | **En cours** | Déploiement Vercel automatique, base Neon partagée | Instance Clerk de production, domaine final, formation |
 
 ## 2. Hypothèses prises sans règle explicite
@@ -32,15 +32,17 @@ Dernière mise à jour : 17 septembre 2026.
 - « Blocage par set » (module 2) = passer l'exemplaire « En réparation » ; pas de blocage par dates propre à un set.
 - **Les gérants ne modifient pas les dates d'une demande.** Le client a choisi ses jours ; s'ils ne conviennent pas, la demande est refusée avec un motif et il refait une demande. Les gérants ajustent seulement le lieu et l'heure de remise. Décision du 16 septembre 2026, qui retire la proposition d'autres dates mise en place le matin même.
 - **Heure de remise demandée dans le tunnel.** La spécification (module 2) prévoyait « une date, pas d'heure » en V1, l'heure se négociant ensuite. Décision du 16 septembre 2026 : le client indique une heure souhaitée (par quart d'heure) que les gérants confirment ou modifient en proposant d'autres dates. Ça évite un aller-retour par téléphone dans le cas simple.
-- **Conservation des données clients : 3 ans après la dernière activité** (dernière location terminée ou dernière connexion), ou dès la suppression du compte par le client. Décision du 16 septembre 2026. Les factures, contrats et pièces comptables vivent dans le logiciel comptable, avec leurs propres durées légales (6 ans fiscal, 10 ans comptable) ; la plateforme n'a donc pas à les porter. Passé le délai : suppression du compte Clerk et des coordonnées, réservations conservées anonymisées (statistiques). Reste à faire : la purge elle-même (script ou tâche planifiée), l'export du contrat et de l'acceptation des CG vers l'archive comptable au moment de la facturation, et la mention dans la politique de confidentialité.
+- **Conservation des données clients : 3 ans après la dernière activité** (dernière location terminée ou dernière connexion), ou dès la suppression du compte par le client. Décision du 16 septembre 2026. Les notes, contrats et pièces comptables vivent dans le logiciel comptable, avec leurs propres durées légales (6 ans fiscal, 10 ans comptable) ; la plateforme n'a donc pas à les porter — elle les émet et permet de les exporter, elle n'en est pas l'archive. Passé le délai : suppression du compte Clerk et des coordonnées, réservations conservées anonymisées (statistiques). Reste à faire : la purge elle-même (script ou tâche planifiée), l'export du contrat et de l'acceptation des CG vers l'archive comptable au moment de l'émission de la note, et la mention dans la politique de confidentialité.
 
 
 ## 3. Questions ouvertes avec la cliente
 
-Les deux points encore en attente dans la spécification bloquent le module 4 :
+Deux points en attente dans la spécification bloquent le module 4 :
 
 1. Le paiement est-il pris **avant ou après** la validation manuelle ? Et en cas de refus d'une demande déjà payée, remboursement automatique ?
 2. Si le loyer est payé par **TPE** sur place, comment se pose la pré-autorisation de la caution ?
+
+Tous les points ouverts par la révision du 18 septembre 2026 (notes et exports) ont été tranchés le jour même : la spécification des notes ne porte plus aucune question ouverte.
 
 Autres points à poser quand l'occasion se présente :
 
@@ -54,7 +56,7 @@ Autres points à poser quand l'occasion se présente :
 1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée, puis set remis / set rendu. Les gérants doivent pouvoir modifier les textes (module 10).
 2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées.
 3. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
-4. Séquence de retard, état des lieux et barème (module 9), puis facturation (8), contrat PDF (7), bons cadeaux (6), reporting (11).
+4. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF (7), bons cadeaux (6), reporting et exports (11).
 
 ### Passage de Clerk en production (module 12)
 
@@ -68,6 +70,16 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate).
 
 ## 5. Journal
+
+### 18 septembre 2026
+
+- **La facturation devient l'émission de notes** (spécification, module 8). Décision de la cliente : le site **n'établit pas de factures**, ce n'est pas un logiciel de facturation. Il automatise les **notes** — le document de vente destiné aux particuliers, aux obligations allégées. Mentions retenues : date de rédaction, nom et adresse de l'entreprise, nom du client sauf opposition de sa part, date et lieu d'exécution de la prestation, décompte détaillé en quantité et en prix, somme totale à payer. La note n'est disponible **qu'après le paiement**. Tombent avec la facture : la numérotation repartant de zéro et toute mention de facturation professionnelle. Quatre questions ouvertes notées en §3 (référence, périmètre du décompte, opposition au nom, périodes d'export).
+- **Exports du back-office précisés** (module 11). L'export des ventes se déclenche **depuis l'interface admin**, sur une période donnée, et contient le **CA total de la période** plus **une ligne par client** avec la date de paiement et le set loué — il remplace l'« export simple par année civile ». S'y ajoute l'**export des notes émises par lot sur une période, dans un zip**. L'export comptable complet reste en V2.
+- **Notes : numérotation, périmètre et opposition tranchés** (même jour). Numéro **séquentiel `aaaa-mm-##`** (année, mois, numéro), attribué à l'émission donc au paiement — une demande refusée ou non payée ne consomme pas de numéro ; la séquence repart à `01` à chaque mois, elle est mensuelle et non annuelle. **Périmètre** : la note étant établie au paiement, elle ne porte que la location et le **forfait démontage de 20 € si le client l'a sélectionné à la réservation** — ce qui en fait une option du tunnel (module 5) et non plus seulement une pénalité constatée au retour (module 9). Les montants inconnus au paiement — **indemnité de retard**, forfait démontage quand le set revient monté sans avoir été sélectionné, retenues du barème — font l'objet d'une **note complémentaire**, qui ne facture que ces montants mais **rappelle la note initiale** (numéro, date, références du set, période de location) pour rattacher le retard à sa location — d'où un lien en base de la note complémentaire vers la note initiale. **Opposition au nom** : réglage de l'espace client (module 3) ; le nom reste sur le récapitulatif des ventes, interne, pour le recoupement comptable.
+- **Contenu du décompte de la note initiale** (même jour). Le décompte identifie la prestation par les **références du set** (titre et numéro(s) de boîte, multiples possibles) et la **période de location**, pas seulement par un prix. La note **renvoie au contrat de location** (module 7) pour les conditions particulières, par la référence de réservation (`bookings.reference`) que portent déjà les deux documents.
+- **Solde de la restitution par deux boutons** (module 9). L'action « Set rendu » se dédouble : **Restitution conforme**, qui clôt sans rien émettre, ou **Établir une note complémentaire**, qui ouvre la saisie des montants dus (retard, démontage, barème). L'un des deux est obligatoire — c'est ce geste qui clôt l'état des lieux.
+- **Périodes d'export** (module 11) : champs **début** et **fin** libres dans l'admin, plus un **bouton « année civile » avec sélecteur d'année** qui remplit les deux champs. Vaut pour l'export des ventes comme pour l'export des notes en zip.
+- Aucun code touché : les modules 8 et 11 (exports) ne sont pas commencés. Doc mise à jour : `specification-fonctionnelle.md` (modules 3, 5, 7, 8, 9, 11 et les deux récapitulatifs), `FONCTIONNEMENT.md` (documents émis, conservation), `AVANCEMENT.md`.
 
 ### 17 septembre 2026
 
