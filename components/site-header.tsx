@@ -4,11 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { Show, UserButton } from "@clerk/nextjs";
+import { Show, UserButton, useUser } from "@clerk/nextjs";
 import { nav, site } from "@/lib/site";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const { user } = useUser();
+  const role = user?.publicMetadata?.role;
+  const admin = role === "admin" || role === "superadmin";
 
   return (
     <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-xl border-b border-slate-ink/10">
@@ -51,6 +54,14 @@ export function SiteHeader() {
               Connexion
             </Link>
           </Show>
+          {admin ? (
+            <Link
+              href="/admin"
+              className="whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 hover:brightness-95 transition"
+            >
+              Espace de gestion
+            </Link>
+          ) : null}
           <Show when="signed-in">
             <UserButton
               userProfileMode="navigation"
@@ -58,9 +69,11 @@ export function SiteHeader() {
               appearance={{ elements: { avatarBox: "h-9 w-9 border-2 border-slate-ink/15 rounded-full" } }}
             />
           </Show>
-          <Link href="/catalogue" className="btn btn-brick whitespace-nowrap text-sm py-2.5 px-4">
-            Réserver un set
-          </Link>
+          {admin ? null : (
+            <Link href="/catalogue" className="btn btn-brick whitespace-nowrap text-sm py-2.5 px-4">
+              Réserver un set
+            </Link>
+          )}
         </nav>
 
         <button
@@ -108,13 +121,24 @@ export function SiteHeader() {
               Mon compte
             </Link>
           </Show>
-          <Link
-            href="/catalogue"
-            onClick={() => setOpen(false)}
-            className="btn btn-brick mt-3 self-start"
-          >
-            Réserver un set
-          </Link>
+          {admin ? (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="font-bold text-lg text-ink-deep py-3"
+            >
+              Espace de gestion
+            </Link>
+          ) : null}
+          {admin ? null : (
+            <Link
+              href="/catalogue"
+              onClick={() => setOpen(false)}
+              className="btn btn-brick mt-3 self-start"
+            >
+              Réserver un set
+            </Link>
+          )}
         </nav>
       </div>
     </header>

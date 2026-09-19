@@ -28,3 +28,20 @@ export function daysLate(endDate: string, today: string = todayIso()) {
 export function endDateFor(startDate: string, days: number) {
   return addDays(startDate, days - 1);
 }
+
+/** Lundi de la semaine calendaire contenant `today`. */
+export function startOfWeekIso(today: string) {
+  const day = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0 = dimanche
+  return addDays(today, -((day + 6) % 7));
+}
+
+/** Premier jour du mois calendaire contenant `today`. */
+export function startOfMonthIso(today: string) {
+  return `${today.slice(0, 7)}-01`;
+}
+
+/** Dernier jour du mois calendaire contenant `today`. */
+export function endOfMonthIso(today: string) {
+  const [year, month] = today.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+}

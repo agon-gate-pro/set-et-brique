@@ -153,6 +153,11 @@ h3,
   outline-offset: 3px;
 }
 
+/* Pour les champs qui gèrent déjà leur propre indication de focus (ex. anneau de couleur). */
+.focus-outline-none:focus-visible {
+  outline: none;
+}
+
 .prose-legal h2 {
   font-size: 1.5rem;
   margin-top: 2.5rem;

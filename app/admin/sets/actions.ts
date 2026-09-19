@@ -112,7 +112,7 @@ export async function updateSet(_: ActionState, formData: FormData): Promise<Act
     .where(eq(schema.sets.id, id));
 
   revalidateSet(id);
-  return { ok: "Set enregistré." };
+  return { ok: "Modification enregistrée." };
 }
 
 export async function deleteSet(_: ActionState, formData: FormData): Promise<ActionState> {

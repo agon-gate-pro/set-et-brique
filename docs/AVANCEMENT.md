@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 16 septembre 2026.
+Dernière mise à jour : 20 septembre 2026.
 
 ## 1. Où on en est
 
@@ -18,7 +18,7 @@ Dernière mise à jour : 16 septembre 2026.
 | 8. Facturation | **Pas commencé** | | Tout |
 | 9. État des lieux et dommages | **Commencé** | Statut « En réparation » et note interne par exemplaire, état des lieux en commentaire libre au retour, retard calculé et affiché | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits |
 | 10. Notifications | **Pas commencé** | Historique `booking_events` sur lequel se brancher | Fournisseur d'email à choisir (aucune clé dans le projet), templates modifiables |
-| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord, sets, forfaits, lieux, fermetures, réservations, bons cadeaux. Rôles admin et superadmin | Contenus du site, maintenance, réglages, CA du mois, taux d'occupation, export des ventes |
+| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord (blocs cliquables, CA du jour/semaine/mois), sets (tableau avec recherche et filtres), forfaits, lieux, fermetures, réservations, bons cadeaux. Rôles admin et superadmin. Onglet Statistiques créé, sans page | Contenus du site, maintenance, réglages, taux d'occupation, export des ventes |
 | 12. Déploiement et formation | **En cours** | Déploiement Vercel automatique, base Neon partagée | Instance Clerk de production, domaine final, formation |
 
 ## 2. Hypothèses prises sans règle explicite
@@ -68,6 +68,15 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate).
 
 ## 5. Journal
+
+### 20 septembre 2026
+
+- **Raccourci vers l'espace de gestion**. Pastille jaune « Espace de gestion » dans le header (desktop et mobile) pour les comptes admin et superadmin, seul accès avant en dehors de `/compte`. Le bouton « Réserver un set » est masqué pour ces mêmes comptes.
+- **Refonte du menu de la console** (`components/admin/nav.tsx`). Titre « Console de gestion » en pastille jaune (identique à celle du header), une icône par section, hiérarchie de graisse (actif en gras et fond bleu marine, inactifs plus légers), séparation visuelle de la section Maintenance (superadmin). Nouvel onglet Statistiques entre Bons cadeaux et Contenus du site, sans page pour l'instant.
+- **Tableau de bord enrichi** (`app/admin/page.tsx`). Trois rangées de blocs cliquables : catalogue (Sets, Clients, Bons cadeaux valides), activité de location (Sets en location, Réservations à traiter, Sets à remettre, vers `/admin/reservations`), et chiffre d'affaires (jour / semaine / mois, sur les réservations confirmées ou au-delà, à la date de début de location). Nouveaux utilitaires de date dans `lib/dates.ts` (début de semaine et de mois).
+- **Page Sets passée en tableau** (`components/admin/sets-table.tsx`). Recherche (nom, numéro de set) et filtres (statut, thème) instantanés côté client, sans rechargement. Le tableau est à largeurs fixes pour ne jamais déborder sur desktop, avec défilement horizontal en secours sur mobile.
+- **Fiche d'un set, lisibilité**. Titres de bloc (Identité, Contenu…) en pastille rouge sur fond teinté au lieu de la même couleur que le reste du texte ; badge de statut identique à celui de la liste ; alignement des champs corrigé quand un champ a une aide plus longue que son voisin (`components/admin/form.tsx`, le champ pousse maintenant en bas de sa cellule) ; bouton Enregistrer aligné à droite ; message « Modification enregistrée » (au lieu de « Set enregistré ») pour une fiche existante. Le champ Statut est passé en composant contrôlé : il affichait parfois l'ancienne valeur après un enregistrement.
+- **Liseré de focus**. Le liseré rouge global (`:focus-visible` dans `globals.css`, hors des « layers » Tailwind donc prioritaire sur les utilitaires `focus-visible:*`) est neutralisé sur les champs de filtre des sets via une classe dédiée (`.focus-outline-none`), réutilisable ailleurs si besoin.
 
 ### 16 septembre 2026
 

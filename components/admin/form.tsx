@@ -100,13 +100,13 @@ export function Field({
   hint?: string;
 }) {
   return (
-    <label className="block">
+    <label className="flex h-full flex-col">
       <span className="block font-bold text-ink-deep">{label}</span>
       {hint ? <span className="block text-sm text-slate-ink">{hint}</span> : null}
-      <span className="block mt-1">{children}</span>
+      <span className="block mt-auto pt-1">{children}</span>
     </label>
   );
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-slate-ink/20 bg-paper px-3 py-2 text-ink-deep focus:outline-none focus-visible:ring-4 focus-visible:ring-sun";
+  "focus-outline-none w-full rounded-xl border border-slate-ink/20 bg-paper px-3 py-2 text-ink-deep";

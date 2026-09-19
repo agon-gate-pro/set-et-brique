@@ -195,6 +195,8 @@ Trois niveaux d'utilisateurs, distingués par `publicMetadata.role` côté Clerk
 
 Le contrôle du rôle se fait côté serveur dans `app/admin/layout.tsx` via `requireRole()` de `lib/auth.ts`. Le rôle est lu dans le jeton de session si le Dashboard Clerk expose `metadata` dans les claims (Sessions > Customize session token : `{"metadata": "{{user.public_metadata}}"}`), sinon via l'API Clerk. Les deux chemins fonctionnent, le premier évite un appel réseau par page.
 
+Le header du site (`components/site-header.tsx`) affiche une pastille jaune « Espace de gestion » (lien `/admin`) pour les comptes `admin` et `superadmin`, en plus du bouton « Réserver un set » masqué pour ces mêmes comptes. Ce rôle est relu ici côté client (`useUser()` de Clerk) pour ne pas rendre tout le site dynamique ; la vraie protection de `/admin` reste `requireRole()` côté serveur.
+
 Attribuer un rôle, une fois que la personne a créé son compte sur le site :
 
 ```bash
@@ -229,15 +231,21 @@ Accessible sur `/admin` aux rôles `admin` et `superadmin`. Les écrans sont des
 
 Composants partagés dans `components/admin/form.tsx` : bouton d'envoi avec état « Enregistrement… », bouton de suppression en deux clics (pas de boîte de dialogue navigateur), champ avec libellé et aide, message de résultat.
 
+Le menu de gauche (`components/admin/nav.tsx`) affiche le titre « Console de gestion » (même pastille jaune que dans le header) et une icône par section ; la section « Maintenance » (superadmin) est séparée du reste par un trait. L'onglet « Statistiques », entre Bons cadeaux et Contenus du site, est pour l'instant sans page (comme Contenus du site et Maintenance) : à construire.
+
+### Tableau de bord (`/admin`)
+
+Trois rangées de blocs : Sets au catalogue (cliquable, renvoie vers l'ajout d'un set), Clients, Bons cadeaux valides ; puis Sets en location actuellement, Réservations à traiter, Sets à remettre au client (les trois cliquables vers `/admin/reservations`, mêmes statuts que les groupes de cette page) ; puis le CA du jour, de la semaine et du mois, basé sur la date de début de location et les réservations `confirmed`, `picked_up` et `returned` uniquement. Bandeaux au-dessus pour les demandes à traiter et les retards, inchangés.
+
 ### Forfaits (`/admin/forfaits`)
 
 Liste, création, modification du nom et du prix, choix du forfait par défaut, suppression. Un forfait ne peut pas être supprimé s'il est le forfait par défaut ou si des sets l'utilisent.
 
 ### Sets (`/admin/sets`)
 
-- Liste avec photo principale, numéros de boîtes, marque si autre que LEGO, exemplaires, forfait effectif, caution et statut.
-- Création : la fiche, en cinq blocs (identité, contenu, location, textes affichés au client, publication). Les numéros de boîtes se saisissent en une ligne séparés par des virgules ; ils sont stockés en liste, sans doublon. Le `slug` de l'adresse publique est dérivé du nom, unique, et ne change que si le nom change. Un premier exemplaire est créé automatiquement.
-- Fiche : modification, photos, exemplaires, suppression.
+- Liste sous forme de tableau (photo, nom, thème, exemplaires, tarif, caution, statut, lien Modifier), avec recherche (nom ou numéro de set) et filtres par statut et par thème, tout en instantané côté client (`components/admin/sets-table.tsx`) — la page charge tous les sets, le filtrage ne refait pas d'appel serveur.
+- Création : la fiche, en cinq blocs (identité, contenu, location, textes affichés au client, publication), chaque bloc avec son titre en pastille rouge et un fond légèrement teinté pour bien le distinguer des autres. Les numéros de boîtes se saisissent en une ligne séparés par des virgules ; ils sont stockés en liste, sans doublon. Le `slug` de l'adresse publique est dérivé du nom, unique, et ne change que si le nom change. Un premier exemplaire est créé automatiquement.
+- Fiche : modification, photos, exemplaires, suppression. Le champ Statut est un composant contrôlé (pas de `defaultValue`) pour éviter qu'il affiche une valeur différente de ce qui vient d'être enregistré.
 - Photos : envoyées sur Vercel Blob (store `set-et-brique-images`, accès public, variable `BLOB_READ_WRITE_TOKEN`), JPEG, PNG ou WebP jusqu'à 8 Mo, 10 photos par set au plus. La première de la liste est la photo principale ; l'ordre se règle avec les flèches. Supprimer une photo la retire aussi du stockage.
 - Exemplaires : libellé, état, statut, note interne. Un exemplaire déjà réservé ne se supprime pas : le passer en « Retiré ». Pour bloquer un set le temps d'un souci (retard, casse), le passer en « En réparation ».
 - Suppression d'un set : refusée s'il a déjà été réservé, il faut alors l'archiver.
@@ -262,7 +270,7 @@ Fermetures à venir modifiables, création, suppression ; les périodes passées
 
 ### Réservations (`/admin/reservations`)
 
-Liste en cinq groupes : à traiter (`pending_review`), en attente du client (`date_proposed`), à remettre (`pending_payment`, `confirmed`), en cours de location (`picked_up`, triées par date de retour, retard en rouge), terminées et annulées. Chaque carte montre la référence, le set, le client et son téléphone, la période de location en dates courtes (17/09/2026), le lieu et l'heure de remise. Une demande à traiter porte directement ses trois boutons : Accepter (vert), Modifier (jaune, renvoie au bloc Décision de la fiche pour le lieu et l'heure) et Refuser (rouge, avec confirmation, sans motif ; le motif se saisit depuis la fiche). Le tableau de bord affiche le nombre de demandes à traiter, le nombre de sets en location et une alerte sur les retours en retard. La fiche d'une réservation montre la location, le client (avec blocage et déblocage du compte), la note interne, les décisions possibles et l'historique.
+Liste en cinq groupes : à traiter (`pending_review`), en attente du client (`date_proposed`), à remettre (`pending_payment`, `confirmed`), en cours de location (`picked_up`, triées par date de retour, retard en rouge), terminées et annulées. Chaque carte montre la référence, le set, le client et son téléphone, la période de location en dates courtes (17/09/2026), le lieu et l'heure de remise. Une demande à traiter porte directement ses trois boutons : Accepter (vert), Modifier (jaune, renvoie au bloc Décision de la fiche pour le lieu et l'heure) et Refuser (rouge, avec confirmation, sans motif ; le motif se saisit depuis la fiche). Ces mêmes statuts alimentent les blocs cliquables et l'alerte de retard du tableau de bord (§7, plus haut). La fiche d'une réservation montre la location, le client (avec blocage et déblocage du compte), la note interne, les décisions possibles et l'historique.
 
 - **Accepter** : `pending_review` → `pending_payment`. Rien d'autre n'est déclenché pour l'instant (pas d'email, pas de paiement).
 - **Modifier la remise** : lieu (parmi les lieux actifs) et heure seulement, sans changement de statut ; les dates et la durée restent celles du client. La modification est tracée dans l'historique et visible du client dans son espace. Possible tant que le set n'est pas remis.

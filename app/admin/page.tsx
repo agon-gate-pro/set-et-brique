@@ -2,20 +2,40 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { todayIso } from "@/lib/dates";
+import { addDays, endOfMonthIso, startOfMonthIso, startOfWeekIso, todayIso } from "@/lib/dates";
+import { formatCents } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Gestion", robots: { index: false } };
 
 export default async function AdminHome() {
   const today = todayIso();
-  const [[sets], [copies], [bookings], [customers], [pending], [late]] = await Promise.all([
+  const weekStart = startOfWeekIso(today);
+  const weekEnd = addDays(weekStart, 6);
+  const monthStart = startOfMonthIso(today);
+  const monthEnd = endOfMonthIso(today);
+
+  const [
+    [sets],
+    [customers],
+    [validVouchers],
+    [inRental],
+    [pending],
+    [late],
+    [toHandOver],
+    [caDay],
+    [caWeek],
+    [caMonth],
+  ] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(schema.sets),
-    db.select({ n: sql<number>`count(*)::int` }).from(schema.setCopies),
+    db.select({ n: sql<number>`count(*)::int` }).from(schema.customers),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.giftVouchers)
+      .where(sql`${schema.giftVouchers.status} = 'valid'`),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
       .where(sql`${schema.bookings.status} = 'picked_up'`),
-    db.select({ n: sql<number>`count(*)::int` }).from(schema.customers),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
@@ -24,14 +44,29 @@ export default async function AdminHome() {
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
       .where(sql`${schema.bookings.status} = 'picked_up' and ${schema.bookings.endDate} < ${today}`),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.bookings)
+      .where(sql`${schema.bookings.status} in ('pending_payment', 'confirmed')`),
+    db
+      .select({ n: sql<number>`coalesce(sum(${schema.bookings.rentalCents}), 0)::int` })
+      .from(schema.bookings)
+      .where(
+        sql`${schema.bookings.status} in ('confirmed', 'picked_up', 'returned') and ${schema.bookings.startDate} = ${today}`,
+      ),
+    db
+      .select({ n: sql<number>`coalesce(sum(${schema.bookings.rentalCents}), 0)::int` })
+      .from(schema.bookings)
+      .where(
+        sql`${schema.bookings.status} in ('confirmed', 'picked_up', 'returned') and ${schema.bookings.startDate} between ${weekStart} and ${weekEnd}`,
+      ),
+    db
+      .select({ n: sql<number>`coalesce(sum(${schema.bookings.rentalCents}), 0)::int` })
+      .from(schema.bookings)
+      .where(
+        sql`${schema.bookings.status} in ('confirmed', 'picked_up', 'returned') and ${schema.bookings.startDate} between ${monthStart} and ${monthEnd}`,
+      ),
   ]);
-
-  const tiles = [
-    ["Sets au catalogue", sets.n],
-    ["Exemplaires", copies.n],
-    ["Sets en location", bookings.n],
-    ["Clients", customers.n],
-  ] as const;
 
   return (
     <>
@@ -46,14 +81,62 @@ export default async function AdminHome() {
           {late.n} set{late.n > 1 ? "s" : ""} en retard de retour
         </Link>
       ) : null}
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {tiles.map(([label, n]) => (
-          <li key={label} className="brick-card p-5">
-            <p className="display text-4xl font-bold text-brick">{n}</p>
-            <p className="mt-1 font-semibold text-slate-ink">{label}</p>
-          </li>
-        ))}
+
+      <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <li>
+          <Link href="/admin/sets/nouveau" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
+            <p className="display text-4xl font-bold text-brick">{sets.n}</p>
+            <p className="mt-1 font-semibold text-slate-ink">Sets au catalogue</p>
+          </Link>
+        </li>
+        <li className="brick-card p-5">
+          <p className="display text-4xl font-bold text-brick">{customers.n}</p>
+          <p className="mt-1 font-semibold text-slate-ink">Clients</p>
+        </li>
+        <li>
+          <Link href="/admin/bons-cadeaux" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
+            <p className="display text-4xl font-bold text-brick">{validVouchers.n}</p>
+            <p className="mt-1 font-semibold text-slate-ink">Bons cadeaux valides</p>
+          </Link>
+        </li>
       </ul>
+
+      <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <li>
+          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
+            <p className="display text-4xl font-bold text-brick">{inRental.n}</p>
+            <p className="mt-1 font-semibold text-slate-ink">Sets en location actuellement</p>
+          </Link>
+        </li>
+        <li>
+          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
+            <p className="display text-4xl font-bold text-brick">{pending.n}</p>
+            <p className="mt-1 font-semibold text-slate-ink">Réservations à traiter</p>
+          </Link>
+        </li>
+        <li>
+          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
+            <p className="display text-4xl font-bold text-brick">{toHandOver.n}</p>
+            <p className="mt-1 font-semibold text-slate-ink">Sets à remettre au client</p>
+          </Link>
+        </li>
+      </ul>
+
+      <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <li className="brick-card p-5">
+          <p className="display text-4xl font-bold text-ink-deep">{formatCents(caDay.n)}</p>
+          <p className="mt-1 font-semibold text-slate-ink">CA du jour</p>
+        </li>
+        <li className="brick-card p-5">
+          <p className="display text-4xl font-bold text-ink-deep">{formatCents(caWeek.n)}</p>
+          <p className="mt-1 font-semibold text-slate-ink">CA de la semaine</p>
+        </li>
+        <li className="brick-card p-5">
+          <p className="display text-4xl font-bold text-ink-deep">{formatCents(caMonth.n)}</p>
+          <p className="mt-1 font-semibold text-slate-ink">CA du mois</p>
+        </li>
+      </ul>
+
       <p className="mt-8 text-slate-ink max-w-xl">
         Les contenus du site et la maintenance arrivent dans les prochaines étapes.
       </p>

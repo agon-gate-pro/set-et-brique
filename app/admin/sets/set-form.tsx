@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { centsToInput, instructionTypeLabels, setStatusLabels } from "@/lib/format";
 import type { RatePlan, Set } from "@/lib/db/schema";
@@ -16,8 +16,8 @@ type Props = {
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="sm:col-span-2 grid gap-5 sm:grid-cols-2 rounded-xl border border-slate-ink/15 p-5">
-      <legend className="px-2 font-bold text-ink-deep">{title}</legend>
+    <fieldset className="sm:col-span-2 grid gap-5 sm:grid-cols-2 rounded-xl border border-slate-ink/15 bg-sky/60 p-5">
+      <legend className="px-2 text-base font-bold uppercase tracking-wide text-brick-deep">{title}</legend>
       {children}
     </fieldset>
   );
@@ -25,6 +25,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitLabel }: Props) {
   const [state, formAction] = useActionState(action, null);
+  const [status, setStatus] = useState(set?.status ?? "draft");
   const defaultPlan = ratePlans.find((p) => p.isDefault);
 
   return (
@@ -132,7 +133,7 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
 
       <Group title="Publication">
         <Field label="Statut" hint="Seuls les sets publiés apparaissent sur le site">
-          <select name="status" defaultValue={set?.status ?? "draft"} className={inputClass}>
+          <select name="status" value={status} onChange={(e) => setStatus(e.target.value as Set["status"])} className={inputClass}>
             {Object.entries(setStatusLabels).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -141,13 +142,15 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
           </select>
         </Field>
         <label className="flex items-center gap-3 self-end pb-2">
-          <input type="checkbox" name="featured" defaultChecked={set?.featured ?? false} className="h-5 w-5 accent-brick" />
+          <input type="checkbox" name="featured" defaultChecked={set?.featured ?? false} className="focus-outline-none h-5 w-5 accent-brick" />
           <span className="font-bold">Mettre en avant sur l&apos;accueil</span>
         </label>
       </Group>
 
       <div className="sm:col-span-2">
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <div className="flex justify-end">
+          <SubmitButton>{submitLabel}</SubmitButton>
+        </div>
         <FormMessage state={state} />
       </div>
     </form>
