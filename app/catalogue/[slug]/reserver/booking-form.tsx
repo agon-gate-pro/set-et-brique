@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
-import { centsToInput, formatCents, formatDate, formatTime } from "@/lib/format";
+import type { CopyInput, RangeBooking } from "@/lib/availability-core";
+import { centsToInput, formatCents, formatTime } from "@/lib/format";
+import { DateReadable } from "./date-readable";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
 import { submitBookingRequest } from "./actions";
+import { BookingCalendar } from "./booking-calendar";
 
 type Props = {
   set: { id: string; slug: string; name: string; depositCents: number };
@@ -20,12 +23,20 @@ type Props = {
     "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId"
   > | null;
   defaults: { firstName: string; lastName: string };
+  calendar: {
+    copies: CopyInput[];
+    bookings: RangeBooking[];
+    blackouts: { startDate: string; endDate: string }[];
+    turnaroundDays: number;
+  };
 };
 
-export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoints, customer, defaults }: Props) {
+export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoints, customer, defaults, calendar }: Props) {
   const [state, action] = useActionState(submitBookingRequest, null as ActionState);
-  const [startDate, setStartDate] = useState(minStartDate);
-  const [days, setDays] = useState(Math.max(minDays, 7));
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [days, setDays] = useState<number | null>(null);
+  // La période se choisit d'abord, sur le calendrier : ouvert dès l'arrivée sur la page.
+  const [calendarOpen, setCalendarOpen] = useState(true);
   const [pickupPointId, setPickupPointId] = useState(
     () => pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? "",
   );
@@ -35,38 +46,37 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
   const [pickupTime, setPickupTime] = useState("10:00");
   // Heure ramenée dans la plage du lieu choisi.
   const clampedTime = openFrom && pickupTime < openFrom ? openFrom : openUntil && pickupTime > openUntil ? openUntil : pickupTime;
-  const validDays = Number.isInteger(days) && days >= minDays;
-  const endDate = validDays && startDate ? addDays(startDate, days - 1) : null;
+  const validDays = days != null && days >= minDays;
+  const endDate = validDays && startDate && days != null ? addDays(startDate, days - 1) : null;
 
   return (
     <form action={action} className="grid gap-8">
       <input type="hidden" name="setId" value={set.id} />
       <input type="hidden" name="slug" value={set.slug} />
+      <input type="hidden" name="startDate" value={startDate ?? ""} />
+      <input type="hidden" name="days" value={days ?? ""} />
 
       <section className="brick-card p-6 grid gap-5 sm:grid-cols-2">
         <h2 className="sm:col-span-2 text-2xl font-semibold">Vos dates</h2>
-        <Field label="Date de remise" hint="L'heure exacte se convient ensuite avec nous">
-          <input
-            name="startDate"
-            type="date"
-            required
-            min={minStartDate}
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Nombre de jours" hint={`Durée libre, ${minDays} jour${minDays > 1 ? "s" : ""} minimum, comptée en jours calendaires`}>
-          <input
-            name="days"
-            type="number"
-            required
-            min={minDays}
-            value={Number.isNaN(days) ? "" : days}
-            onChange={(e) => setDays(e.target.valueAsNumber)}
-            className={inputClass}
-          />
-        </Field>
+        <div className="sm:col-span-2 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-ink/15 bg-sky p-4">
+          <div>
+            {startDate && endDate ? (
+              <>
+                <p className="text-ink-deep leading-snug">
+                  Du <DateReadable iso={startDate} /> au <DateReadable iso={endDate} />
+                </p>
+                <p className="mt-1 text-sm text-slate-ink">
+                  {days} jour{days && days > 1 ? "s" : ""} de location
+                </p>
+              </>
+            ) : (
+              <p className="font-semibold text-ink-deep">Choisissez votre période sur le calendrier</p>
+            )}
+          </div>
+          <button type="button" onClick={() => setCalendarOpen(true)} className="btn btn-paper text-sm py-2 px-4 shrink-0">
+            {startDate ? "Modifier les dates" : "Choisir mes dates"}
+          </button>
+        </div>
         <Field label="Lieu de remise">
           <select
             name="pickupPointId"
@@ -105,10 +115,10 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
         </Field>
         <div className="rounded-xl bg-sky border border-slate-ink/15 p-4 self-end">
           <p className="text-sm text-slate-ink">Retour prévu</p>
-          <p className="font-bold text-ink-deep">{endDate ? formatDate(endDate) : "—"}</p>
+          <p className="font-bold text-ink-deep">{endDate ? <DateReadable iso={endDate} /> : "—"}</p>
           <p className="mt-2 text-sm text-slate-ink">Location</p>
-          <p className="display text-2xl font-bold text-brick">
-            {validDays ? formatCents(days * pricePerDay) : "—"}
+          <p className="display text-2xl font-bold text-leaf-deep">
+            {validDays && days != null ? formatCents(days * pricePerDay) : "—"}
             <span className="text-sm font-semibold text-slate-ink"> ({centsToInput(pricePerDay)} € × {validDays ? days : "…"} jours)</span>
           </p>
           <p className="mt-1 text-sm text-slate-ink">Caution {formatCents(set.depositCents)}, bloquée à la remise, jamais débitée sauf casse ou perte.</p>
@@ -161,10 +171,30 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
           maintenant : nous revenons vers vous rapidement pour convenir de l&apos;heure de remise.
         </p>
         <div>
-          <SubmitButton>Envoyer ma demande</SubmitButton>
+          <SubmitButton disabled={!validDays || !startDate}>Envoyer ma demande</SubmitButton>
         </div>
         <FormMessage state={state} />
       </section>
+
+      {calendarOpen ? (
+        <BookingCalendar
+          copies={calendar.copies}
+          bookings={calendar.bookings}
+          blackouts={calendar.blackouts}
+          turnaroundDays={calendar.turnaroundDays}
+          minStartDate={minStartDate}
+          minDays={minDays}
+          pricePerDay={pricePerDay}
+          initialStartDate={startDate}
+          initialDays={days}
+          onConfirm={(range) => {
+            setStartDate(range.startDate);
+            setDays(range.days);
+            setCalendarOpen(false);
+          }}
+          onClose={() => setCalendarOpen(false)}
+        />
+      ) : null}
     </form>
   );
 }

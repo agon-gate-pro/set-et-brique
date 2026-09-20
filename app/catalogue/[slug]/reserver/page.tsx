@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
-import { addDays, loadAvailability, todayIso } from "@/lib/availability";
+import { RESERVING_STATUSES, addDays, loadAvailability, todayIso, withLateReturn } from "@/lib/availability";
 import { coordinatesUrl, findCustomerByClerkId, isCustomerComplete } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
@@ -24,26 +24,46 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
   });
   if (!set) notFound();
 
-  const [user, customer, pickupPoints, defaultPlan, minDays, availability] = await Promise.all([
-    currentUser(),
-    findCustomerByClerkId(userId),
-    db
-      .select({
-        id: schema.pickupPoints.id,
-        name: schema.pickupPoints.name,
-        address: schema.pickupPoints.address,
-        openFrom: schema.pickupPoints.openFrom,
-        openUntil: schema.pickupPoints.openUntil,
-      })
-      .from(schema.pickupPoints)
-      .where(eq(schema.pickupPoints.active, true))
-      .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt)),
-    db.query.ratePlans.findFirst({ where: eq(schema.ratePlans.isDefault, true) }),
-    getSetting("min_rental_days"),
-    loadAvailability([set]),
-  ]);
+  const [user, customer, pickupPoints, defaultPlan, minDays, availability, copies, rawBookings, blackouts, globalTurnaround] =
+    await Promise.all([
+      currentUser(),
+      findCustomerByClerkId(userId),
+      db
+        .select({
+          id: schema.pickupPoints.id,
+          name: schema.pickupPoints.name,
+          address: schema.pickupPoints.address,
+          openFrom: schema.pickupPoints.openFrom,
+          openUntil: schema.pickupPoints.openUntil,
+        })
+        .from(schema.pickupPoints)
+        .where(eq(schema.pickupPoints.active, true))
+        .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt)),
+      db.query.ratePlans.findFirst({ where: eq(schema.ratePlans.isDefault, true) }),
+      getSetting("min_rental_days"),
+      loadAvailability([set]),
+      db.select({ id: schema.setCopies.id, status: schema.setCopies.status }).from(schema.setCopies).where(eq(schema.setCopies.setId, set.id)),
+      db
+        .select({
+          id: schema.bookings.id,
+          copyId: schema.bookings.copyId,
+          status: schema.bookings.status,
+          startDate: schema.bookings.startDate,
+          endDate: schema.bookings.endDate,
+          proposedStartDate: schema.bookings.proposedStartDate,
+          proposedEndDate: schema.bookings.proposedEndDate,
+        })
+        .from(schema.bookings)
+        .where(and(eq(schema.bookings.setId, set.id), inArray(schema.bookings.status, [...RESERVING_STATUSES]))),
+      db.select({ startDate: schema.blackoutPeriods.startDate, endDate: schema.blackoutPeriods.endDate }).from(schema.blackoutPeriods),
+      getSetting("turnaround_days"),
+    ]);
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay ?? null;
   const a = availability.get(set.id);
+  const today = todayIso();
+  // Le `customerId` réel n'a pas d'usage ici (l'aperçu compare toujours à `null`, jamais à un
+  // client précis) : vidé plutôt que d'exposer inutilement l'identifiant d'autres clients.
+  const calendarBookings = rawBookings.map((b) => ({ ...withLateReturn(b, today), customerId: "" }));
 
   return (
     <section className="mx-auto max-w-4xl px-5 md:px-8 py-10 md:py-14">
@@ -78,10 +98,11 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
             set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents }}
             pricePerDay={pricePerDay}
             minDays={minDays}
-            minStartDate={addDays(todayIso(), 1)}
+            minStartDate={addDays(today, 1)}
             pickupPoints={pickupPoints}
             customer={customer ?? null}
             defaults={{ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" }}
+            calendar={{ copies, bookings: calendarBookings, blackouts, turnaroundDays: set.turnaroundDays ?? globalTurnaround }}
           />
         </div>
       )}

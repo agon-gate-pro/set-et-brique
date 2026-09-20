@@ -75,6 +75,8 @@ export const setAvailabilityLabels = {
 
 const dateLong = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
 
+const weekdayOnly = new Intl.DateTimeFormat("fr-FR", { weekday: "long", timeZone: "Europe/Paris" });
+
 const dateFull = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
   day: "numeric",
@@ -102,6 +104,16 @@ export function formatTime(value: string | null | undefined) {
 /** « 12 octobre » à partir d'une date ISO (aaaa-mm-jj). */
 export function formatDay(iso: string) {
   return dateLong.format(new Date(`${iso}T12:00:00Z`));
+}
+
+/** « mercredi » à partir d'une date ISO (aaaa-mm-jj). */
+export function formatWeekday(iso: string) {
+  return weekdayOnly.format(new Date(`${iso}T12:00:00Z`));
+}
+
+/** L'année d'une date ISO (aaaa-mm-jj), en texte. */
+export function formatYear(iso: string) {
+  return iso.slice(0, 4);
 }
 
 export const instructionTypeLabels = {
