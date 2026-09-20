@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
@@ -18,6 +19,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
     isAdmin(),
     userId ? findCustomerByClerkId(userId) : null,
   ]);
+  if (admin) redirect("/admin");
 
   const bookings = customer
     ? await db.query.bookings.findMany({
@@ -70,11 +72,6 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         <Link href="/compte/profil" className="btn btn-paper">
           Gérer mon compte
         </Link>
-        {admin ? (
-          <Link href="/admin" className="btn btn-sun">
-            Espace de gestion
-          </Link>
-        ) : null}
       </div>
     </section>
   );
