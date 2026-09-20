@@ -96,8 +96,8 @@ export function BookingCalendar({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-deep/50 p-4" onClick={onClose}>
-      <div className="brick-card bg-paper p-5 sm:p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-deep/50 p-2 sm:p-4" onClick={onClose}>
+      <div className="brick-card bg-paper p-3 sm:p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-lg text-ink-deep">Choisissez vos dates</h2>
           <button
