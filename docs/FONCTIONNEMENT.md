@@ -1,12 +1,13 @@
 # Set et Brique, comment ça fonctionne
 
-Documentation technique de la plateforme, pour les développeurs qui reprennent le projet. Elle décrit l'état actuel du code et de la base, et elle est mise à jour à chaque étape. Trois documents vivent dans `docs/` :
+Documentation technique de la plateforme, pour les développeurs qui reprennent le projet. Elle décrit l'état actuel du code et de la base, et elle est mise à jour à chaque étape. Plusieurs documents vivent dans `docs/` :
 
 | Document | Rôle |
 | --- | --- |
 | `FONCTIONNEMENT.md` (celui-ci) | comment ça marche : architecture, base, règles implémentées, écrans |
 | `AVANCEMENT.md` | ce qui est fait, ce qui reste, les questions ouvertes, le journal par étape |
 | `specification-fonctionnelle.md` | les règles métier attendues, module par module, avec ce qui est confirmé ou en attente |
+| `DESIGN-SYSTEM.md` | couleurs, composants et conventions visuelles, avec les règles apprises par itération |
 
 ## 1. Vue d'ensemble
 
@@ -105,7 +106,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Logistique**
 
-- `pickup_points` : lieux de remise en main propre proposés au client, dans l'ordre `sort_order`. `open_from` et `open_until` (facultatifs, ensemble) délimitent les heures de remise que le client peut demander ; le tunnel borne le champ heure au lieu choisi et le serveur revérifie (`isWithinOpening()`). Un lieu `active = false` n'est plus proposé mais reste dans l'historique des réservations. Le seed crée les cinq lieux confirmés par la cliente (Lanester, Guidel, Kerizan, Monistrol, Plouay).
+- `pickup_points` : lieux de remise en main propre proposés au client, dans l'ordre `sort_order`. `slots` (jsonb, `{ from, until }[]`, vide = toute heure) liste un ou plusieurs créneaux horaires dans lesquels le client peut demander la remise (ex. 09:00–12:00 et 17:00–19:00) ; le tunnel affiche les créneaux en indication et le serveur revérifie (`isWithinOpening()`). Un lieu `active = false` n'est plus proposé mais reste dans l'historique des réservations. Le seed crée les cinq lieux confirmés par la cliente (Lanester, Guidel, Kerizan, Monistrol, Plouay).
 - `blackout_periods` : périodes sans remise ni retour (vacances des gérants), bornes incluses. Un set déjà chez un client peut y rester pendant la période.
 
 **Réservations**
@@ -267,7 +268,7 @@ La cliente a rempli une grille « Liste des sets LEGO disponibles à la location
 
 ### Lieux de remise (`/admin/lieux`)
 
-Liste ordonnée (flèches), création, modification, activation, suppression. Un lieu utilisé par une réservation ne se supprime pas : le désactiver. L'heure de remise n'est pas gérée ici, elle se convient avec le client après la réservation (spécification, module 2).
+Liste ordonnée (flèches), création, modification, activation, suppression. Un lieu avec des réservations **en cours** (tous les statuts sauf rendue/annulée) ne se supprime pas : le désactiver ou le modifier reste possible. Un lieu qui n'a plus que des réservations passées (rendues, annulées) reste supprimable ; ces réservations gardent leur historique, seul leur lieu de remise repasse à vide (`ON DELETE SET NULL`). Chaque lieu peut avoir plusieurs créneaux horaires de remise (ex. 09:00–12:00 et 17:00–19:00), ajoutés et retirés un par un ; sans créneau, toute heure est proposée. L'heure précise reste à confirmer avec le client après la réservation (spécification, module 2).
 
 ### Périodes fermées (`/admin/fermetures`)
 
