@@ -45,3 +45,9 @@ export function endOfMonthIso(today: string) {
   const [year, month] = today.split("-").map(Number);
   return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 }
+
+/** Premier jour du mois de `today` décalé de `offset` mois (négatif pour le passé). */
+export function monthStartIso(today: string, offset: number) {
+  const [year, month] = today.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().slice(0, 10);
+}

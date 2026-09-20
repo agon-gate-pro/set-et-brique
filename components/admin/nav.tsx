@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import {
   LayoutDashboard,
   Package,
@@ -40,10 +41,16 @@ export function AdminNav({ links }: { links: AdminLink[] }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
 
+  // Next.js garde la position de défilement d'un changement de page à l'autre tant que la page
+  // précédente reste visible dans la fenêtre (menu sticky) : on revient en haut nous-mêmes.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     <aside className="brick-card min-w-0 w-[calc(100%+2.5rem)] md:w-auto p-2 md:p-4 md:sticky md:top-24 -mx-5 md:mx-0 rounded-none md:rounded-2xl border-x-0 md:border-x">
       <h2 className="hidden md:inline-block whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 mb-3">
-        Console de gestion
+        Espace de gestion
       </h2>
       <nav
         aria-label="Administration"
