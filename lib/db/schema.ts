@@ -216,9 +216,8 @@ export const pickupPoints = pgTable("pickup_points", {
   name: text("name").notNull(),
   address: text("address"),
   instructions: text("instructions"),
-  /** Plage horaire dans laquelle le client peut demander la remise. Vides = toute heure. */
-  openFrom: time("open_from"),
-  openUntil: time("open_until"),
+  /** Créneaux horaires dans lesquels le client peut demander la remise. Vide = toute heure. */
+  slots: jsonb("slots").$type<{ from: string; until: string }[]>().notNull().default([]),
   active: boolean("active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   ...timestamps,

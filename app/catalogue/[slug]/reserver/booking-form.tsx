@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
 import type { CopyInput, RangeBooking } from "@/lib/availability-core";
-import { centsToInput, formatCents, formatTime } from "@/lib/format";
+import { centsToInput, formatCents } from "@/lib/format";
 import { DateReadable } from "./date-readable";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
@@ -17,7 +17,7 @@ type Props = {
   pricePerDay: number;
   minDays: number;
   minStartDate: string;
-  pickupPoints: Pick<PickupPoint, "id" | "name" | "address" | "openFrom" | "openUntil">[];
+  pickupPoints: Pick<PickupPoint, "id" | "name" | "address" | "slots">[];
   customer: Pick<
     Customer,
     "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId"
@@ -41,11 +41,11 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
     () => pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? "",
   );
   const point = pickupPoints.find((p) => p.id === pickupPointId);
-  const openFrom = formatTime(point?.openFrom);
-  const openUntil = formatTime(point?.openUntil);
+  const slots = point?.slots ?? [];
   const [pickupTime, setPickupTime] = useState("10:00");
-  // Heure ramenée dans la plage du lieu choisi.
-  const clampedTime = openFrom && pickupTime < openFrom ? openFrom : openUntil && pickupTime > openUntil ? openUntil : pickupTime;
+  // Heure ramenée au premier créneau du lieu choisi si elle ne tombe dans aucun.
+  const withinASlot = slots.length === 0 || slots.some((s) => s.from <= pickupTime && pickupTime <= s.until);
+  const clampedTime = withinASlot ? pickupTime : slots[0].from;
   const validDays = days != null && days >= minDays;
   const endDate = validDays && startDate && days != null ? addDays(startDate, days - 1) : null;
 
@@ -96,8 +96,8 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
         <Field
           label="Heure de remise souhaitée"
           hint={
-            openFrom && openUntil
-              ? `Entre ${openFrom} et ${openUntil} à ce lieu. Nous la confirmons ou vous proposons un autre créneau`
+            slots.length > 0
+              ? `Entre ${slots.map((s) => `${s.from} et ${s.until}`).join(", ou entre ")} à ce lieu. Nous la confirmons ou vous proposons un autre créneau`
               : "Nous la confirmons ou vous proposons un autre créneau"
           }
         >
@@ -106,8 +106,6 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
             type="time"
             required
             step={900}
-            min={openFrom ?? undefined}
-            max={openUntil ?? undefined}
             value={clampedTime}
             onChange={(e) => setPickupTime(e.target.value)}
             className={inputClass}

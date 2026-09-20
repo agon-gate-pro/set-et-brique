@@ -33,8 +33,7 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
           id: schema.pickupPoints.id,
           name: schema.pickupPoints.name,
           address: schema.pickupPoints.address,
-          openFrom: schema.pickupPoints.openFrom,
-          openUntil: schema.pickupPoints.openUntil,
+          slots: schema.pickupPoints.slots,
         })
         .from(schema.pickupPoints)
         .where(eq(schema.pickupPoints.active, true))

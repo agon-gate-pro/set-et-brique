@@ -1,8 +1,9 @@
 "use server";
 
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { RESERVING_STATUSES } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
 import { firstError, formToObject, pickupPointSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
@@ -62,9 +63,9 @@ export async function deletePickupPoint(_: ActionState, formData: FormData): Pro
   const [{ n }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(schema.bookings)
-    .where(eq(schema.bookings.pickupPointId, id));
+    .where(and(eq(schema.bookings.pickupPointId, id), inArray(schema.bookings.status, [...RESERVING_STATUSES])));
   if (n > 0) {
-    return { error: `${n} réservation(s) utilisent ce lieu. Désactivez-le plutôt que de le supprimer.` };
+    return { error: `${n} réservation(s) en cours sur ce lieu. Désactivez-le plutôt que de le supprimer.` };
   }
   await db.delete(schema.pickupPoints).where(eq(schema.pickupPoints.id, id));
   revalidate();

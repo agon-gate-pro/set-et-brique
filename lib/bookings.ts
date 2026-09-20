@@ -52,14 +52,11 @@ export async function upsertCustomer(user: User, input: CustomerInput) {
   return customer;
 }
 
-/** L'heure demandée respecte la plage du lieu (« hh:mm » ou « hh:mm:ss ») ; sans plage, tout passe. */
-export function isWithinOpening(
-  time: string,
-  point: { openFrom: string | null; openUntil: string | null },
-) {
-  if (!point.openFrom || !point.openUntil) return true;
+/** L'heure demandée tombe dans un des créneaux du lieu (« hh:mm ») ; sans créneau, tout passe. */
+export function isWithinOpening(time: string, point: { slots: { from: string; until: string }[] }) {
+  if (point.slots.length === 0) return true;
   const t = time.slice(0, 5);
-  return point.openFrom.slice(0, 5) <= t && t <= point.openUntil.slice(0, 5);
+  return point.slots.some((s) => s.from <= t && t <= s.until);
 }
 
 /** Champs obligatoires pour réserver : contrat et facture (spécification, modules 3 et 7). */
@@ -123,9 +120,8 @@ export async function createBookingRequest(req: BookingRequest) {
   if (!set) throw new BookingError("Ce set n'est plus proposé à la location.");
   if (!pickupPoint) throw new BookingError("Choisissez un lieu de remise.");
   if (!isWithinOpening(req.pickupTime, pickupPoint)) {
-    throw new BookingError(
-      `À ${pickupPoint.name}, la remise est possible entre ${pickupPoint.openFrom!.slice(0, 5)} et ${pickupPoint.openUntil!.slice(0, 5)}.`,
-    );
+    const ranges = pickupPoint.slots.map((s) => `${s.from} et ${s.until}`).join(", ou entre ");
+    throw new BookingError(`À ${pickupPoint.name}, la remise est possible entre ${ranges}.`);
   }
   if (isInBlackout(req.startDate, blackouts)) throw new BookingError("Nous sommes fermés à la date de remise choisie.");
   if (isInBlackout(endDate, blackouts)) throw new BookingError("Nous sommes fermés à la date de retour. Choisissez une autre durée ou une autre date.");

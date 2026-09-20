@@ -85,6 +85,13 @@
       "when": 1789903677527,
       "tag": "0011_left_gorilla_man",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789990000000,
+      "tag": "0012_pickup_point_slots",
+      "breakpoints": true
     }
   ]
 }
