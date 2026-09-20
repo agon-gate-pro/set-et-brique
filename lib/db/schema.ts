@@ -199,6 +199,8 @@ export const setCopies = pgTable(
     label: text("label").notNull(),
     condition: copyCondition("condition").notNull().default("very_good"),
     status: copyStatus("status").notNull().default("available"),
+    /** Saisie à la main par les gérants (pas forcément le jour de création de la fiche). */
+    stockEntryDate: date("stock_entry_date"),
     note: text("note"),
     ...timestamps,
   },

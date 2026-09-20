@@ -78,6 +78,13 @@
       "when": 1789583226902,
       "tag": "0010_mighty_polaris",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789903677527,
+      "tag": "0011_left_gorilla_man",
+      "breakpoints": true
     }
   ]
 }

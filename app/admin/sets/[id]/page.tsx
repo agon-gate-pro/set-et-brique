@@ -52,6 +52,8 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
         </span>
       </div>
 
+      <CopiesSection setId={set.id} copies={copies} />
+
       <section className="mt-8 brick-card p-6">
         <h2 className="text-2xl font-semibold">Fiche</h2>
         <div className="mt-4">
@@ -60,7 +62,6 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
       </section>
 
       <ImagesSection setId={set.id} images={images} />
-      <CopiesSection setId={set.id} copies={copies} />
 
       <section className="mt-8 brick-card p-6 border-brick">
         <h2 className="text-2xl font-semibold">Supprimer ce set</h2>

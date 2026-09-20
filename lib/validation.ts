@@ -92,6 +92,13 @@ const isoDate = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date attendue (aaaa-mm-jj)");
 
+const optionalIsoDate = z
+  .string()
+  .trim()
+  .transform((s) => (s === "" ? null : s))
+  .nullable()
+  .refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "Date attendue (aaaa-mm-jj)");
+
 const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure attendue (hh:mm)");
 const optionalClockTime = z
   .string()
@@ -222,6 +229,7 @@ export const copySchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire"),
   condition: z.enum(["new", "very_good", "good", "worn"]),
   status: z.enum(["available", "maintenance", "retired"]),
+  stockEntryDate: optionalIsoDate,
   note: optionalText,
 });
 
