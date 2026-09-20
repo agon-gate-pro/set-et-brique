@@ -113,7 +113,7 @@ export function BookingCard({
           {booking.cancelReason ? <p className="mt-1 text-slate-ink">{booking.cancelReason}</p> : null}
           <form action={acceptAction} className="mt-3">
             <input type="hidden" name="id" value={booking.id} />
-            <SubmitButton>Accepter ces dates</SubmitButton>
+            <SubmitButton variant="leaf">Accepter ces dates</SubmitButton>
             <FormMessage state={acceptState} />
           </form>
         </div>

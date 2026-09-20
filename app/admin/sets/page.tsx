@@ -29,7 +29,7 @@ export default async function SetsPage() {
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-3xl md:text-4xl font-bold">Sets</h1>
-        <Link href="/admin/sets/nouveau" className="btn btn-brick">
+        <Link href="/admin/sets/nouveau" className="btn btn-leaf">
           Ajouter un set
         </Link>
       </div>

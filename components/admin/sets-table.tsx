@@ -119,7 +119,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
               <col className="w-[20%]" />
               <col className="w-24" />
               <col className="w-24" />
-              <col className="w-20" />
+              <col className="w-28" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-ink/10 bg-sky text-left">
@@ -167,7 +167,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
                     </span>
                   </td>
                   <td className="p-2 sm:p-3 text-right">
-                    <Link href={`/admin/sets/${s.id}`} className="font-bold text-brick hover:underline underline-offset-4">
+                    <Link href={`/admin/sets/${s.id}`} className="btn bg-ink-deep text-paper text-xs py-1.5 px-3 whitespace-nowrap">
                       Modifier
                     </Link>
                   </td>

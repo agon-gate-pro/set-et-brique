@@ -14,6 +14,7 @@ import {
 } from "@/components/admin/form";
 import { todayIso } from "@/lib/dates";
 import { copyConditionLabels, copyStatusLabels } from "@/lib/format";
+import { useFormDirty } from "@/lib/use-form-dirty";
 import type { SetCopy, SetImage } from "@/lib/db/schema";
 import {
   addSetImage,
@@ -327,13 +328,19 @@ function CopyFields({ copy }: { copy?: SetCopy }) {
 function CopyEditor({ copy, canDelete }: { copy: SetCopy; canDelete: boolean }) {
   const [editState, editAction] = useActionState(updateCopy, null);
   const [deleteState, deleteAction] = useActionState(deleteCopy, null);
+  const { ref: formRef, dirty, markClean } = useFormDirty();
+  const [prevEditState, setPrevEditState] = useState(editState);
+  if (editState !== prevEditState) {
+    setPrevEditState(editState);
+    if (editState?.ok) markClean();
+  }
   return (
     <div>
-      <form action={editAction} className="grid gap-4 sm:grid-cols-3">
+      <form ref={formRef} action={editAction} className="grid gap-4 sm:grid-cols-3">
         <input type="hidden" name="id" value={copy.id} />
         <CopyFields copy={copy} />
         <div className="sm:col-span-3 flex justify-end">
-          <SubmitButton>Enregistrer</SubmitButton>
+          <SubmitButton variant="leaf" disabled={!dirty}>Enregistrer</SubmitButton>
         </div>
         <div className="sm:col-span-3">
           <FormMessage state={editState} />
@@ -363,7 +370,7 @@ function NewCopyForm({ setId }: { setId: string }) {
       <input type="hidden" name="setId" value={setId} />
       <CopyFields />
       <div className="sm:col-span-3 flex justify-end">
-        <SubmitButton>Ajouter l&apos;exemplaire</SubmitButton>
+        <SubmitButton variant="leaf">Ajouter l&apos;exemplaire</SubmitButton>
       </div>
       <div className="sm:col-span-3">
         <FormMessage state={state} />

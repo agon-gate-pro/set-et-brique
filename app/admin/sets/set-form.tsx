@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { centsToInput, instructionTypeLabels, setStatusLabels } from "@/lib/format";
+import { useFormDirty } from "@/lib/use-form-dirty";
 import type { RatePlan, Set } from "@/lib/db/schema";
 
 type Props = {
@@ -27,9 +28,15 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
   const [state, formAction] = useActionState(action, null);
   const [status, setStatus] = useState(set?.status ?? "draft");
   const defaultPlan = ratePlans.find((p) => p.isDefault);
+  const { ref: formRef, dirty, markClean } = useFormDirty();
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state?.ok) markClean();
+  }
 
   return (
-    <form action={formAction} className="grid gap-5 sm:grid-cols-2">
+    <form ref={set ? formRef : undefined} action={formAction} className="grid gap-5 sm:grid-cols-2">
       {set ? <input type="hidden" name="id" value={set.id} /> : null}
 
       <Group title="Identité">
@@ -149,7 +156,7 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
 
       <div className="sm:col-span-2">
         <div className="flex justify-end">
-          <SubmitButton>{submitLabel}</SubmitButton>
+          <SubmitButton variant="leaf" disabled={Boolean(set) && !dirty}>{submitLabel}</SubmitButton>
         </div>
         <FormMessage state={state} />
       </div>

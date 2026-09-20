@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
+import { useFormDirty } from "@/lib/use-form-dirty";
 import { saveCustomerProfile } from "./actions";
 import { PostalCityFields } from "./postal-city-fields";
 
@@ -20,13 +21,20 @@ type Props = {
 
 export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null }: Props) {
   const [state, action] = useActionState(saveCustomerProfile, null as ActionState);
+  const { ref: formRef, dirty, markClean } = useFormDirty();
 
   useEffect(() => {
     if (state?.ok) window.dispatchEvent(new Event("customer-profile-updated"));
   }, [state]);
 
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state?.ok) markClean();
+  }
+
   return (
-    <form action={action} className="grid gap-4 sm:grid-cols-2">
+    <form ref={formRef} action={action} className="grid gap-4 sm:grid-cols-2">
       {returnTo ? <input type="hidden" name="retour" value={returnTo} /> : null}
       <p className="sm:col-span-2 text-sm text-slate-ink">
         Pour le contrat de location et la facture. Pré-remplies à chaque réservation, modifiables à ce moment-là.
@@ -61,7 +69,7 @@ export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null 
         </Field>
       </div>
       <div className="sm:col-span-2 flex justify-end">
-        <SubmitButton>{returnTo ? "Enregistrer et reprendre ma réservation" : "Enregistrer"}</SubmitButton>
+        <SubmitButton variant="leaf" disabled={!dirty}>{returnTo ? "Enregistrer et reprendre ma réservation" : "Enregistrer"}</SubmitButton>
       </div>
       <div className="sm:col-span-2">
         <FormMessage state={state} />

@@ -18,12 +18,14 @@ export function SubmitButton({
   disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
+  const blocked = disabled && !pending;
+  const stateClass = pending
+    ? `btn-${variant} opacity-60 cursor-wait`
+    : blocked
+      ? "bg-slate-200 text-slate-ink/50 shadow-none cursor-not-allowed"
+      : `btn-${variant}`;
   return (
-    <button
-      type="submit"
-      disabled={pending || disabled}
-      className={`btn btn-${variant} disabled:opacity-60 disabled:cursor-wait ${className}`}
-    >
+    <button type="submit" disabled={pending || disabled} className={`btn ${stateClass} ${className}`}>
       {pending ? "Enregistrement…" : children}
     </button>
   );

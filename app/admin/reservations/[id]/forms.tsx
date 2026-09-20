@@ -29,7 +29,7 @@ export function HandoverActions({ booking }: { booking: Booking }) {
           <Field label="Précision" hint="Facultatif, pour l'historique">
             <input name="note" className={inputClass} placeholder="Loyer encaissé par TPE" />
           </Field>
-          <SubmitButton>Set remis</SubmitButton>
+          <SubmitButton variant="leaf">Set remis</SubmitButton>
           <div className="sm:col-span-3">
             <FormMessage state={pickupState} />
           </div>
@@ -59,7 +59,7 @@ export function HandoverActions({ booking }: { booking: Booking }) {
             <textarea name="returnNote" rows={3} className={inputClass} placeholder="Complet, sachets refaits. Une figurine sans son casque." />
           </Field>
           <div>
-            <SubmitButton>Set rendu</SubmitButton>
+            <SubmitButton variant="leaf">Set rendu</SubmitButton>
           </div>
           <FormMessage state={returnState} />
         </form>

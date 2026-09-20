@@ -84,18 +84,18 @@ export default async function AdminHome() {
 
       <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <li>
-          <Link href="/admin/sets/nouveau" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
-            <p className="display text-4xl font-bold text-brick">{sets.n}</p>
+          <Link href="/admin/sets/nouveau" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sea/15 transition-colors">
+            <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{sets.n}</p>
             <p className="mt-1 font-semibold text-slate-ink">Sets au catalogue</p>
           </Link>
         </li>
         <li className="brick-card p-5">
-          <p className="display text-4xl font-bold text-brick">{customers.n}</p>
+          <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{customers.n}</p>
           <p className="mt-1 font-semibold text-slate-ink">Clients</p>
         </li>
         <li>
-          <Link href="/admin/bons-cadeaux" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
-            <p className="display text-4xl font-bold text-brick">{validVouchers.n}</p>
+          <Link href="/admin/bons-cadeaux" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sea/15 transition-colors">
+            <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{validVouchers.n}</p>
             <p className="mt-1 font-semibold text-slate-ink">Bons cadeaux valides</p>
           </Link>
         </li>
@@ -103,20 +103,20 @@ export default async function AdminHome() {
 
       <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <li>
-          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
-            <p className="display text-4xl font-bold text-brick">{inRental.n}</p>
+          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sea/15 transition-colors">
+            <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{inRental.n}</p>
             <p className="mt-1 font-semibold text-slate-ink">Sets en location actuellement</p>
           </Link>
         </li>
         <li>
-          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
-            <p className="display text-4xl font-bold text-brick">{pending.n}</p>
+          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sea/15 transition-colors">
+            <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{pending.n}</p>
             <p className="mt-1 font-semibold text-slate-ink">Réservations à traiter</p>
           </Link>
         </li>
         <li>
-          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sky transition-colors">
-            <p className="display text-4xl font-bold text-brick">{toHandOver.n}</p>
+          <Link href="/admin/reservations" className="flex h-full flex-col justify-between brick-card p-5 hover:bg-sea/15 transition-colors">
+            <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{toHandOver.n}</p>
             <p className="mt-1 font-semibold text-slate-ink">Sets à remettre au client</p>
           </Link>
         </li>
@@ -124,15 +124,15 @@ export default async function AdminHome() {
 
       <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <li className="brick-card p-5">
-          <p className="display text-4xl font-bold text-ink-deep">{formatCents(caDay.n)}</p>
+          <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{formatCents(caDay.n)}</p>
           <p className="mt-1 font-semibold text-slate-ink">CA du jour</p>
         </li>
         <li className="brick-card p-5">
-          <p className="display text-4xl font-bold text-ink-deep">{formatCents(caWeek.n)}</p>
+          <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{formatCents(caWeek.n)}</p>
           <p className="mt-1 font-semibold text-slate-ink">CA de la semaine</p>
         </li>
         <li className="brick-card p-5">
-          <p className="display text-4xl font-bold text-ink-deep">{formatCents(caMonth.n)}</p>
+          <p className="display text-3xl sm:text-4xl font-bold text-ink-deep">{formatCents(caMonth.n)}</p>
           <p className="mt-1 font-semibold text-slate-ink">CA du mois</p>
         </li>
       </ul>
