@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
 import { saveCustomerProfile } from "./actions";
+import { PostalCityFields } from "./postal-city-fields";
 
 type Props = {
   customer: Pick<
@@ -20,32 +21,32 @@ type Props = {
 export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null }: Props) {
   const [state, action] = useActionState(saveCustomerProfile, null as ActionState);
 
+  useEffect(() => {
+    if (state?.ok) window.dispatchEvent(new Event("customer-profile-updated"));
+  }, [state]);
+
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-2">
       {returnTo ? <input type="hidden" name="retour" value={returnTo} /> : null}
       <p className="sm:col-span-2 text-sm text-slate-ink">
         Pour le contrat de location et la facture. Pré-remplies à chaque réservation, modifiables à ce moment-là.
+        Champs marqués d&apos;un <span className="text-brick">*</span> obligatoires.
       </p>
-      <Field label="Prénom">
+      <Field label="Prénom" required>
         <input name="firstName" required defaultValue={customer?.firstName ?? defaults.firstName} className={inputClass} />
       </Field>
-      <Field label="Nom">
+      <Field label="Nom" required>
         <input name="lastName" required defaultValue={customer?.lastName ?? defaults.lastName} className={inputClass} />
       </Field>
-      <Field label="Téléphone">
+      <Field label="Téléphone" required>
         <PhoneInput name="phone" defaultValue={customer?.phone ?? ""} />
       </Field>
       <div className="sm:col-span-2">
-        <Field label="Adresse">
+        <Field label="Adresse" required>
           <input name="addressLine" required defaultValue={customer?.addressLine ?? ""} className={inputClass} />
         </Field>
       </div>
-      <Field label="Code postal">
-        <input name="postalCode" required inputMode="numeric" defaultValue={customer?.postalCode ?? ""} className={inputClass} />
-      </Field>
-      <Field label="Ville">
-        <input name="city" required defaultValue={customer?.city ?? ""} className={inputClass} />
-      </Field>
+      <PostalCityFields defaultPostalCode={customer?.postalCode ?? ""} defaultCity={customer?.city ?? ""} />
       <div className="sm:col-span-2">
         <Field label="Lieu de remise préféré" hint="Pré-sélectionné à chaque réservation, modifiable à chaque fois">
           <select name="preferredPickupPointId" className={inputClass} defaultValue={customer?.preferredPickupPointId ?? ""}>
@@ -59,7 +60,7 @@ export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null 
           </select>
         </Field>
       </div>
-      <div className="sm:col-span-2">
+      <div className="sm:col-span-2 flex justify-end">
         <SubmitButton>{returnTo ? "Enregistrer et reprendre ma réservation" : "Enregistrer"}</SubmitButton>
       </div>
       <div className="sm:col-span-2">

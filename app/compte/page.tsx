@@ -28,10 +28,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
     : [];
   const current = bookings.filter((b) => b.status !== "returned" && b.status !== "cancelled");
   const past = bookings.filter((b) => b.status === "returned" || b.status === "cancelled");
+  const firstName = customer?.firstName ?? user?.firstName ?? null;
 
   return (
     <section className="mx-auto max-w-4xl px-5 md:px-8 py-14 md:py-20">
-      <h1 className="text-3xl md:text-5xl font-bold">Bonjour {customer?.firstName ?? user?.firstName ?? ""}</h1>
+      <h1 className="text-3xl md:text-5xl font-bold">Bonjour{firstName ? ` ${firstName}` : ""}</h1>
 
       {typeof demande === "string" ? (
         <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
