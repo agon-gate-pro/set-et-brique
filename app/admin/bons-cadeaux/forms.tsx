@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   ConfirmButton,
   Field,
@@ -12,19 +12,38 @@ import { createGiftVouchers, cancelGiftVoucher, markGiftVoucherUsed } from "./ac
 
 export function GiftVoucherCreateForm() {
   const [state, action] = useActionState(createGiftVouchers, null);
+  const [amountEuros, setAmountEuros] = useState("");
+  const [quantity, setQuantity] = useState("1");
   return (
     <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-[10rem_8rem_1fr_auto]">
       <Field label="Montant (€)" hint="Par bon">
-        <input name="amountEuros" required inputMode="decimal" className={inputClass} placeholder="20,00" />
+        <input
+          name="amountEuros"
+          required
+          inputMode="decimal"
+          value={amountEuros}
+          onChange={(e) => setAmountEuros(e.target.value)}
+          className={inputClass}
+          placeholder="20,00"
+        />
       </Field>
       <Field label="Quantité" hint="1 = un seul bon">
-        <input name="quantity" defaultValue="1" required inputMode="numeric" className={inputClass} />
+        <input
+          name="quantity"
+          required
+          inputMode="numeric"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          className={inputClass}
+        />
       </Field>
       <Field label="Étiquette de lot" hint="Optionnel, pour retrouver les codes d'un même événement">
         <input name="batchLabel" className={inputClass} placeholder="Salon de Noël 2026" />
       </Field>
       <div className="self-end">
-        <SubmitButton>Générer</SubmitButton>
+        <SubmitButton variant="leaf" disabled={amountEuros.trim() === "" || quantity.trim() === ""}>
+          Générer
+        </SubmitButton>
       </div>
       <div className="sm:col-span-2 lg:col-span-3">
         <Field label="Note interne" hint="Optionnel, non visible du client">

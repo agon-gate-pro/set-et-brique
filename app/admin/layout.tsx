@@ -9,10 +9,13 @@ const sections = [
   { href: "/admin/lieux", label: "Lieux de remise" },
   { href: "/admin/fermetures", label: "Périodes fermées" },
   { href: "/admin/bons-cadeaux", label: "Bons cadeaux" },
+  { href: "/admin/statistiques", label: "Statistiques" },
   { href: "/admin/contenus", label: "Contenus du site" },
 ];
 
-const superadminSections = [{ href: "/admin/maintenance", label: "Maintenance" }];
+const superadminSections = [
+  { href: "/admin/maintenance", label: "Maintenance", separatorBefore: true },
+];
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const { role } = await requireRole("admin");
@@ -20,8 +23,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="mx-auto max-w-6xl px-5 md:px-8 py-6 md:py-14 grid gap-6 md:gap-8 grid-cols-[minmax(0,1fr)] md:grid-cols-[14rem_minmax(0,1fr)] items-start">
-      <AdminNav links={links} role={role} />
-      <div className="min-w-0">{children}</div>
+      <AdminNav links={links} />
+      <div className="min-w-0 md:pt-4">{children}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   ConfirmButton,
   Field,
@@ -9,19 +9,39 @@ import {
   inputClass,
 } from "@/components/admin/form";
 import { centsToInput, formatCents } from "@/lib/format";
-import { createRatePlan, deleteRatePlan, updateRatePlan } from "./actions";
+import { useFormDirty } from "@/lib/use-form-dirty";
+import { createRatePlan, deleteRatePlan, setDefaultRatePlan, updateRatePlan } from "./actions";
 
 export function RatePlanCreateForm() {
   const [state, action] = useActionState(createRatePlan, null);
+  const [name, setName] = useState("");
+  const [priceEuros, setPriceEuros] = useState("");
   return (
     <form action={action} className="mt-4 grid gap-4 sm:grid-cols-[1fr_10rem_auto] items-end">
       <Field label="Nom">
-        <input name="name" required className={inputClass} placeholder="Forfait 2" />
+        <input
+          name="name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={inputClass}
+          placeholder="Forfait 2"
+        />
       </Field>
       <Field label="Prix par jour (€)">
-        <input name="priceEuros" required inputMode="decimal" className={inputClass} placeholder="3,00" />
+        <input
+          name="priceEuros"
+          required
+          inputMode="decimal"
+          value={priceEuros}
+          onChange={(e) => setPriceEuros(e.target.value)}
+          className={inputClass}
+          placeholder="3,00"
+        />
       </Field>
-      <SubmitButton>Créer le forfait</SubmitButton>
+      <SubmitButton variant="leaf" disabled={name.trim() === "" || priceEuros.trim() === ""}>
+        Créer le forfait
+      </SubmitButton>
       <div className="sm:col-span-3">
         <FormMessage state={state} />
       </div>
@@ -36,6 +56,12 @@ export function RatePlanRow({
 }) {
   const [editState, editAction] = useActionState(updateRatePlan, null);
   const [deleteState, deleteAction] = useActionState(deleteRatePlan, null);
+  const { ref: formRef, dirty, markClean } = useFormDirty();
+  const [prevEditState, setPrevEditState] = useState(editState);
+  if (editState !== prevEditState) {
+    setPrevEditState(editState);
+    if (editState?.ok) markClean();
+  }
 
   return (
     <div>
@@ -51,7 +77,7 @@ export function RatePlanRow({
         </p>
       </div>
 
-      <form action={editAction} className="mt-4 grid gap-4 sm:grid-cols-[1fr_10rem_auto] items-end">
+      <form ref={formRef} action={editAction} className="mt-4 grid gap-4 sm:grid-cols-[1fr_10rem_auto] items-end">
         <input type="hidden" name="id" value={plan.id} />
         <Field label="Nom">
           <input name="name" defaultValue={plan.name} required className={inputClass} />
@@ -65,11 +91,20 @@ export function RatePlanRow({
             className={inputClass}
           />
         </Field>
-        <SubmitButton variant="paper">Enregistrer</SubmitButton>
+        <SubmitButton variant="leaf" disabled={!dirty}>Enregistrer</SubmitButton>
         <div className="sm:col-span-3">
           <FormMessage state={editState} />
         </div>
       </form>
+
+      {!plan.isDefault ? (
+        <form action={setDefaultRatePlan} className="mt-3">
+          <input type="hidden" name="id" value={plan.id} />
+          <button type="submit" className="btn btn-paper text-sm py-2 px-4">
+            Définir comme forfait par défaut
+          </button>
+        </form>
+      ) : null}
 
       {!plan.isDefault ? (
         <form action={deleteAction} className="mt-3">

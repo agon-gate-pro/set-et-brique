@@ -5,6 +5,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { slugify } from "@/lib/format";
 import { copySchema, firstError, formToObject, setSchema } from "@/lib/validation";
@@ -68,7 +69,7 @@ export async function createSet(_: ActionState, formData: FormData): Promise<Act
     .returning({ id: schema.sets.id });
 
   // Un premier exemplaire par défaut : la plupart des sets n'existent qu'en un seul.
-  await db.insert(schema.setCopies).values({ setId: created.id, label: "Exemplaire 1" });
+  await db.insert(schema.setCopies).values({ setId: created.id, label: "Exemplaire 1", stockEntryDate: todayIso() });
 
   revalidateSet(created.id);
   redirect(`/admin/sets/${created.id}`);
@@ -112,7 +113,7 @@ export async function updateSet(_: ActionState, formData: FormData): Promise<Act
     .where(eq(schema.sets.id, id));
 
   revalidateSet(id);
-  return { ok: "Set enregistré." };
+  return { ok: "Modification enregistrée." };
 }
 
 export async function deleteSet(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -137,13 +138,16 @@ export async function deleteSet(_: ActionState, formData: FormData): Promise<Act
 
 /* ---------------- Images ---------------- */
 
-export async function addSetImage(_: ActionState, formData: FormData): Promise<ActionState> {
+/**
+ * Une photo par appel, invoquée directement depuis le client (pas de `<form>`) :
+ * en boucle, ça permet d'ajouter plusieurs photos d'un coup sans jamais
+ * dépasser la limite de taille d'une requête (`serverActions.bodySizeLimit`,
+ * `next.config.ts`), quel que soit le nombre de photos choisies.
+ */
+export async function addSetImage(setId: string, file: File, alt: string | null): Promise<{ error?: string }> {
   await requireRole("admin");
-  const setId = String(formData.get("setId") ?? "");
-  const file = formData.get("file");
-  if (!setId || !(file instanceof File) || file.size === 0) return { error: "Choisissez une image." };
-  if (!IMAGE_TYPES.includes(file.type)) return { error: "Format accepté : JPEG, PNG ou WebP." };
-  if (file.size > MAX_IMAGE_BYTES) return { error: "Image trop lourde (8 Mo maximum)." };
+  if (!IMAGE_TYPES.includes(file.type)) return { error: `Format non accepté pour « ${file.name} » : JPEG, PNG ou WebP.` };
+  if (file.size > MAX_IMAGE_BYTES) return { error: `« ${file.name} » dépasse 8 Mo.` };
 
   const [set] = await db.select({ slug: schema.sets.slug }).from(schema.sets).where(eq(schema.sets.id, setId));
   if (!set) return { error: "Set introuvable" };
@@ -163,19 +167,13 @@ export async function addSetImage(_: ActionState, formData: FormData): Promise<A
     contentType: file.type,
   });
 
-  await db.insert(schema.setImages).values({
-    setId,
-    url: blob.url,
-    alt: String(formData.get("alt") ?? "").trim() || null,
-    sortOrder: n,
-  });
+  await db.insert(schema.setImages).values({ setId, url: blob.url, alt, sortOrder: n });
   revalidateSet(setId);
-  return { ok: "Photo ajoutée." };
+  return {};
 }
 
-export async function deleteSetImage(formData: FormData) {
+export async function deleteSetImage(id: string) {
   await requireRole("admin");
-  const id = String(formData.get("id") ?? "");
   const [image] = await db.select().from(schema.setImages).where(eq(schema.setImages.id, id));
   if (!image) return;
   await db.delete(schema.setImages).where(eq(schema.setImages.id, id));
@@ -183,10 +181,8 @@ export async function deleteSetImage(formData: FormData) {
   revalidateSet(image.setId);
 }
 
-export async function moveSetImage(formData: FormData) {
+export async function moveSetImage(id: string, direction: "up" | "down") {
   await requireRole("admin");
-  const id = String(formData.get("id") ?? "");
-  const direction = formData.get("direction") === "up" ? -1 : 1;
   const [image] = await db.select().from(schema.setImages).where(eq(schema.setImages.id, id));
   if (!image) return;
 
@@ -196,7 +192,7 @@ export async function moveSetImage(formData: FormData) {
     .where(eq(schema.setImages.setId, image.setId))
     .orderBy(asc(schema.setImages.sortOrder), asc(schema.setImages.createdAt));
   const index = siblings.findIndex((s) => s.id === id);
-  const target = index + direction;
+  const target = index + (direction === "up" ? -1 : 1);
   if (target < 0 || target >= siblings.length) return;
 
   [siblings[index], siblings[target]] = [siblings[target], siblings[index]];
@@ -205,6 +201,26 @@ export async function moveSetImage(formData: FormData) {
       await tx.update(schema.setImages).set({ sortOrder: i }).where(eq(schema.setImages.id, s.id));
     }
   });
+  revalidateSet(image.setId);
+}
+
+/** Glisser-déposer : ordre complet envoyé en une fois, pour un déplacement à une position quelconque. */
+export async function reorderSetImages(setId: string, orderedIds: string[]) {
+  await requireRole("admin");
+  await db.transaction(async (tx) => {
+    for (const [i, id] of orderedIds.entries()) {
+      await tx.update(schema.setImages).set({ sortOrder: i }).where(eq(schema.setImages.id, id));
+    }
+  });
+  revalidateSet(setId);
+}
+
+/** Description d'une photo déjà en place, modifiable après coup (une par une, plutôt qu'un texte commun au lot importé). */
+export async function updateSetImageAlt(id: string, alt: string | null) {
+  await requireRole("admin");
+  const [image] = await db.select({ setId: schema.setImages.setId }).from(schema.setImages).where(eq(schema.setImages.id, id));
+  if (!image) return;
+  await db.update(schema.setImages).set({ alt }).where(eq(schema.setImages.id, id));
   revalidateSet(image.setId);
 }
 
@@ -239,6 +255,17 @@ export async function updateCopy(_: ActionState, formData: FormData): Promise<Ac
 export async function deleteCopy(_: ActionState, formData: FormData): Promise<ActionState> {
   await requireRole("admin");
   const id = String(formData.get("id") ?? "");
+  const [copyToDelete] = await db.select({ setId: schema.setCopies.setId }).from(schema.setCopies).where(eq(schema.setCopies.id, id));
+  if (!copyToDelete) return { error: "Exemplaire introuvable." };
+
+  const [{ n: siblingCount }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.setCopies)
+    .where(eq(schema.setCopies.setId, copyToDelete.setId));
+  if (siblingCount <= 1) {
+    return { error: "Dernier exemplaire du set : supprimez ou archivez plutôt le set entier." };
+  }
+
   const [{ n }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(schema.bookings)

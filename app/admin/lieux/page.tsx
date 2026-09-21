@@ -20,11 +20,8 @@ export default async function PickupPointsPage() {
   return (
     <>
       <h1 className="text-3xl md:text-4xl font-bold">Lieux de remise</h1>
-      <p className="mt-3 text-slate-ink max-w-xl">
-        Les lieux où vous remettez et récupérez les sets en main propre. Le client en
-        choisit un à la réservation, dans l&apos;ordre ci-dessous, et demande une heure dans
-        la plage horaire du lieu si vous en fixez une. Un lieu désactivé n&apos;est plus proposé
-        mais reste dans l&apos;historique.
+      <p className="mt-3 text-sm text-slate-ink whitespace-nowrap">
+        Les lieux où vous remettez les sets en main propre, dans l&apos;ordre où le client les choisit.
       </p>
 
       {points.length === 0 ? (

@@ -59,26 +59,23 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
   return (
     <>
       <section className="studs-sky border-b border-slate-ink/10">
-        <div className="mx-auto max-w-6xl px-5 md:px-8 py-14 md:py-20">
-          <h1 className="text-4xl md:text-6xl font-bold">Le catalogue</h1>
-          <p className="mt-5 text-xl text-slate-ink leading-relaxed max-w-2xl">
-            Tous nos sets, avec leur disponibilité du jour. Le prix est par jour de
-            location, la caution est bloquée sur votre carte à la remise et jamais
-            débitée sauf casse ou perte.
-          </p>
-          {allRows.length > 0 ? (
-            <p className="mt-4 font-semibold text-ink-deep">
-              {rows.length} set{rows.length > 1 ? "s" : ""}
-              {activeTheme ? ` · ${activeTheme.label}` : " au catalogue"}, {availableCount} disponible
-              {availableCount > 1 ? "s" : ""} aujourd&apos;hui.
-            </p>
-          ) : null}
+        <div className="mx-auto max-w-6xl px-5 md:px-8 py-5 md:py-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h1 className="text-2xl md:text-3xl font-bold">Le catalogue</h1>
+            {allRows.length > 0 ? (
+              <p className="font-semibold text-ink-deep text-sm">
+                {rows.length} set{rows.length > 1 ? "s" : ""}
+                {activeTheme ? ` · ${activeTheme.label}` : " au catalogue"}, {availableCount} disponible
+                {availableCount > 1 ? "s" : ""} aujourd&apos;hui.
+              </p>
+            ) : null}
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16">
+      <section className="mx-auto max-w-6xl px-5 md:px-8 py-6 md:py-8">
         {themes.length > 0 ? (
-          <nav aria-label="Filtrer par gamme" className="mb-8">
+          <nav aria-label="Filtrer par gamme" className="mb-5">
             <p className="text-sm font-semibold text-slate-ink">Gamme</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {[{ slug: null, label: "Toutes", count: allRows.length }, ...themes].map((t) => {

@@ -29,9 +29,8 @@ export default async function NewSetPage() {
         Retour aux sets
       </Link>
       <h1 className="mt-3 text-3xl md:text-4xl font-bold">Nouveau set</h1>
-      <p className="mt-2 text-slate-ink max-w-xl">
-        Renseignez la fiche, puis ajoutez les photos et les exemplaires à l&apos;étape
-        suivante. Un premier exemplaire est créé automatiquement.
+      <p className="mt-2 text-sm text-slate-ink max-w-xl">
+        Renseignez la fiche ; photos et exemplaires s&apos;ajoutent à l&apos;étape suivante.
       </p>
       <div className="mt-8 brick-card p-6">
         <SetForm action={createSet} ratePlans={ratePlans} defaultTurnaroundDays={defaultTurnaroundDays} submitLabel="Créer le set" />

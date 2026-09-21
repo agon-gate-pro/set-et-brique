@@ -92,31 +92,54 @@ const isoDate = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date attendue (aaaa-mm-jj)");
 
-const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure attendue (hh:mm)");
-const optionalClockTime = z
+const optionalIsoDate = z
   .string()
   .trim()
   .transform((s) => (s === "" ? null : s))
   .nullable()
-  .refine((v) => v === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(v), "Heure attendue (hh:mm)");
+  .refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "Date attendue (aaaa-mm-jj)");
 
-export const pickupPointSchema = z
-  .object({
-    name: z.string().trim().min(1, "Le nom est obligatoire"),
-    address: optionalText,
-    instructions: optionalText,
-    openFrom: optionalClockTime,
-    openUntil: optionalClockTime,
-    active: checkbox,
+const clockTime = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure attendue (hh:mm)");
+
+const timeSlot = z
+  .object({ from: clockTime, until: clockTime })
+  .refine((s) => s.from < s.until, { message: "L'heure de fin doit être après l'heure de début", path: ["until"] });
+
+/** Créneaux horaires d'un lieu de remise, transmis en JSON dans un champ caché du formulaire. */
+const slotsField = z
+  .string()
+  .trim()
+  .transform((s, ctx) => {
+    if (s === "") return [];
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(s);
+    } catch {
+      ctx.addIssue({ code: "custom", message: "Créneaux invalides" });
+      return z.NEVER;
+    }
+    const result = z.array(timeSlot).safeParse(parsed);
+    if (!result.success) {
+      ctx.addIssue({ code: "custom", message: "Créneaux invalides" });
+      return z.NEVER;
+    }
+    return result.data;
   })
-  .refine((p) => (p.openFrom === null) === (p.openUntil === null), {
-    message: "Renseignez les deux heures de la plage, ou aucune",
-    path: ["openUntil"],
-  })
-  .refine((p) => p.openFrom === null || p.openUntil === null || p.openFrom < p.openUntil, {
-    message: "L'heure de fin doit être après l'heure de début",
-    path: ["openUntil"],
-  });
+  .refine(
+    (slots) => {
+      const sorted = [...slots].sort((a, b) => a.from.localeCompare(b.from));
+      return sorted.every((s, i) => i === 0 || s.from >= sorted[i - 1].until);
+    },
+    { message: "Les créneaux ne doivent pas se chevaucher" },
+  );
+
+export const pickupPointSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire"),
+  address: optionalText,
+  instructions: optionalText,
+  slots: slotsField,
+  active: checkbox,
+});
 
 export const blackoutSchema = z
   .object({
@@ -222,6 +245,7 @@ export const copySchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire"),
   condition: z.enum(["new", "very_good", "good", "worn"]),
   status: z.enum(["available", "maintenance", "retired"]),
+  stockEntryDate: optionalIsoDate,
   note: optionalText,
 });
 

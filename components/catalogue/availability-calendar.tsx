@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays } from "@/lib/dates";
-import type { DayAvailability } from "@/lib/availability";
+import type { DayAvailability } from "@/lib/availability-core";
 
 const weekdays = ["L", "M", "M", "J", "V", "S", "D"];
 

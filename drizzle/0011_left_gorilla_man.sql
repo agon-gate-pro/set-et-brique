@@ -1,0 +1,1 @@
+ALTER TABLE "set_copies" ADD COLUMN "stock_entry_date" date;

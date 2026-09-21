@@ -1,16 +1,105 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
+import { Trash2 } from "lucide-react";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
-import { formatTime } from "@/lib/format";
+import { useFormDirty } from "@/lib/use-form-dirty";
 import type { PickupPoint } from "@/lib/db/schema";
 import { createPickupPoint, deletePickupPoint, movePickupPoint, updatePickupPoint } from "./actions";
 
-function PickupPointFields({ point }: { point?: PickupPoint }) {
+type Slot = { from: string; until: string };
+
+/** Créneaux horaires d'un lieu, transmis au serveur en JSON via un champ caché (`name="slots"`). */
+function SlotsField({ slots, onChange }: { slots: Slot[]; onChange: (slots: Slot[]) => void }) {
+  function update(i: number, key: keyof Slot, value: string) {
+    onChange(
+      slots.map((s, idx) => {
+        if (idx !== i) return s;
+        // La fin recule en même temps que le début si elle se retrouve avant lui.
+        if (key === "from" && s.until && s.until < value) return { from: value, until: value };
+        return { ...s, [key]: value };
+      }),
+    );
+  }
+  function remove(i: number) {
+    onChange(slots.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div>
+      <span className="block font-bold text-ink-deep">Créneaux de remise possibles</span>
+      <span className="block text-sm text-slate-ink">Aucun créneau : toute heure est proposée</span>
+      <div className="mt-2 flex flex-col gap-2">
+        {slots.map((slot, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <span className="text-slate-ink">de</span>
+            <input
+              type="time"
+              step={900}
+              value={slot.from}
+              onChange={(e) => update(i, "from", e.target.value)}
+              className={inputClass}
+              aria-label={`Heure de début du créneau ${i + 1}`}
+            />
+            <span className="text-slate-ink">à</span>
+            <input
+              type="time"
+              step={900}
+              min={slot.from || undefined}
+              value={slot.until}
+              onChange={(e) => update(i, "until", e.target.value)}
+              className={inputClass}
+              aria-label={`Heure de fin du créneau ${i + 1}`}
+            />
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              aria-label="Retirer ce créneau"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-ink cursor-pointer transition-colors hover:bg-sky hover:text-brick-deep"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange([...slots, { from: "09:00", until: "12:00" }])}
+        className="btn btn-sun mt-2 text-sm py-2 px-4"
+      >
+        + Ajouter un créneau
+      </button>
+      <input type="hidden" name="slots" value={JSON.stringify(slots)} />
+    </div>
+  );
+}
+
+function PickupPointFields({
+  point,
+  slots,
+  onSlotsChange,
+  name,
+  onNameChange,
+}: {
+  point?: PickupPoint;
+  slots: Slot[];
+  onSlotsChange: (slots: Slot[]) => void;
+  /** Contrôlé uniquement à la création, pour ne pouvoir enregistrer que si un nom est saisi. */
+  name?: string;
+  onNameChange?: (name: string) => void;
+}) {
   return (
     <>
       <Field label="Nom" hint="Tel que le client le verra">
-        <input name="name" required defaultValue={point?.name ?? ""} className={inputClass} placeholder="Aire de covoiturage de Lanester" />
+        <input
+          name="name"
+          required
+          className={inputClass}
+          placeholder="Aire de covoiturage de Lanester"
+          {...(onNameChange
+            ? { value: name ?? "", onChange: (e: ChangeEvent<HTMLInputElement>) => onNameChange(e.target.value) }
+            : { defaultValue: point?.name ?? "" })}
+        />
       </Field>
       <Field label="Adresse ou repère">
         <input name="address" defaultValue={point?.address ?? ""} className={inputClass} placeholder="Lanester, à côté du McDonald's" />
@@ -20,31 +109,26 @@ function PickupPointFields({ point }: { point?: PickupPoint }) {
           <textarea name="instructions" rows={2} defaultValue={point?.instructions ?? ""} className={inputClass} />
         </Field>
       </div>
-      <Field label="Heures de remise possibles" hint="Vide : toute heure">
-        <div className="flex items-center gap-3">
-          <span className="text-slate-ink">de</span>
-          <input name="openFrom" type="time" step={900} defaultValue={formatTime(point?.openFrom) ?? ""} className={inputClass} aria-label="Heure de début" />
-          <span className="text-slate-ink">à</span>
-          <input name="openUntil" type="time" step={900} defaultValue={formatTime(point?.openUntil) ?? ""} className={inputClass} aria-label="Heure de fin" />
-        </div>
-      </Field>
-      {point ? null : (
-        <label className="flex items-center gap-3 self-end pb-2">
-          <input type="checkbox" name="active" defaultChecked className="h-5 w-5 accent-brick" />
+      <div className="sm:col-span-2 flex flex-wrap items-start justify-between gap-6">
+        <SlotsField slots={slots} onChange={onSlotsChange} />
+        <label className="flex shrink-0 items-center gap-3 pt-0.5">
+          <input type="checkbox" name="active" defaultChecked={point?.active ?? true} className="h-5 w-5 accent-brick" />
           <span className="font-bold">Proposé aux clients</span>
         </label>
-      )}
+      </div>
     </>
   );
 }
 
 export function PickupPointCreateForm() {
   const [state, action] = useActionState(createPickupPoint, null);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [name, setName] = useState("");
   return (
     <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
-      <PickupPointFields />
-      <div>
-        <SubmitButton variant="sea">Ajouter le lieu</SubmitButton>
+      <PickupPointFields slots={slots} onSlotsChange={setSlots} name={name} onNameChange={setName} />
+      <div className="sm:col-span-2 flex justify-end">
+        <SubmitButton variant="leaf" disabled={name.trim() === ""}>Ajouter le lieu</SubmitButton>
       </div>
       <div className="sm:col-span-2">
         <FormMessage state={state} />
@@ -66,6 +150,19 @@ export function PickupPointRow({
 }) {
   const [editState, editAction] = useActionState(updatePickupPoint, null);
   const [deleteState, deleteAction] = useActionState(deletePickupPoint, null);
+  const { ref: formRef, dirty: fieldsDirty, markClean } = useFormDirty();
+  const [slots, setSlots] = useState<Slot[]>(point.slots);
+  const [initialSlots, setInitialSlots] = useState(point.slots);
+  const dirty = fieldsDirty || JSON.stringify(slots) !== JSON.stringify(initialSlots);
+
+  const [prevEditState, setPrevEditState] = useState(editState);
+  if (editState !== prevEditState) {
+    setPrevEditState(editState);
+    if (editState?.ok) {
+      markClean();
+      setInitialSlots(slots);
+    }
+  }
 
   return (
     <li className={`brick-card p-5 ${point.active ? "" : "opacity-70"}`}>
@@ -90,24 +187,18 @@ export function PickupPointRow({
         </div>
       </div>
 
-      <form action={editAction} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
+      <form ref={formRef} action={editAction} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
         <input type="hidden" name="id" value={point.id} />
-        <PickupPointFields point={point} />
+        <PickupPointFields point={point} slots={slots} onSlotsChange={setSlots} />
         <div>
-          <SubmitButton variant="leaf">Enregistrer</SubmitButton>
+          <SubmitButton variant="leaf" disabled={!dirty}>Enregistrer</SubmitButton>
         </div>
         <div className="sm:col-span-2">
           <FormMessage state={editState} />
         </div>
-        <div className="sm:col-span-2 mt-2 pt-4 border-t border-slate-ink/10 flex flex-wrap items-center justify-between gap-4">
-          <label className="flex items-center gap-3">
-            <input type="checkbox" name="active" defaultChecked={point.active} className="h-5 w-5 accent-brick" />
-            <span className="font-bold">Proposé aux clients</span>
-          </label>
+        <div className="sm:col-span-2 mt-2 pt-4 border-t border-slate-ink/10">
           {/* Le bouton vit dans le formulaire de modification mais soumet celui de suppression (attribut form). */}
-          <ConfirmButton form={`delete-${point.id}`} className="btn btn-brick text-paper no-underline">
-            Supprimer ce lieu
-          </ConfirmButton>
+          <ConfirmButton form={`delete-${point.id}`}>Supprimer ce lieu</ConfirmButton>
         </div>
       </form>
 

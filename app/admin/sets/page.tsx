@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { formatCents, formatSetNumbers, setStatusLabels } from "@/lib/format";
+import { SetsTable } from "@/components/admin/sets-table";
 import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Sets", robots: { index: false } };
@@ -30,59 +29,17 @@ export default async function SetsPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-3xl md:text-4xl font-bold">Sets</h1>
-        <Link href="/admin/sets/nouveau" className="btn btn-brick">
+        <Link href="/admin/sets/nouveau" className="btn btn-leaf">
           Ajouter un set
         </Link>
       </div>
+      <p className="mt-2 text-sm text-slate-ink max-w-2xl">
+        Le catalogue complet des sets, publiés ou non : cherchez-en un et modifiez ses informations.
+      </p>
 
-      {rows.length === 0 ? (
-        <p className="mt-8 brick-card p-6 bg-sky max-w-xl">
-          Aucun set pour l&apos;instant. Ajoutez votre premier set : nom, caution,
-          forfait, puis ses photos et ses exemplaires.
-        </p>
-      ) : (
-        <ul className="mt-8 grid gap-4">
-          {rows.map((s) => (
-            <li key={s.id}>
-              <Link
-                href={`/admin/sets/${s.id}`}
-                className="brick-card p-4 grid gap-4 grid-cols-[5rem_1fr] sm:grid-cols-[5rem_1fr_auto] items-center hover:bg-sky"
-              >
-                <span className="block h-20 w-20 rounded-xl bg-sky border border-slate-ink/15 overflow-hidden relative">
-                  {s.cover ? (
-                    <Image src={s.cover} alt="" fill sizes="80px" className="object-cover" />
-                  ) : null}
-                </span>
-                <span>
-                  <span className="display text-xl font-semibold block">
-                    {s.name}
-                    {s.setNumbers.length > 0 ? (
-                      <span className="ml-2 text-slate-ink font-normal text-base">n° {formatSetNumbers(s.setNumbers)}</span>
-                    ) : null}
-                    {s.brand !== "LEGO" ? (
-                      <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-md bg-sky border border-slate-ink/15 align-middle">{s.brand}</span>
-                    ) : null}
-                  </span>
-                  <span className="block text-slate-ink text-sm">
-                    {s.theme ? `${s.theme} · ` : ""}
-                    {s.copies} exemplaire{s.copies > 1 ? "s" : ""} · {s.planName ?? "forfait par défaut"}
-                    {s.pricePerDay != null ? ` (${formatCents(s.pricePerDay)}/jour)` : ""} · caution {formatCents(s.depositCents)}
-                  </span>
-                </span>
-                <span
-                  className={`justify-self-start sm:justify-self-end text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 ${
-                    s.status === "published" ? "bg-sun" : s.status === "archived" ? "bg-slate-200" : "bg-paper"
-                  }`}
-                >
-                  {setStatusLabels[s.status]}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <SetsTable rows={rows} />
     </>
   );
 }

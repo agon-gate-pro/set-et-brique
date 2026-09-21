@@ -45,10 +45,16 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <h1 className="text-3xl md:text-4xl font-bold">{set.name}</h1>
-        <span className="text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 bg-paper">
+        <span
+          className={`text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 ${
+            set.status === "published" ? "bg-sun" : set.status === "archived" ? "bg-slate-200" : "bg-paper"
+          }`}
+        >
           {setStatusLabels[set.status]}
         </span>
       </div>
+
+      <CopiesSection setId={set.id} copies={copies} />
 
       <section className="mt-8 brick-card p-6">
         <h2 className="text-2xl font-semibold">Fiche</h2>
@@ -58,7 +64,6 @@ export default async function EditSetPage({ params }: PageProps<"/admin/sets/[id
       </section>
 
       <ImagesSection setId={set.id} images={images} />
-      <CopiesSection setId={set.id} copies={copies} />
 
       <section className="mt-8 brick-card p-6 border-brick">
         <h2 className="text-2xl font-semibold">Supprimer ce set</h2>

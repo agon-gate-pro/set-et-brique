@@ -95,62 +95,72 @@ h3,
   .badge-gold { animation: none; }
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.0625rem;
-  line-height: 1;
-  padding: 1rem 1.75rem;
-  border-radius: 9999px;
-  box-shadow: var(--shadow-brick-sm);
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease,
-    opacity 150ms ease;
-}
+/* Dans la couche components pour que les utilitaires (py-1.5, text-xs, bg-ink-deep…) puissent
+   surcharger le padding/la taille par défaut — sinon cette règle non « layered » gagne toujours
+   sur les utilitaires Tailwind, quel que soit l'ordre d'écriture des classes. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    line-height: 1;
+    padding: 1rem 1.75rem;
+    border-radius: 9999px;
+    box-shadow: var(--shadow-brick-sm);
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      opacity 150ms ease;
+  }
 
-.btn:hover {
-  transform: translateY(-0.125rem);
-  box-shadow: var(--shadow-brick);
-}
+  .btn:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: var(--shadow-brick);
+  }
 
-.btn:active {
-  transform: translateY(0);
-  opacity: 0.9;
-}
+  .btn:active {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
 
-.btn-brick {
-  background: var(--color-brick);
-  color: #fff;
-}
+  .btn-brick {
+    background: var(--color-brick);
+    color: #fff;
+  }
 
-.btn-sun {
-  background: var(--color-sun);
-  color: var(--color-ink-deep);
-}
+  .btn-sun {
+    background: var(--color-sun);
+    color: var(--color-ink-deep);
+  }
 
-.btn-leaf {
-  background: var(--color-leaf);
-  color: #fff;
-}
+  .btn-leaf {
+    background: var(--color-leaf);
+    color: #fff;
+  }
 
-.btn-sea {
-  background: var(--color-sea);
-  color: #fff;
-}
+  .btn-sea {
+    background: var(--color-sea);
+    color: #fff;
+  }
 
-.btn-paper {
-  background: var(--color-paper);
-  color: var(--color-ink-deep);
-  border: 1px solid rgb(51 65 85 / 0.15);
+  .btn-paper {
+    background: var(--color-paper);
+    color: var(--color-ink-deep);
+    border: 1px solid rgb(51 65 85 / 0.15);
+  }
 }
 
 :focus-visible {
   outline: 3px solid var(--color-brick);
   outline-offset: 3px;
+}
+
+/* Pour les champs qui gèrent déjà leur propre indication de focus (ex. anneau de couleur). */
+.focus-outline-none:focus-visible {
+  outline: none;
 }
 
 .prose-legal h2 {

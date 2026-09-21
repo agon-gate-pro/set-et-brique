@@ -2,13 +2,53 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
-import { Show, UserButton } from "@clerk/nextjs";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ClipboardList, LogOut, Menu, Settings, X } from "lucide-react";
+import { Show, SignOutButton, useUser } from "@clerk/nextjs";
 import { nav, site } from "@/lib/site";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
+  const role = user?.publicMetadata?.role;
+  const admin = role === "admin" || role === "superadmin";
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setAccountOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setAccountOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [accountOpen]);
+
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const loadCustomerName = useCallback(() => {
+    fetch("/api/customer-name")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { firstName: string | null; lastName: string | null } | null) => {
+        setFirstName(data?.firstName || null);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (user) loadCustomerName();
+  }, [user, loadCustomerName]);
+
+  useEffect(() => {
+    window.addEventListener("customer-profile-updated", loadCustomerName);
+    return () => window.removeEventListener("customer-profile-updated", loadCustomerName);
+  }, [loadCustomerName]);
 
   return (
     <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-xl border-b border-slate-ink/10">
@@ -51,16 +91,71 @@ export function SiteHeader() {
               Connexion
             </Link>
           </Show>
+          {admin ? (
+            <Link
+              href="/admin"
+              className="whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 hover:brightness-95 transition"
+            >
+              Espace de gestion
+            </Link>
+          ) : null}
           <Show when="signed-in">
-            <UserButton
-              userProfileMode="navigation"
-              userProfileUrl="/compte/profil"
-              appearance={{ elements: { avatarBox: "h-9 w-9 border-2 border-slate-ink/15 rounded-full" } }}
-            />
+            <div className="flex items-center gap-1.5">
+              <div className="relative" ref={accountRef}>
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={accountOpen}
+                  onClick={() => setAccountOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-full xl:border xl:border-sun-deep/30 xl:bg-sun/15 xl:py-1 xl:pl-1 xl:pr-3.5 xl:shadow-brick-sm hover:bg-sun/25 transition-colors cursor-pointer"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sun text-sm font-bold text-ink-deep">
+                    {firstName ? firstName[0].toUpperCase() : null}
+                  </span>
+                  {firstName ? (
+                    <span className="hidden xl:inline whitespace-nowrap font-semibold text-sm text-ink-deep">{firstName}</span>
+                  ) : null}
+                </button>
+                {accountOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute left-0 mt-2 w-56 rounded-xl border border-slate-ink/10 bg-paper shadow-brick-sm py-2 z-50"
+                  >
+                    <Link
+                      href="/compte"
+                      role="menuitem"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 font-semibold text-sm text-ink-deep hover:bg-sky transition-colors"
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      Mes locations
+                    </Link>
+                    <Link
+                      href="/compte/profil"
+                      role="menuitem"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 font-semibold text-sm text-ink-deep hover:bg-sky transition-colors"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Gérer mon compte
+                    </Link>
+                    <div className="my-1.5 border-t border-slate-ink/10" />
+                    <SignOutButton>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => setAccountOpen(false)}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 font-semibold text-sm text-brick-deep hover:bg-sky transition-colors cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Se déconnecter
+                      </button>
+                    </SignOutButton>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </Show>
-          <Link href="/catalogue" className="btn btn-brick whitespace-nowrap text-sm py-2.5 px-4">
-            Réserver un set
-          </Link>
         </nav>
 
         <button
@@ -105,16 +200,34 @@ export function SiteHeader() {
               onClick={() => setOpen(false)}
               className="font-bold text-lg text-ink-deep py-3"
             >
-              Mon compte
+              Mes locations
             </Link>
+            <Link
+              href="/compte/profil"
+              onClick={() => setOpen(false)}
+              className="font-bold text-lg text-ink-deep py-3"
+            >
+              Gérer mon compte
+            </Link>
+            <SignOutButton>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="font-bold text-lg text-ink-deep py-3 text-left cursor-pointer"
+              >
+                Se déconnecter
+              </button>
+            </SignOutButton>
           </Show>
-          <Link
-            href="/catalogue"
-            onClick={() => setOpen(false)}
-            className="btn btn-brick mt-3 self-start"
-          >
-            Réserver un set
-          </Link>
+          {admin ? (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="font-bold text-lg text-ink-deep py-3"
+            >
+              Espace de gestion
+            </Link>
+          ) : null}
         </nav>
       </div>
     </header>

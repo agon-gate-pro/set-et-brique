@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
@@ -10,6 +9,7 @@ import { isBookable, loadAvailability, loadDayAvailability } from "@/lib/availab
 import { db, schema } from "@/lib/db";
 import { formatCents, formatSetNumbers, instructionTypeLabels } from "@/lib/format";
 import { site } from "@/lib/site";
+import { ImageCarousel } from "./image-carousel";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,6 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
   ]);
   const a = availability.get(set.id);
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay ?? null;
-  const [cover, ...others] = set.images;
 
   // Poids volontairement absent : usage interne (spécification, module 1).
   const facts: [string, string | null][] = [
@@ -73,21 +72,18 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
           </Link>
           <div className="mt-6 grid gap-10 md:grid-cols-[1.1fr_1fr] items-start">
             <div>
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-paper border border-slate-ink/15">
-                {cover ? (
-                  <Image src={cover.url} alt={cover.alt ?? set.name} fill priority sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />
-                ) : (
-                  <div className="absolute inset-0 grid place-items-center text-slate-ink/50 font-semibold">Photo à venir</div>
-                )}
-              </div>
-              {others.length > 0 ? (
-                <ul className="mt-3 grid grid-cols-4 sm:grid-cols-5 gap-3">
-                  {others.map((img) => (
-                    <li key={img.id} className="relative aspect-square rounded-xl overflow-hidden bg-paper border border-slate-ink/15">
-                      <Image src={img.url} alt={img.alt ?? ""} fill sizes="120px" className="object-cover" />
-                    </li>
-                  ))}
-                </ul>
+              <ImageCarousel images={set.images} name={set.name} />
+              {set.description ? (
+                <>
+                  <h2 className="mt-8 text-2xl md:text-3xl font-semibold">Le set</h2>
+                  <p className="mt-4 text-lg leading-relaxed text-slate-ink whitespace-pre-line">{set.description}</p>
+                </>
+              ) : null}
+              {set.publicNote ? (
+                <div className="mt-8 brick-card bg-sun/40 p-5">
+                  <h2 className="text-xl font-semibold">Bon à savoir</h2>
+                  <p className="mt-2 leading-relaxed text-ink-deep whitespace-pre-line">{set.publicNote}</p>
+                </div>
               ) : null}
             </div>
 
@@ -97,6 +93,17 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
               <p className="mt-2 text-slate-ink">
                 {[set.brand !== "LEGO" ? set.brand : null, set.theme].filter(Boolean).join(" · ")}
               </p>
+
+              <dl className="mt-6 brick-card p-5 grid gap-2.5">
+                {facts
+                  .filter((f): f is [string, string] => f[1] !== null)
+                  .map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-4 border-b border-slate-ink/10 pb-2 last:border-0">
+                      <dt className="text-slate-ink">{label}</dt>
+                      <dd className="font-semibold text-right">{value}</dd>
+                    </div>
+                  ))}
+              </dl>
 
               <p className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                 {pricePerDay != null ? (
@@ -137,40 +144,12 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
                   {site.phone}
                 </a>
               </div>
+
+              <div className="mt-8">
+                <AvailabilityCalendar from={calendar.from} to={calendar.to} days={calendar.days} />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16 grid gap-10 md:grid-cols-[1.1fr_1fr] items-start">
-        <div>
-          {set.description ? (
-            <>
-              <h2 className="text-2xl md:text-3xl font-semibold">Le set</h2>
-              <p className="mt-4 text-lg leading-relaxed text-slate-ink whitespace-pre-line">{set.description}</p>
-            </>
-          ) : null}
-          {set.publicNote ? (
-            <div className="mt-8 brick-card bg-sun/40 p-5">
-              <h2 className="text-xl font-semibold">Bon à savoir</h2>
-              <p className="mt-2 leading-relaxed text-ink-deep whitespace-pre-line">{set.publicNote}</p>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="grid gap-10">
-          <AvailabilityCalendar from={calendar.from} to={calendar.to} days={calendar.days} />
-          <dl className="brick-card p-6 grid gap-3">
-            <h2 className="text-2xl font-semibold">En bref</h2>
-            {facts
-              .filter((f): f is [string, string] => f[1] !== null)
-              .map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-4 border-b border-slate-ink/10 pb-2 last:border-0">
-                  <dt className="text-slate-ink">{label}</dt>
-                  <dd className="font-semibold text-right">{value}</dd>
-                </div>
-              ))}
-          </dl>
         </div>
       </section>
     </>
