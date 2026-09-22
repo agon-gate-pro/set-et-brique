@@ -45,6 +45,12 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
   ]);
   const a = availability.get(set.id);
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay ?? null;
+  const bookableNow = a ? isBookable(a) : false;
+  // Loué ou en battement, mais avec une date de retour connue : réservable dès
+  // maintenant pour plus tard, le calendrier du tunnel gère déjà les jours
+  // libres/pris au cas par cas (`findFreeCopy`). Seuls réparation et retiré,
+  // sans date connue, restent totalement bloqués.
+  const laterDate = a && (a.status === "rented" || a.status === "turnaround") ? a.nextAvailableDate : null;
 
   // Poids volontairement absent : usage interne (spécification, module 1).
   const facts: [string, string | null][] = [
@@ -130,19 +136,33 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
                 </p>
               ) : null}
 
-              <div className="mt-8 flex flex-wrap gap-4">
-                {a && isBookable(a) ? (
-                  <Link href={`/catalogue/${set.slug}/reserver`} className="btn btn-brick">
-                    Réserver ce set
-                  </Link>
-                ) : (
-                  <a href={`mailto:${site.email}?subject=${encodeURIComponent(`Disponibilité : ${set.name}`)}`} className="btn btn-paper">
-                    Être prévenu de son retour
+              <div className="mt-8">
+                {/* Date déjà annoncée par la pastille au-dessus du titre (« Louez-le à partir du … »), pas la peine de la répéter ici. */}
+                <div className="flex flex-wrap gap-4">
+                  {bookableNow || laterDate ? (
+                    <Link href={`/catalogue/${set.slug}/reserver`} className="btn btn-brick">
+                      Réserver ce set
+                    </Link>
+                  ) : (
+                    <a
+                      href={`mailto:${site.email}?subject=${encodeURIComponent(`Disponibilité : ${set.name}`)}`}
+                      className="btn btn-paper"
+                    >
+                      Être prévenu de son retour
+                    </a>
+                  )}
+                  <a href={site.phoneHref} className="btn btn-paper">
+                    {site.phone}
                   </a>
-                )}
-                <a href={site.phoneHref} className="btn btn-paper">
-                  {site.phone}
-                </a>
+                </div>
+                {laterDate ? (
+                  <a
+                    href={`mailto:${site.email}?subject=${encodeURIComponent(`Disponibilité : ${set.name}`)}`}
+                    className="mt-3 inline-block text-sm font-semibold text-slate-ink underline underline-offset-4"
+                  >
+                    Être recontacté par e-mail à sa remise en stock
+                  </a>
+                ) : null}
               </div>
 
               <div className="mt-8">

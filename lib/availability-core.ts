@@ -23,7 +23,15 @@ export type SetAvailabilityResult = {
 };
 
 export type CopyInput = { id: string; status: "available" | "maintenance" | "retired" };
-export type BookingInput = { copyId: string | null; startDate: string; endDate: string };
+export type BookingInput = {
+  copyId: string | null;
+  startDate: string;
+  endDate: string;
+  /** Un des statuts de `RESERVING_STATUSES` : le tableau reçu peut couvrir demandes en attente comprises. */
+  status: string;
+  proposedStartDate?: string | null;
+  proposedEndDate?: string | null;
+};
 
 /** Réservations qui occupent un exemplaire aujourd'hui (statut affiché au catalogue). */
 export const OCCUPYING_STATUSES = ["pending_payment", "confirmed", "picked_up"] as const;
@@ -51,6 +59,13 @@ export function computeSetAvailability(
   turnaroundDays: number,
   today: string = todayIso(),
 ): SetAvailabilityResult {
+  // Le statut affiché aujourd'hui (`kind`) ne reflète que l'occupation réelle : une demande
+  // en attente n'a pas encore été acceptée, elle ne doit pas faire passer le set en « loué ».
+  // `bookings` peut en revanche couvrir plus large (demandes en attente comprises,
+  // `RESERVING_STATUSES`) pour la recherche de la prochaine date libre plus bas, qui doit
+  // elle tenir compte de ce qui est déjà retenu pour ne pas annoncer une date déjà reprise.
+  const occupying = bookings.filter((b) => (OCCUPYING_STATUSES as readonly string[]).includes(b.status));
+
   const blocks = (b: BookingInput) => {
     const freeFrom = addDays(b.endDate, turnaroundDays + 1);
     if (b.startDate <= today && today <= b.endDate) return { kind: "rented" as const, freeFrom };
@@ -58,46 +73,69 @@ export function computeSetAvailability(
     return null;
   };
 
-  const perCopy: { kind: SetAvailability; freeFrom: string | null }[] = [];
-  const unassigned = bookings.filter((b) => b.copyId === null).map(blocks).filter((x) => x !== null);
+  const perCopy: { kind: SetAvailability }[] = [];
+  const unassigned = occupying.filter((b) => b.copyId === null).map(blocks).filter((x) => x !== null);
 
   for (const copy of copies) {
     if (copy.status === "retired") {
-      perCopy.push({ kind: "retired", freeFrom: null });
+      perCopy.push({ kind: "retired" });
       continue;
     }
     if (copy.status === "maintenance") {
-      perCopy.push({ kind: "repair", freeFrom: null });
+      perCopy.push({ kind: "repair" });
       continue;
     }
-    const own = bookings
+    const own = occupying
       .filter((b) => b.copyId === copy.id)
       .map(blocks)
       .filter((x) => x !== null);
-    // Loué prime sur battement ; la date de libération est la plus tardive.
+    // Loué prime sur battement.
     const rented = own.filter((x) => x.kind === "rented");
     const chosen = rented.length > 0 ? rented : own;
     if (chosen.length > 0) {
-      perCopy.push({
-        kind: chosen[0].kind,
-        freeFrom: chosen.map((x) => x.freeFrom).sort().at(-1) ?? null,
-      });
+      perCopy.push({ kind: chosen[0].kind });
       continue;
     }
     const pending = unassigned.shift();
-    perCopy.push(pending ? { kind: pending.kind, freeFrom: pending.freeFrom } : { kind: "available", freeFrom: null });
+    perCopy.push(pending ? { kind: pending.kind } : { kind: "available" });
   }
 
   const freeCopies = perCopy.filter((c) => c.kind === "available").length;
   const order: SetAvailability[] = ["available", "turnaround", "rented", "repair", "retired"];
   const status = order.find((s) => perCopy.some((c) => c.kind === s)) ?? "retired";
-  const nextAvailableDate =
-    status === "rented" || status === "turnaround"
-      ? perCopy
-          .filter((c) => c.freeFrom !== null)
-          .map((c) => c.freeFrom as string)
-          .sort()[0] ?? null
-      : null;
+
+  /**
+   * Cherché jour par jour avec `findFreeCopy`, comme le calendrier de la fiche set
+   * (`computeDayAvailability`) — pas déduit de la seule date de fin + battement de la
+   * location en cours (`freeFrom` ci-dessus, qui reste utile pour classer chaque
+   * exemplaire « loué » vs « en battement » aujourd'hui, mais ignore une réservation
+   * déjà prise juste après sur le même exemplaire). Les deux calculs avaient fini par
+   * diverger : la fiche annonçait une date de retour que le calendrier, juste en
+   * dessous, ne confirmait pas.
+   */
+  let nextAvailableDate: string | null = null;
+  if (status === "rented" || status === "turnaround") {
+    // `bookings` ici, pas `occupying` : une demande en attente réserve déjà des dates
+    // (`RESERVING_STATUSES`, même logique que le calendrier de la fiche set) — l'ignorer
+    // annoncerait une date de retour que la demande en question a déjà reprise.
+    const rangeBookings: RangeBooking[] = bookings.map((b, i) => ({
+      id: String(i),
+      copyId: b.copyId,
+      customerId: "",
+      startDate: b.startDate,
+      endDate: b.endDate,
+      proposedStartDate: b.proposedStartDate ?? null,
+      proposedEndDate: b.proposedEndDate ?? null,
+    }));
+    let day = addDays(today, 1);
+    for (let i = 0; i < 400; i++) {
+      if (findFreeCopy(copies, rangeBookings, turnaroundDays, day, day, null)) {
+        nextAvailableDate = day;
+        break;
+      }
+      day = addDays(day, 1);
+    }
+  }
 
   return { status, nextAvailableDate, freeCopies };
 }
