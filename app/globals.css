@@ -277,3 +277,23 @@ h3,
     animation: none;
   }
 }
+
+/* Documents imprimables (bon cadeau, et plus tard contrat/notes) : seul le contenu
+   marqué .print-area survit à l'impression, quelle que soit sa profondeur dans l'arbre
+   (header, nav admin, footer compris). `display: none` plutôt que `visibility: hidden` :
+   un élément caché par `visibility` garde sa place dans la mise en page, ce qui poussait
+   une page 2 quasi vide (menu et en-tête invisibles mais toujours hauts de plusieurs
+   centaines de pixels). Trois exceptions à la règle « tout cacher », dans le même
+   sélecteur groupé (sinon l'une repasse par la règle générale et disparaît aussi) :
+   .print-area lui-même, ses descendants (`.print-area *` — son propre contenu, oublié au
+   premier essai : la carte restait vide, seul son cadre en pointillés s'imprimait), et ses
+   ancêtres (`:has(.print-area)`, sinon le chemin jusqu'à lui serait coupé). .no-print
+   masque en plus un élément précis à l'intérieur (ex. le bouton Imprimer). */
+@media print {
+  body *:not(.print-area):not(.print-area *):not(:has(.print-area)) {
+    display: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

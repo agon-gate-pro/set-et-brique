@@ -1,11 +1,11 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import type { ActionState } from "@/components/admin/form";
 import { requireRole } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { generateGiftVoucherCode, giftVoucherExpiresAt } from "@/lib/gift-vouchers";
+import { formatBatchNumber, generateGiftVoucherCode, giftVoucherExpiresAt } from "@/lib/gift-vouchers";
 import { firstError, formToObject, giftVoucherCreateSchema } from "@/lib/validation";
 
 const PATH = "/admin/bons-cadeaux";
@@ -19,6 +19,9 @@ export async function createGiftVouchers(_: ActionState, formData: FormData): Pr
   const expiresAt = giftVoucherExpiresAt();
 
   await db.transaction(async (tx) => {
+    const [{ n }] = (await tx.execute(sql`select nextval('gift_voucher_batch_seq') as n`)).rows as { n: string }[];
+    const batchNumber = formatBatchNumber(Number(n));
+
     for (let i = 0; i < quantity; i++) {
       for (let attempt = 0; ; attempt++) {
         try {
@@ -26,6 +29,7 @@ export async function createGiftVouchers(_: ActionState, formData: FormData): Pr
             code: generateGiftVoucherCode(),
             amountCents,
             origin: "admin",
+            batchNumber,
             batchLabel,
             note,
             expiresAt,

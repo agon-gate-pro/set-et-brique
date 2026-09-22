@@ -10,12 +10,15 @@ export function SubmitButton({
   variant = "brick",
   className = "",
   disabled = false,
+  title,
 }: {
   children: ReactNode;
   variant?: "brick" | "sun" | "leaf" | "sea" | "paper";
   className?: string;
   /** Désactivé en plus de l'état d'envoi, ex. tant qu'un champ obligatoire géré à part n'est pas rempli. */
   disabled?: boolean;
+  /** Info-bulle native, pour un bouton compact sans libellé visible (icône seule). */
+  title?: string;
 }) {
   const { pending } = useFormStatus();
   const blocked = disabled && !pending;
@@ -25,7 +28,7 @@ export function SubmitButton({
       ? "bg-slate-200 text-slate-ink/50 shadow-none cursor-not-allowed"
       : `btn-${variant}`;
   return (
-    <button type="submit" disabled={pending || disabled} className={`btn ${stateClass} ${className}`}>
+    <button type="submit" disabled={pending || disabled} title={title} className={`btn ${stateClass} ${className}`}>
       {pending ? "Enregistrement…" : children}
     </button>
   );

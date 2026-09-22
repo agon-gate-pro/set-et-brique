@@ -1,6 +1,12 @@
 export const site = {
   name: "Set et Brique",
   tagline: "Location de sets de briques à Lorient",
+  /**
+   * Domaine final pas encore choisi (voir `docs/AVANCEMENT.md`, §3) : alias Vercel stable en
+   * attendant, à remplacer ici une fois le domaine définitif connu — un seul endroit à changer,
+   * y compris pour le QR code des bons cadeaux imprimés.
+   */
+  url: "https://set-et-brique.vercel.app",
   description:
     "Louez, construisez, rapportez. Set et Brique loue de grands sets de briques de construction aux familles, écoles et structures du pays de Lorient.",
   phone: "09 84 37 18 46",
