@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
@@ -13,10 +13,19 @@ import { BookingForm } from "./booking-form";
 export const metadata: Metadata = { title: "Réserver", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-export default async function ReservePage({ params }: PageProps<"/catalogue/[slug]/reserver">) {
+/** Dates déjà choisies sur le calendrier avant une redirection de connexion, à reprendre telles quelles. */
+function readPreselection(sp: Record<string, string | string[] | undefined>) {
+  const start = typeof sp.start === "string" ? sp.start : null;
+  const days = typeof sp.days === "string" ? Number(sp.days) : NaN;
+  if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isFinite(days) || days <= 0) return null;
+  return { startDate: start, days };
+}
+
+export default async function ReservePage({ params, searchParams }: PageProps<"/catalogue/[slug]/reserver">) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const preselected = readPreselection(sp);
   const { userId } = await auth();
-  if (!userId) redirect(`/connexion?redirect_url=/catalogue/${slug}/reserver`);
 
   const set = await db.query.sets.findFirst({
     where: and(eq(schema.sets.slug, slug), eq(schema.sets.status, "published")),
@@ -26,8 +35,8 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
 
   const [user, customer, pickupPoints, defaultPlan, minDays, availability, copies, rawBookings, blackouts, globalTurnaround] =
     await Promise.all([
-      currentUser(),
-      findCustomerByClerkId(userId),
+      userId ? currentUser() : Promise.resolve(null),
+      userId ? findCustomerByClerkId(userId) : Promise.resolve(null),
       db
         .select({
           id: schema.pickupPoints.id,
@@ -72,7 +81,29 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
       <h1 className="mt-3 text-3xl md:text-5xl font-bold">Réserver {set.name}</h1>
       <div className="mt-3">{a ? <AvailabilityBadge availability={a} withDate /> : null}</div>
 
-      {customer?.blocked ? (
+      {pricePerDay == null || pickupPoints.length === 0 ? (
+        <p className="mt-8 brick-card p-6 bg-sky">
+          La réservation en ligne n&apos;est pas encore possible pour ce set. Contactez-nous.
+        </p>
+      ) : !userId ? (
+        // Pas connecté : le planning et le choix des dates restent visibles tout de suite (pas de
+        // mur de connexion à l'arrivée). La connexion n'est demandée qu'au clic sur « Valider ces
+        // dates », dates reprises telles quelles au retour (`readPreselection`).
+        <div className="mt-8">
+          <BookingForm
+            set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents }}
+            pricePerDay={pricePerDay}
+            minDays={minDays}
+            minStartDate={addDays(today, 1)}
+            pickupPoints={pickupPoints}
+            customer={null}
+            defaults={{ firstName: "", lastName: "" }}
+            calendar={{ copies, bookings: calendarBookings, blackouts, turnaroundDays: set.turnaroundDays ?? globalTurnaround }}
+            authenticated={false}
+            preselected={preselected}
+          />
+        </div>
+      ) : customer?.blocked ? (
         <p className="mt-8 brick-card p-6 bg-red-50 border-brick font-semibold text-brick-deep">
           Votre compte ne permet plus de réserver. Contactez-nous pour en discuter.
         </p>
@@ -87,10 +118,6 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
             Compléter mes coordonnées
           </Link>
         </div>
-      ) : pricePerDay == null || pickupPoints.length === 0 ? (
-        <p className="mt-8 brick-card p-6 bg-sky">
-          La réservation en ligne n&apos;est pas encore possible pour ce set. Contactez-nous.
-        </p>
       ) : (
         <div className="mt-8">
           <BookingForm
@@ -102,6 +129,8 @@ export default async function ReservePage({ params }: PageProps<"/catalogue/[slu
             customer={customer ?? null}
             defaults={{ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" }}
             calendar={{ copies, bookings: calendarBookings, blackouts, turnaroundDays: set.turnaroundDays ?? globalTurnaround }}
+            authenticated
+            preselected={preselected}
           />
         </div>
       )}

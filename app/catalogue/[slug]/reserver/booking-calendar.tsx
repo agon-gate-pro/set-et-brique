@@ -55,7 +55,31 @@ export function BookingCalendar({
 }: Props) {
   const baseYear = Number(minStartDate.slice(0, 4));
   const baseMonth0 = Number(minStartDate.slice(5, 7)) - 1;
-  const [monthOffset, setMonthOffset] = useState(0);
+
+  function dayStatus(iso: string): "past" | "unavailable" | "free" {
+    if (iso < minStartDate) return "past";
+    if (isInBlackout(iso, blackouts)) return "unavailable";
+    return findFreeCopy(copies, bookings, turnaroundDays, iso, iso, null) ? "free" : "unavailable";
+  }
+
+  function monthOffsetOf(iso: string) {
+    const y = Number(iso.slice(0, 4));
+    const m0 = Number(iso.slice(5, 7)) - 1;
+    return (y - baseYear) * 12 + (m0 - baseMonth0);
+  }
+
+  const [monthOffset, setMonthOffset] = useState(() => {
+    // Une période déjà choisie (retour de connexion) prime : on rouvre sur son mois.
+    if (initialStartDate) return Math.min(monthOffsetOf(initialStartDate), MAX_MONTHS_AHEAD);
+    // Sinon, le premier mois avec un jour libre — pas la peine d'ouvrir sur le mois en
+    // cours si ses jours restants sont déjà tous pris.
+    let day = minStartDate;
+    for (let i = 0; i < MAX_MONTHS_AHEAD * 31; i++) {
+      if (dayStatus(day) === "free") return Math.min(monthOffsetOf(day), MAX_MONTHS_AHEAD);
+      day = addDays(day, 1);
+    }
+    return 0;
+  });
   const [rangeStart, setRangeStart] = useState<string | null>(initialStartDate);
   const [rangeEnd, setRangeEnd] = useState<string | null>(
     initialStartDate && initialDays ? addDays(initialStartDate, initialDays - 1) : null,
@@ -66,12 +90,6 @@ export function BookingCalendar({
   const month0 = monthDate.getUTCMonth();
   const canGoBack = monthOffset > 0;
   const canGoForward = monthOffset < MAX_MONTHS_AHEAD;
-
-  function dayStatus(iso: string): "past" | "unavailable" | "free" {
-    if (iso < minStartDate) return "past";
-    if (isInBlackout(iso, blackouts)) return "unavailable";
-    return findFreeCopy(copies, bookings, turnaroundDays, iso, iso, null) ? "free" : "unavailable";
-  }
 
   function handlePick(iso: string) {
     if (dayStatus(iso) !== "free") return;

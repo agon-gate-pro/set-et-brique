@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
@@ -29,14 +30,31 @@ type Props = {
     blackouts: { startDate: string; endDate: string }[];
     turnaroundDays: number;
   };
+  /** Faux pour un visiteur non connecté : le planning reste visible, la connexion n'est demandée qu'à la validation des dates. */
+  authenticated: boolean;
+  /** Dates choisies avant un aller-retour par la connexion, à reprendre telles quelles (voir `readPreselection` de `page.tsx`). */
+  preselected: { startDate: string; days: number } | null;
 };
 
-export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoints, customer, defaults, calendar }: Props) {
+export function BookingForm({
+  set,
+  pricePerDay,
+  minDays,
+  minStartDate,
+  pickupPoints,
+  customer,
+  defaults,
+  calendar,
+  authenticated,
+  preselected,
+}: Props) {
+  const router = useRouter();
   const [state, action] = useActionState(submitBookingRequest, null as ActionState);
-  const [startDate, setStartDate] = useState<string | null>(null);
-  const [days, setDays] = useState<number | null>(null);
-  // La période se choisit d'abord, sur le calendrier : ouvert dès l'arrivée sur la page.
-  const [calendarOpen, setCalendarOpen] = useState(true);
+  const [startDate, setStartDate] = useState<string | null>(preselected?.startDate ?? null);
+  const [days, setDays] = useState<number | null>(preselected?.days ?? null);
+  // La période se choisit d'abord, sur le calendrier : ouvert dès l'arrivée sur la page, sauf si
+  // elle a déjà été choisie avant un aller-retour par la connexion (`preselected`).
+  const [calendarOpen, setCalendarOpen] = useState(!preselected);
   const [pickupPointId, setPickupPointId] = useState(
     () => pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? "",
   );
@@ -128,51 +146,59 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
         </div>
       </section>
 
-      <section className="brick-card p-6 grid gap-5 sm:grid-cols-2">
-        <h2 className="sm:col-span-2 text-2xl font-semibold">Vos coordonnées</h2>
-        <p className="sm:col-span-2 -mt-3 text-slate-ink">Nécessaires pour le contrat de location et la facture.</p>
-        <Field label="Prénom">
-          <input name="firstName" required defaultValue={customer?.firstName ?? defaults.firstName} className={inputClass} />
-        </Field>
-        <Field label="Nom">
-          <input name="lastName" required defaultValue={customer?.lastName ?? defaults.lastName} className={inputClass} />
-        </Field>
-        <Field label="Téléphone">
-          <PhoneInput name="phone" defaultValue={customer?.phone ?? ""} />
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="Adresse">
-            <input name="addressLine" required defaultValue={customer?.addressLine ?? ""} className={inputClass} />
-          </Field>
-        </div>
-        <Field label="Code postal">
-          <input name="postalCode" required inputMode="numeric" defaultValue={customer?.postalCode ?? ""} className={inputClass} />
-        </Field>
-        <Field label="Ville">
-          <input name="city" required defaultValue={customer?.city ?? ""} className={inputClass} />
-        </Field>
-      </section>
+      {authenticated ? (
+        <>
+          <section className="brick-card p-6 grid gap-5 sm:grid-cols-2">
+            <h2 className="sm:col-span-2 text-2xl font-semibold">Vos coordonnées</h2>
+            <p className="sm:col-span-2 -mt-3 text-slate-ink">Nécessaires pour le contrat de location et la facture.</p>
+            <Field label="Prénom">
+              <input name="firstName" required defaultValue={customer?.firstName ?? defaults.firstName} className={inputClass} />
+            </Field>
+            <Field label="Nom">
+              <input name="lastName" required defaultValue={customer?.lastName ?? defaults.lastName} className={inputClass} />
+            </Field>
+            <Field label="Téléphone">
+              <PhoneInput name="phone" defaultValue={customer?.phone ?? ""} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Adresse">
+                <input name="addressLine" required defaultValue={customer?.addressLine ?? ""} className={inputClass} />
+              </Field>
+            </div>
+            <Field label="Code postal">
+              <input name="postalCode" required inputMode="numeric" defaultValue={customer?.postalCode ?? ""} className={inputClass} />
+            </Field>
+            <Field label="Ville">
+              <input name="city" required defaultValue={customer?.city ?? ""} className={inputClass} />
+            </Field>
+          </section>
 
-      <section className="grid gap-4">
-        <label className="flex items-start gap-3">
-          <input type="checkbox" name="terms" required className="mt-1 h-5 w-5 accent-brick" />
-          <span>
-            J&apos;ai lu et j&apos;accepte les{" "}
-            <Link href="/cgu" target="_blank" className="font-bold underline underline-offset-4">
-              conditions générales de location
-            </Link>
-            .
-          </span>
-        </label>
+          <section className="grid gap-4">
+            <label className="flex items-start gap-3">
+              <input type="checkbox" name="terms" required className="mt-1 h-5 w-5 accent-brick" />
+              <span>
+                J&apos;ai lu et j&apos;accepte les{" "}
+                <Link href="/cgu" target="_blank" className="font-bold underline underline-offset-4">
+                  conditions générales de location
+                </Link>
+                .
+              </span>
+            </label>
+            <p className="text-sm text-slate-ink">
+              Votre demande est examinée par nos soins avant confirmation. Rien n&apos;est à payer
+              maintenant : nous revenons vers vous rapidement pour convenir de l&apos;heure de remise.
+            </p>
+            <div>
+              <SubmitButton disabled={!validDays || !startDate}>Envoyer ma demande</SubmitButton>
+            </div>
+            <FormMessage state={state} />
+          </section>
+        </>
+      ) : (
         <p className="text-sm text-slate-ink">
-          Votre demande est examinée par nos soins avant confirmation. Rien n&apos;est à payer
-          maintenant : nous revenons vers vous rapidement pour convenir de l&apos;heure de remise.
+          Vos coordonnées et l&apos;envoi de la demande se font à l&apos;étape suivante, une fois vos dates validées.
         </p>
-        <div>
-          <SubmitButton disabled={!validDays || !startDate}>Envoyer ma demande</SubmitButton>
-        </div>
-        <FormMessage state={state} />
-      </section>
+      )}
 
       {calendarOpen ? (
         <BookingCalendar
@@ -186,6 +212,11 @@ export function BookingForm({ set, pricePerDay, minDays, minStartDate, pickupPoi
           initialStartDate={startDate}
           initialDays={days}
           onConfirm={(range) => {
+            if (!authenticated) {
+              const target = `/catalogue/${set.slug}/reserver?start=${range.startDate}&days=${range.days}`;
+              router.push(`/connexion?redirect_url=${encodeURIComponent(target)}`);
+              return;
+            }
             setStartDate(range.startDate);
             setDays(range.days);
             setCalendarOpen(false);
