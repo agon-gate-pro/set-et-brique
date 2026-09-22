@@ -39,7 +39,6 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
   // Recalcule le décalage à appliquer (en pixels) à chaque changement d'avis actif.
   useEffect(() => {
     measure(active);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // Les cartes changent de largeur selon le breakpoint : on recalcule au redimensionnement.
@@ -47,7 +46,6 @@ export function ReviewsCarousel({ reviews }: { reviews: typeof reviewsData }) {
     const onResize = () => measure(active);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   // Une fois arrivé sur le clone final, retour instantané (sans transition) au premier avis.
