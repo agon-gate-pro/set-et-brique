@@ -120,20 +120,66 @@ function PickupPointFields({
   );
 }
 
-export function PickupPointCreateForm() {
+export function PickupPointCreateDialog() {
+  const [open, setOpen] = useState(false);
   const [state, action] = useActionState(createPickupPoint, null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [name, setName] = useState("");
+
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state?.ok) {
+      setOpen(false);
+      setSlots([]);
+      setName("");
+    }
+  }
+
   return (
-    <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
-      <PickupPointFields slots={slots} onSlotsChange={setSlots} name={name} onNameChange={setName} />
-      <div className="sm:col-span-2 flex justify-end">
-        <SubmitButton variant="leaf" disabled={name.trim() === ""}>Ajouter le lieu</SubmitButton>
-      </div>
-      <div className="sm:col-span-2">
-        <FormMessage state={state} />
-      </div>
-    </form>
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-leaf">
+        Créer un lieu
+      </button>
+      {open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-deep/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setOpen(false)}
+        >
+          <div className="brick-card bg-paper p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-2xl font-semibold">Nouveau lieu</h2>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Fermer"
+                className="cursor-pointer text-xl leading-none text-slate-ink transition-colors hover:text-ink-deep"
+              >
+                ×
+              </button>
+            </div>
+            <form action={action} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
+              <PickupPointFields slots={slots} onSlotsChange={setSlots} name={name} onNameChange={setName} />
+              <div className="sm:col-span-2">
+                <FormMessage state={state} />
+              </div>
+              <div className="sm:col-span-2 flex items-center justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="cursor-pointer font-bold underline underline-offset-4 transition-opacity hover:opacity-70"
+                >
+                  Annuler
+                </button>
+                <SubmitButton variant="leaf" disabled={name.trim() === ""}>Ajouter le lieu</SubmitButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -190,7 +236,7 @@ export function PickupPointRow({
       <form ref={formRef} action={editAction} className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
         <input type="hidden" name="id" value={point.id} />
         <PickupPointFields point={point} slots={slots} onSlotsChange={setSlots} />
-        <div>
+        <div className="sm:col-span-2 flex justify-end">
           <SubmitButton variant="leaf" disabled={!dirty}>Enregistrer</SubmitButton>
         </div>
         <div className="sm:col-span-2">
