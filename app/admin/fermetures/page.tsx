@@ -3,7 +3,7 @@ import { asc, sql } from "drizzle-orm";
 import { todayIso } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
 import { formatDate } from "@/lib/format";
-import { BlackoutCreateForm, BlackoutRow } from "./forms";
+import { BlackoutCreateDialog, BlackoutRow } from "./forms";
 import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Périodes fermées", robots: { index: false } };
@@ -33,7 +33,10 @@ export default async function BlackoutsPage() {
 
   return (
     <>
-      <h1 className="text-3xl md:text-4xl font-bold">Périodes fermées</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-3xl md:text-4xl font-bold">Périodes fermées</h1>
+        <BlackoutCreateDialog />
+      </div>
       <p className="mt-3 text-sm text-slate-ink whitespace-nowrap">
         Vos congés et absences : aucune remise ni aucun retour n&apos;est possible à ces dates.
       </p>
@@ -47,11 +50,6 @@ export default async function BlackoutsPage() {
           ))}
         </ul>
       )}
-
-      <section className="mt-10 brick-card p-5 bg-sky">
-        <h2 className="text-2xl font-semibold">Nouvelle période</h2>
-        <BlackoutCreateForm />
-      </section>
 
       {past.length > 0 ? (
         <section className="mt-10">
