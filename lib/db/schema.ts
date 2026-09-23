@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgEnum,
+  pgSequence,
   pgTable,
   text,
   time,
@@ -318,6 +319,12 @@ export const bookingEvents = pgTable(
  * place. L'état "expiré" n'est pas stocké : il se déduit de `status = "valid"`
  * et `expiresAt` dépassée.
  */
+/** Un lot par génération (unitaire ou en masse), pour regrouper l'affichage. */
+export const giftVoucherBatchSeq = pgSequence("gift_voucher_batch_seq", {
+  startWith: 1,
+  increment: 1,
+});
+
 export const giftVouchers = pgTable(
   "gift_vouchers",
   {
@@ -326,6 +333,13 @@ export const giftVouchers = pgTable(
     amountCents: integer("amount_cents").notNull(),
     origin: giftVoucherOrigin("origin").notNull().default("admin"),
     status: giftVoucherStatus("status").notNull().default("valid"),
+    /**
+     * Numéro de lot (« LOT-0001 »), commun à tous les bons créés ensemble en une
+     * génération — y compris un bon unique, qui forme un lot à lui seul. Tiré de
+     * `giftVoucherBatchSeq` une seule fois par génération (voir `createGiftVouchers`),
+     * pas par bon.
+     */
+    batchNumber: text("batch_number").notNull(),
     /** Étiquette de lot, pour retrouver les codes créés ensemble pour un événement. */
     batchLabel: text("batch_label"),
     /** Motif interne, non affiché au client. */
@@ -338,6 +352,7 @@ export const giftVouchers = pgTable(
   (t) => [
     uniqueIndex("gift_vouchers_code_idx").on(t.code),
     index("gift_vouchers_status_idx").on(t.status),
+    index("gift_vouchers_batch_number_idx").on(t.batchNumber),
   ],
 );
 

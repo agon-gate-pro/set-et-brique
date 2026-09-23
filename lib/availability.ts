@@ -6,7 +6,6 @@ import {
   computeDayAvailability,
   computeSetAvailability,
   withLateReturn,
-  OCCUPYING_STATUSES,
   RESERVING_STATUSES,
   type SetAvailabilityResult,
 } from "@/lib/availability-core";
@@ -41,12 +40,17 @@ export async function loadAvailability(
         status: schema.bookings.status,
         startDate: schema.bookings.startDate,
         endDate: schema.bookings.endDate,
+        proposedStartDate: schema.bookings.proposedStartDate,
+        proposedEndDate: schema.bookings.proposedEndDate,
       })
       .from(schema.bookings)
       .where(
         and(
           inArray(schema.bookings.setId, ids),
-          inArray(schema.bookings.status, [...OCCUPYING_STATUSES]),
+          // Demandes en attente comprises (`RESERVING_STATUSES`) : la prochaine date libre
+          // calculée par `computeSetAvailability` doit tenir compte de ce qui est déjà
+          // retenu, pas seulement de ce qui occupe un exemplaire aujourd'hui.
+          inArray(schema.bookings.status, [...RESERVING_STATUSES]),
           // Seules les réservations récentes, à venir ou pas encore rendues peuvent bloquer aujourd'hui.
           or(
             gte(schema.bookings.endDate, addDays(today, -(maxTurnaround + 1))),

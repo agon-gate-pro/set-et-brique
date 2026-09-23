@@ -18,3 +18,8 @@ export function giftVoucherExpiresAt(from = new Date()) {
   expires.setFullYear(expires.getFullYear() + 1);
   return expires;
 }
+
+/** « LOT-0001 » à partir de la valeur tirée de la séquence `gift_voucher_batch_seq`. */
+export function formatBatchNumber(n: number) {
+  return `LOT-${String(n).padStart(4, "0")}`;
+}

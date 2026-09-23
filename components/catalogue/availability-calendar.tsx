@@ -45,6 +45,19 @@ function weekdayIndex(iso: string) {
 }
 
 /**
+ * Premier jour de son mois. `days` est trié par construction (clés ISO,
+ * `from` à `to`), donc le premier jour trouvé « libre » donne directement le
+ * premier mois à afficher — pas la peine de rouvrir sur le mois en cours si
+ * ses jours restants sont déjà tous pris.
+ */
+function firstFreeMonth(from: string, days: Record<string, DayAvailability>) {
+  const firstFree = Object.keys(days)
+    .sort()
+    .find((day) => days[day] === "free");
+  return firstFree ? `${firstFree.slice(0, 7)}-01` : from;
+}
+
+/**
  * Calendrier mensuel des jours où le set peut être loué. `days` couvre du
  * premier jour du mois de `from` au dernier jour du mois de `to` ; la
  * navigation reste dans cette fenêtre.
@@ -58,7 +71,7 @@ export function AvailabilityCalendar({
   to: string;
   days: Record<string, DayAvailability>;
 }) {
-  const [month, setMonth] = useState(from);
+  const [month, setMonth] = useState(() => firstFreeMonth(from, days));
   const end = addDays(nextMonth(month), -1);
   const canPrev = month > from;
   const canNext = end < to;

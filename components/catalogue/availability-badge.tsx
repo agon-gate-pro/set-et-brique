@@ -9,7 +9,15 @@ const styles = {
   retired: "bg-slate-200 text-slate-ink",
 } as const;
 
-/** Pastille de statut d'un set, avec la date de retour quand elle est connue. */
+/**
+ * Pastille de statut d'un set. Loué ou en battement, avec une date de retour
+ * connue : le statut passe en petit, discret, et une seconde pastille reprend
+ * le même visuel que « Disponible » (`styles.available`) avec « Disponible à
+ * partir du … » — c'est elle qui donne envie de cliquer, pas le rappel qu'il
+ * est pris pour l'instant, qui prenait toute la place avant (décision du 22
+ * septembre 2026, revue une seconde fois le même jour : une phrase en rouge
+ * essayée d'abord, jugée trop proche des messages de blocage).
+ */
 export function AvailabilityBadge({
   availability,
   withDate = false,
@@ -18,14 +26,25 @@ export function AvailabilityBadge({
   withDate?: boolean;
 }) {
   const { status, nextAvailableDate } = availability;
-  return (
-    <span className="inline-flex flex-wrap items-center gap-2">
-      <span className={`text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${styles[status]}`}>
-        {setAvailabilityLabels[status]}
+
+  if (withDate && nextAvailableDate && (status === "rented" || status === "turnaround")) {
+    return (
+      <span className="block">
+        <span className="inline-block rounded-md bg-ink-deep/10 px-2 py-0.5 text-xs font-semibold text-ink-deep">
+          {setAvailabilityLabels[status]}
+        </span>
+        <span
+          className={`mt-2 block w-fit text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${styles.available}`}
+        >
+          Disponible à partir du {formatDay(nextAvailableDate)}
+        </span>
       </span>
-      {withDate && nextAvailableDate ? (
-        <span className="text-sm text-slate-ink">de retour le {formatDay(nextAvailableDate)}</span>
-      ) : null}
+    );
+  }
+
+  return (
+    <span className={`inline-block text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${styles[status]}`}>
+      {setAvailabilityLabels[status]}
     </span>
   );
 }
