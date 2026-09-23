@@ -252,12 +252,22 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
             onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []).map((f) => f.name))}
           />
           {selectedFiles.length > 0 ? (
-            <p className="mt-2 text-sm text-ink-deep">
-              {selectedFiles.length} photo{selectedFiles.length > 1 ? "s" : ""} sélectionnée{selectedFiles.length > 1 ? "s" : ""} : {selectedFiles.join(", ")}
-            </p>
+            <div className="mt-2 rounded-xl border border-slate-ink/15 bg-sky px-4 py-3">
+              <p className="font-bold text-ink-deep">
+                {selectedFiles.length} photo{selectedFiles.length > 1 ? "s" : ""} sélectionnée
+                {selectedFiles.length > 1 ? "s" : ""}
+              </p>
+              <ul className="mt-1 list-inside list-disc text-sm text-slate-ink">
+                {selectedFiles.map((name, i) => (
+                  <li key={i} className="break-all">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
           <div className="mt-4 flex justify-end">
-            <button type="submit" disabled={uploadProgress != null} className="btn btn-brick disabled:opacity-60 disabled:cursor-wait">
+            <button type="submit" disabled={uploadProgress != null} className="btn btn-leaf disabled:opacity-60 disabled:cursor-wait">
               {uploadProgress ? "Envoi…" : "Ajouter les photos"}
             </button>
           </div>
