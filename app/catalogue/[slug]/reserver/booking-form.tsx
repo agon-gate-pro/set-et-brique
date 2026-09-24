@@ -52,9 +52,9 @@ export function BookingForm({
   const [state, action] = useActionState(submitBookingRequest, null as ActionState);
   const [startDate, setStartDate] = useState<string | null>(preselected?.startDate ?? null);
   const [days, setDays] = useState<number | null>(preselected?.days ?? null);
-  // La période se choisit d'abord, sur le calendrier : ouvert dès l'arrivée sur la page, sauf si
-  // elle a déjà été choisie avant un aller-retour par la connexion (`preselected`).
-  const [calendarOpen, setCalendarOpen] = useState(!preselected);
+  // Calendrier fermé à l'arrivée : sur mobile, ouvert d'office il couvrait la page avant même qu'on l'ait vue.
+  // Le bouton « Choisir mes dates », rouge tant qu'aucune date n'est choisie, suffit à l'ouvrir.
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [pickupPointId, setPickupPointId] = useState(
     () => pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? "",
   );
@@ -91,7 +91,7 @@ export function BookingForm({
               <p className="font-semibold text-ink-deep">Choisissez votre période sur le calendrier</p>
             )}
           </div>
-          <button type="button" onClick={() => setCalendarOpen(true)} className="btn btn-paper text-sm py-2 px-4 shrink-0">
+          <button type="button" onClick={() => setCalendarOpen(true)} className={`btn ${startDate ? "btn-paper" : "btn-brick"} text-sm py-2 px-4 shrink-0`}>
             {startDate ? "Modifier les dates" : "Choisir mes dates"}
           </button>
         </div>

@@ -26,7 +26,6 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitLabel }: Props) {
   const [state, formAction] = useActionState(action, null);
-  const [status, setStatus] = useState(set?.status ?? "draft");
   const defaultPlan = ratePlans.find((p) => p.isDefault);
   const { ref: formRef, dirty, markClean } = useFormDirty();
   const [prevState, setPrevState] = useState(state);
@@ -140,7 +139,10 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
 
       <Group title="Publication">
         <Field label="Statut" hint="Seuls les sets publiés apparaissent sur le site">
-          <select name="status" value={status} onChange={(e) => setStatus(e.target.value as Set["status"])} className={inputClass}>
+          {/* Non contrôlé, comme les autres champs : React réinitialise le formulaire après l'action, et un
+              select contrôlé revenait alors visuellement à son option initiale (« Publié »), qu'un nouvel
+              enregistrement renvoyait ensuite en base — un set archivé se republiait. */}
+          <select name="status" defaultValue={set?.status ?? "draft"} className={inputClass}>
             {Object.entries(setStatusLabels).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}

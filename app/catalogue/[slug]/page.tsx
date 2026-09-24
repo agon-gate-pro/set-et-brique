@@ -5,9 +5,10 @@ import { and, asc, eq } from "drizzle-orm";
 import { MonitorSmartphone } from "lucide-react";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
 import { AvailabilityCalendar } from "@/components/catalogue/availability-calendar";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { isBookable, loadAvailability, loadDayAvailability } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
-import { formatCents, formatSetNumbers, instructionTypeLabels } from "@/lib/format";
+import { formatBuildTime, formatCents, formatSetNumbers, instructionTypeLabels } from "@/lib/format";
 import { site } from "@/lib/site";
 import { ImageCarousel } from "./image-carousel";
 
@@ -63,7 +64,7 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
         : instructionTypeLabels[set.instructionType],
     ],
     ["Dimensions une fois construit", set.dimensions],
-    ["Temps de montage estimé", set.buildTime],
+    ["Temps de montage estimé", formatBuildTime(set.buildTime)],
     ["Âge conseillé", set.ageMin != null ? `dès ${set.ageMin} ans` : null],
     ["Marque", set.brand],
     ["Numéro de boîte", set.setNumbers.length > 0 ? formatSetNumbers(set.setNumbers) : null],
@@ -71,6 +72,7 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
 
   return (
     <>
+      <ScrollToTop />
       <section className="studs-sky border-b border-slate-ink/10">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-10 md:py-14">
           <Link href="/catalogue" className="font-bold underline underline-offset-4">

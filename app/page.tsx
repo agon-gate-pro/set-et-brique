@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpen,
+  Gift,
   MapPin,
   PackageOpen,
   RotateCcw,
@@ -14,12 +15,15 @@ import { ContactForm } from "@/components/contact-form";
 import { GoogleLogo } from "@/components/google-logo";
 import { ReviewsCarousel } from "@/components/reviews-carousel";
 import { FacebookIcon, InstagramIcon } from "@/components/social-icons";
-import { press, reviews, site } from "@/lib/site";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+import { slugify } from "@/lib/format";
+import { giftVoucherAmounts, press, reviews, site } from "@/lib/site";
 
 const steps: { title: string; text: string; icon: LucideIcon; border: string }[] = [
   {
     title: "Choisissez un set",
-    text: "Parcourez le catalogue, choisissez vos dates et la durée qui vous convient. Plus vous louez longtemps, moins la journée coûte cher.",
+    text: "Parcourez le catalogue et choisissez vos dates. La durée est libre : vous ne payez que les jours où vous gardez le set.",
     icon: Search,
     border: "border-t-brick",
   },
@@ -37,7 +41,38 @@ const steps: { title: string; text: string; icon: LucideIcon; border: string }[]
   },
 ];
 
-export default function HomePage() {
+// Page statique, régénérée à chaque modification d'un set (`revalidateSet()`,
+// `app/admin/sets/actions.ts`) ; l'heure est un filet de sécurité.
+export const revalidate = 3600;
+
+/**
+ * Une tuile par gamme du catalogue : photo du premier set de la gamme (coups de cœur d'abord,
+ * puis ordre du catalogue) et nombre de sets. Les sets sans gamme n'ont pas de tuile.
+ */
+async function loadThemeTiles() {
+  const rows = await db
+    .select({
+      theme: schema.sets.theme,
+      cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
+    })
+    .from(schema.sets)
+    .where(and(eq(schema.sets.status, "published"), isNotNull(schema.sets.theme)))
+    .orderBy(desc(schema.sets.featured), asc(schema.sets.sortOrder), asc(schema.sets.name));
+
+  const tiles = new Map<string, { slug: string; label: string; cover: string | null; count: number }>();
+  for (const r of rows) {
+    const slug = slugify(r.theme!);
+    const tile = tiles.get(slug) ?? { slug, label: r.theme!, cover: null, count: 0 };
+    tile.count += 1;
+    tile.cover ??= r.cover;
+    tiles.set(slug, tile);
+  }
+  return [...tiles.values()].sort((a, b) => a.label.localeCompare(b.label, "fr"));
+}
+
+export default async function HomePage() {
+  const themeTiles = await loadThemeTiles();
+
   return (
     <>
       <section className="relative overflow-hidden bg-sun/10 border-b border-slate-ink/10">
@@ -77,8 +112,8 @@ export default function HomePage() {
           </h1>
 
           <p className="mt-5 text-lg md:text-xl leading-relaxed text-slate-ink">
-            Les plus grands sets de briques de construction, loués à la
-            semaine autour de Lorient. Sans les acheter, sans les stocker.
+            Les plus grands sets de briques de construction, loués pour la
+            durée de votre choix autour de Lorient.
           </p>
           <p className="mt-2 text-lg md:text-xl font-semibold text-ink-deep">
             Une entreprise familiale, des sets complets et vérifiés, une
@@ -102,7 +137,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-5 md:px-8">
           <div className="text-center mb-14 md:mb-20">
             <p className="text-sm font-bold uppercase tracking-widest text-slate-ink">
-              Notre concept
+              Comment ça marche
             </p>
             <h2 className="mt-3 text-3xl md:text-5xl font-bold">
               Simple comme un jeu d&apos;enfant
@@ -124,6 +159,83 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      {themeTiles.length > 0 ? (
+        <section id="gammes" className="scroll-mt-24 pb-16 md:pb-24">
+          <div className="mx-auto max-w-6xl px-5 md:px-8">
+            <div className="text-center mb-10 md:mb-14">
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-ink">Le catalogue</p>
+              <h2 className="mt-3 text-3xl md:text-5xl font-bold">Nos gammes</h2>
+            </div>
+            <ul className="grid gap-4 md:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {themeTiles.map((t) => (
+                <li key={t.slug}>
+                  <Link
+                    href={`/catalogue?gamme=${t.slug}`}
+                    className={`group brick-card relative block aspect-[4/3] overflow-hidden focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sun ${
+                      t.cover ? "bg-sky" : "studs-ink"
+                    }`}
+                  >
+                    {t.cover ? (
+                      <Image
+                        src={t.cover}
+                        alt=""
+                        fill
+                        sizes="(min-width: 1024px) 270px, (min-width: 768px) 33vw, 50vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : null}
+                    {/* Dégradé sombre en bas pour que le nom reste lisible sur n'importe quelle photo. */}
+                    <span className="absolute inset-0 bg-gradient-to-t from-ink-deeper/85 via-ink-deeper/25 to-transparent" />
+                    <span className="absolute inset-x-0 bottom-0 p-3 md:p-4">
+                      <span className="block display text-lg md:text-2xl font-bold leading-tight text-paper">
+                        {t.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs md:text-sm font-semibold text-paper/85">
+                        {t.count} set{t.count > 1 ? "s" : ""}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-10 md:mt-12 text-center">
+              <Link href="/catalogue" className="btn btn-brick justify-center">
+                <BookOpen className="h-5 w-5" />
+                Voir le catalogue
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="pb-16 md:pb-24">
+        <div className="mx-auto max-w-6xl px-5 md:px-8">
+          {/* Bandeau en forme de ticket : talon à gauche, ligne de découpe pointillée, encoches. */}
+          <div className="studs relative overflow-hidden rounded-3xl border border-sun-deep/40 shadow-brick-sun flex flex-col md:flex-row">
+            <div className="flex items-center justify-center px-8 pt-7 pb-5 md:py-8 md:w-40 shrink-0 border-b-2 md:border-b-0 md:border-r-2 border-dashed border-ink-deep/25">
+              <Gift className="h-12 w-12 md:h-14 md:w-14 text-ink-deep -rotate-6" strokeWidth={1.75} aria-hidden />
+            </div>
+            <span aria-hidden className="hidden md:block absolute left-40 -top-3 h-6 w-6 -translate-x-1/2 rounded-full bg-sky border border-sun-deep/40" />
+            <span aria-hidden className="hidden md:block absolute left-40 -bottom-3 h-6 w-6 -translate-x-1/2 rounded-full bg-sky border border-sun-deep/40" />
+            <div className="flex-1 flex flex-col lg:flex-row items-center md:items-start lg:items-center gap-5 lg:gap-8 px-5 pt-5 pb-7 md:px-10 md:py-8 text-center md:text-left">
+              <div className="flex-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-deep/70">Idée cadeau</p>
+                <h2 className="mt-1 text-2xl md:text-3xl font-bold">Offrez un bon cadeau</h2>
+                <p className="mt-2 font-semibold text-ink-deep">
+                  {giftVoucherAmounts.map((a) => `${a} €`).join(", ").replace(/, ([^,]*)$/, " ou $1")}, à utiliser
+                  sur le set de son choix.
+                  <br />
+                  Valable un an.
+                </p>
+              </div>
+              <Link href="/bons-cadeaux" className="btn bg-ink-deep text-paper justify-center shrink-0 px-6 text-base md:px-7 md:text-[1.0625rem]">
+                Découvrir les bons cadeaux
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -270,7 +382,8 @@ export default function HomePage() {
           </div>
 
           <p className="mt-6 text-slate-ink">
-            Vous préférez appeler ou écrire directement ?{" "}
+            Vous préférez appeler ou écrire directement ?
+            <br />
             <a href={site.phoneHref} className="font-bold text-ink-deep hover:text-brick">
               {site.phone}
             </a>{" "}

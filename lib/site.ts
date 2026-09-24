@@ -36,13 +36,22 @@ export const site = {
   },
 };
 
-export const nav = [
+/**
+ * Liens masqués dans la barre desktop quand la place manque (toujours présents dans le menu mobile) :
+ * `wideOnly` sous `xl` (toujours pour un gérant, dont la barre porte en plus « Espace de gestion »),
+ * `adminWideOnly` sous `xl` pour un gérant seulement.
+ */
+export const nav: { href: string; label: string; wideOnly?: boolean; adminWideOnly?: boolean }[] = [
   { href: "/#concept", label: "Comment ça marche" },
   { href: "/catalogue", label: "Catalogue" },
-  { href: "/qui-sommes-nous", label: "Qui sommes-nous" },
-  { href: "/#vinted", label: "Vinted" },
+  { href: "/bons-cadeaux", label: "Bons cadeaux" },
+  { href: "/qui-sommes-nous", label: "Qui sommes-nous", adminWideOnly: true },
+  { href: "/#vinted", label: "Vinted", wideOnly: true },
   { href: "/#contact", label: "Contact" },
 ];
+
+/** Montants des bons cadeaux proposés à l'achat (spécification, module 6), en euros. */
+export const giftVoucherAmounts = [10, 20, 30];
 
 export const reviews = [
   {

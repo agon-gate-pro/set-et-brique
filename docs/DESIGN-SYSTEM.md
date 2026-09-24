@@ -78,6 +78,11 @@ Les boutons d'enregistrement qui modifient une donnée existante (édition d'un 
 - La pastille ouvre un **menu déroulant** (pas un lien direct) : « Mes locations », « Gérer mon compte », puis « Se déconnecter » séparé par un filet. Le menu s'ouvre vers la droite (`left-0` sur le panneau, pas `right-0`), se ferme au clic extérieur, à Échap, ou après un choix.
 - Mobile (< `lg`) : menu plein écran avec les mêmes liens à plat, pas de menu déroulant.
 
+- **Page courante** : le lien de la page où l'on se trouve est souligné d'un trait jaune épais (`underline decoration-sun-deep decoration-[3px] underline-offset-[10px]`), avec `aria-current="page"`, dans la barre desktop comme dans le menu mobile. Un soulignement plutôt qu'une pastille de fond : il ne change pas la largeur des liens, déjà juste entre `lg` et `xl`. Actif aussi sur les sous-pages (`/catalogue/<slug>` allume « Catalogue »). Les ancres de l'accueil (« Comment ça marche », « Vinted », « Contact ») ne sont pas des pages et ne s'allument jamais.
+- **Zone du compte séparée des liens** : dès qu'on est connecté, « Espace de gestion » (gérants) et l'avatar forment un groupe à droite, séparé des liens du site par un filet vertical (`border-l border-slate-ink/15`, marges `ml-5 pl-5`, `xl:ml-6 xl:pl-6`). Avant, tout se suivait avec le même écart et paraissait collé.
+- **Barre d'un gérant, toujours compacte** : « Vinted » masqué sur ordinateur (`wideOnly`), « Qui sommes-nous » masqué sous `xl` (`adminWideOnly`), bouton « Gestion » (au lieu d'« Espace de gestion ») sous `xl`, avatar seul sans prénom. Vérifié en captures à 1024, 1280, 1411 et 1600 px avec une session gérant simulée.
+- Liens de la barre desktop (`nav`, `lib/site.ts`) : un lien marqué `wideOnly` (aujourd'hui « Vinted ») est masqué entre `lg` et `xl`, où tous les liens ne tiennent pas sur une ligne. Le menu mobile les montre tous.
+
 ### Menu de l'espace de gestion (`components/admin/nav.tsx`)
 
 - Desktop : colonne fixe (`md:sticky md:top-24`), lien actif en fond `bg-ink-deep text-paper`, survol en `hover:bg-sea/15`.
@@ -91,7 +96,33 @@ Les boutons d'enregistrement qui modifient une donnée existante (édition d'un 
 
 ## Éléments flottants
 
-- **Onglet « Réserver un set »** (`components/floating-reserve-button.tsx`) : accroché au bord droit de l'écran (`fixed right-0`), positionné à 1/3 de la hauteur d'écran (pas en bas : plus visible), texte vertical (`[writing-mode:vertical-rl] rotate-180`) + icône, s'élargit légèrement au survol. Remplace une première version en bulle flottante bas-droite, jugée peu esthétique. Masqué sur `/catalogue/**`, `/admin/**` et pour les comptes admin. Icône seule sur mobile (`< sm`), texte affiché à partir de `sm`.
+- **Onglet flottant « Réserver un set » : retiré** (24 septembre 2026). Il ne faisait qu'ouvrir le catalogue, déjà accessible par le header (toujours visible) et par les boutons de l'accueil ; il masquait du contenu sur tablette et n'était qu'une icône peu lisible sur mobile. Remplacé, là où le menu est replié (sous `lg`), par un bouton « Catalogue » dans le header, à gauche du burger (`rounded-xl border`, comme le burger ; icône livre à partir de 400 px ; trait jaune quand on est sur le catalogue). Plus aucun élément flottant hormis le header.
+- Header sous 380 px : écart réduit (`gap-2`) et nom du site en `text-base` ; sous 340 px, le nom est masqué visuellement (`sr-only`, le logo reste), pour que logo, bouton « Catalogue » et burger tiennent sur une ligne.
+
+## Bons cadeaux (public)
+
+- Bandeau de l'accueil, **en forme de ticket** (« ticket gagnant ») : fond `studs` (jaune à pois), bordure `sun-deep/40`, ombre `shadow-brick-sun` ; talon à gauche avec l'icône cadeau bleu nuit posée directement sur le jaune (légèrement inclinée), séparé par une ligne pointillée (`border-dashed border-ink-deep/25`) ; deux encoches demi-cercle (`bg-sky`, couleur du fond de page) en haut et en bas de la découpe, à partir de `md`. Surtitre « Idée cadeau », titre, une ligne de texte, bouton bleu nuit (`btn bg-ink-deep text-paper`). Sur mobile, talon au-dessus, découpe horizontale, sans encoches. Première version (pastille blanche + icône et bouton rouges) jugée peu harmonieuse : pas de blanc ni de rouge sur ce jaune.
+- Page `/bons-cadeaux` : en-tête `bg-sun/10` comme l'accueil ; cartes de montant sur le modèle des étapes de l'accueil (bordure haute épaisse, ici `border-t-sun-deep`), montant en `display text-5xl md:text-6xl text-ink-deep`, bouton `btn-sun` pleine largeur. **Page volontairement douce, presque sans rouge** (trois boutons rouges côte à côte jugés agressifs) : titre en bleu nuit avec un seul mot en `text-brick` (« construction », comme « Construisez. » sur l'accueil ; un surlignage jaune essayé d'abord n'a pas été retenu), icône cadeau identique à celle du ticket de l'accueil (`Gift` bleu nuit, `strokeWidth` 1.75, `-rotate-6`, sans pastille), jaune pour les actions. Un seul mot rouge dans un titre reste la signature du site ; c'est l'accumulation (mot rouge + icône rouge + trois boutons rouges) qui était de trop. Cartes « Comment ça marche » identiques aux étapes de l'accueil : bordure haute `border-t-4` rouge (`brick`), bleu nuit (`ink`), jaune (`sun-deep`) dans cet ordre.
+
+## Tuiles des gammes (accueil, `app/page.tsx`)
+
+- `brick-card` en `aspect-[4/3]`, photo en `object-cover` sur toute la tuile, zoom `group-hover:scale-105`.
+- Nom de la gamme en `display text-lg md:text-2xl font-bold text-paper` sur un dégradé `from-ink-deeper/85 via-ink-deeper/25 to-transparent` en bas de l'image : texte blanc lisible quelle que soit la photo. Nombre de sets en dessous, `text-paper/85`.
+- Sans photo : fond `studs-ink` (bleu nuit à pois), jamais un fond pâle sous un texte blanc.
+- Grille `grid-cols-2 md:grid-cols-3 lg:grid-cols-4`, focus clavier `ring-sun` comme les cartes du catalogue.
+
+## Filtres du catalogue (`app/catalogue/catalogue-browser.tsx`)
+
+- Page en `max-w-7xl` (largeur du header) ; grille de sets `sm:grid-cols-2 xl:grid-cols-3` à côté des filtres, cartes compactes (`p-4`, titre `text-lg`, prix `text-xl`, textes secondaires `text-xs`/`text-sm`).
+- Colonne `brick-card` à gauche à partir de `lg` (`15rem`, sticky sous le header, défilement interne si trop haute) ; en dessous, bouton `btn-paper` « Filtres » avec pastille `bg-ink-deep` du nombre de filtres actifs, qui déplie le panneau.
+- Groupes séparés par un filet (`border-t border-slate-ink/10`), titre `text-sm font-bold text-ink-deep`. « Réinitialiser » en lien bleu souligné (`text-sea-deep`), neutre.
+- Gamme et âge : menus déroulants natifs au même style (`selectClass`), nombre de sets de chaque gamme entre parenthèses dans l'option. La gamme a d'abord été une liste verticale de boutons (entrée active en rouge puis en bleu), remplacée par un menu, plus compact et identique à celui de l'âge.
+- Pas de contour rouge `:focus-visible` global sur ces menus (`focus-outline-none`, comme `inputClass`), bordure bleue `focus-visible:border-sea` au clavier.
+- Curseur à deux poignées (`.range-dual`, `app/globals.css`) : deux `input type="range"` superposés dont seules les poignées captent le pointeur. Poignée blanche bordée `ink-deep`, 28 px (cible tactile) ; plage choisie en `sun-deep` sur piste `slate-200` (sélection = jaune, comme le calendrier) ; valeurs affichées en clair au-dessus (« 1 000 pièces – 3 000 pièces »). Focus clavier : contour `sun-deep` sur la poignée, pas sur la barre.
+
+## Écrans de chargement
+
+- `loading.tsx` sur les pages qui lisent la base à chaque visite (catalogue, fiche, réservation) : silhouette de la page, mêmes conteneurs et grilles que la vraie page, blocs `Skeleton` (`components/skeleton.tsx` : `bg-slate-200/80`, arrondis, `motion-safe:animate-pulse`). Les titres fixes (« Le catalogue ») restent en vrai texte. Un `LoadingLabel` (`role="status"`, masqué) annonce le chargement aux lecteurs d'écran.
 
 ## Fiche d'un set (public)
 
@@ -113,7 +144,8 @@ Les boutons d'enregistrement qui modifient une donnée existante (édition d'un 
 - Barre de navigation admin : bascule pastilles horizontales (mobile) / colonne (desktop) à `md`.
 - Menu compte / bouton « Réserver un set » du header : `lg` est le seuil desktop (au-delà, nav complète visible ; en dessous, menu burger).
 - Cible tactile : viser ~40 px minimum sur les éléments cliquables denses (calendrier) ; ajuster les marges plutôt que la taille du contenu quand c'est possible.
-- Pas d'outil de test visuel disponible dans cet environnement : la vérification responsive se fait au niveau du code (classes Tailwind, tailles calculées), pas d'un rendu réel à l'écran.
+- Vérification visuelle possible en local (24 septembre 2026) : Edge en mode headless (`msedge --headless=new --screenshot`), la page chargée dans une `iframe` de la largeur voulue (375, 768, 1024 px). L'`iframe` est nécessaire : Edge headless impose une largeur de fenêtre minimale d'environ 500 px, une capture directe à 375 px met donc la page en page trop large et la coupe. Les composants Clerk (connexion) ne s'affichent pas de cette façon.
+- Pièges rencontrés à cette vérification : un bouton `btn` à long libellé (adresse e-mail) plus large que sa carte fait déborder toute une grille à une colonne sur mobile (corrigé par `grid-cols-1`, `min-w-0` sur les cartes et un bouton plus compact) ; un bloc en ligne à trois zones (ticket) écrase son texte dès `md` (passé en ligne seulement à partir de `lg`) ; trois boutons « Commander ce bon » en trois colonnes de tablette passent sur deux lignes (libellé court « Commander » entre `sm` et `lg`, boutons calés en bas des cartes avec `mt-auto`) ; un menu déroulant avec un long libellé est tronqué dans la colonne de filtres de 15rem.
 
 ## Champ à valeurs multiples dans un formulaire natif
 

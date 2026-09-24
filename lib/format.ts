@@ -30,6 +30,38 @@ export function formatPhone(input: string) {
   return raw.replace(/\s+/g, " ");
 }
 
+/**
+ * Temps de montage saisi en texte libre, en heures : « 28 h » → 28, « 1 h 30 » → 1,5,
+ * « 120 minutes » → 2, « 8 à 10 h » → 10 (la borne haute). `null` si illisible.
+ */
+export function parseBuildHours(text: string | null) {
+  if (!text) return null;
+  const t = text.toLowerCase().replace(/(\d),(\d)/g, "$1.$2");
+  const numbers = [...t.matchAll(/\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+  if (numbers.length === 0) return null;
+  const hoursMinutes = t.match(/(\d+)\s*h(?:eures?)?\s*(\d{1,2})\b/);
+  if (hoursMinutes) return Number(hoursMinutes[1]) + Number(hoursMinutes[2]) / 60;
+  if (/\d\s*h\b|heure/.test(t)) return Math.max(...numbers);
+  if (/min/.test(t)) return Math.max(...numbers) / 60;
+  return null;
+}
+
+/**
+ * Temps de montage affiché au client, toujours en heures : « 120 minutes » → « 2 h »,
+ * « 1,5 h » → « 1 h 30 ». Une fourchette en heures (« 8 à 10 h ») est gardée telle quelle,
+ * un texte illisible aussi.
+ */
+export function formatBuildTime(text: string | null) {
+  if (!text?.trim()) return null;
+  const hours = parseBuildHours(text);
+  if (hours === null) return text.trim();
+  if (/\d\s*(?:à|-)\s*\d/.test(text) && !/min/i.test(text)) return text.trim();
+  const whole = Math.floor(hours);
+  const minutes = Math.round((hours - whole) * 60);
+  if (whole === 0) return `${minutes} min`;
+  return minutes ? `${whole} h ${String(minutes).padStart(2, "0")}` : `${whole} h`;
+}
+
 /** Lien `tel:` sans espaces ni ponctuation. */
 export function phoneHref(input: string) {
   return `tel:${input.replace(/[\s.\-()]/g, "")}`;
@@ -68,7 +100,8 @@ export const copyStatusLabels = {
 export const setAvailabilityLabels = {
   available: "Disponible",
   rented: "En location",
-  turnaround: "En battement",
+  // « Battement » est le terme de gestion ; le client ne le comprend pas (décision du 24 septembre 2026).
+  turnaround: "Bientôt de retour",
   repair: "En réparation",
   retired: "Retiré",
 } as const;
