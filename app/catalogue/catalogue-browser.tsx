@@ -63,6 +63,12 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
   const [filters, setFilters] = useState<CatalogueFilters>(initial);
   const [panelOpen, setPanelOpen] = useState(false);
   const set = (patch: Partial<CatalogueFilters>) => setFilters((f) => ({ ...f, ...patch }));
+  // Gamme ou âge choisi dans un menu : la liste change entièrement, on la montre depuis le début.
+  // Pas pour les curseurs, qu'on règle par petites touches en regardant le résultat.
+  const setAndScrollTop = (patch: Partial<CatalogueFilters>) => {
+    set(patch);
+    window.scrollTo({ top: 0 });
+  };
 
   useEffect(() => {
     // Un curseur qu'on fait glisser change la valeur en continu : on n'écrit l'adresse qu'une fois posé.
@@ -164,7 +170,7 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
               <select
                 id="filter-theme"
                 value={filters.theme ?? ""}
-                onChange={(e) => set({ theme: e.target.value || null })}
+                onChange={(e) => setAndScrollTop({ theme: e.target.value || null })}
                 className={selectClass}
               >
                 <option value="">Toutes les gammes</option>
@@ -182,7 +188,7 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
               <select
                 id="filter-age"
                 value={filters.age ?? ""}
-                onChange={(e) => set({ age: e.target.value ? Number(e.target.value) : null })}
+                onChange={(e) => setAndScrollTop({ age: e.target.value ? Number(e.target.value) : null })}
                 className={selectClass}
               >
                 <option value="">Tous les âges</option>
