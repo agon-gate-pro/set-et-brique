@@ -78,14 +78,21 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-4 xl:gap-5" aria-label="Principale">
+        <nav className="hidden lg:flex items-center" aria-label="Principale">
+          <div className="flex items-center gap-4 xl:gap-5">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isCurrent(item.href) ? "page" : undefined}
               className={`whitespace-nowrap font-semibold text-[15px] text-ink-deep hover:text-brick-deep transition-colors ${
-                item.wideOnly ? "hidden xl:inline" : ""
+                item.wideOnly
+                  ? admin
+                    ? "hidden"
+                    : "hidden xl:inline"
+                  : item.adminWideOnly && admin
+                    ? "hidden xl:inline"
+                    : ""
               } ${isCurrent(item.href) ? currentClass : ""}`}
             >
               {item.label}
@@ -102,28 +109,36 @@ export function SiteHeader() {
               Connexion
             </Link>
           </Show>
-          {admin ? (
-            <Link
-              href="/admin"
-              className="whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 hover:brightness-95 transition"
-            >
-              Espace de gestion
-            </Link>
-          ) : null}
+          </div>
           <Show when="signed-in">
-            <div className="flex items-center gap-1.5">
+            {/* Zone du compte, séparée des liens du site par un filet : sans elle, gestion et compte
+                se collaient aux liens (retour d'Alexis, 24 septembre 2026). */}
+            <div className="ml-5 xl:ml-6 pl-5 xl:pl-6 border-l border-slate-ink/15 flex items-center gap-3">
+              {admin ? (
+                <Link
+                  href="/admin"
+                  className="whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 hover:brightness-95 transition"
+                >
+                  <span className="xl:hidden">Gestion</span>
+                  <span className="hidden xl:inline">Espace de gestion</span>
+                </Link>
+              ) : null}
               <div className="relative" ref={accountRef}>
                 <button
                   type="button"
                   aria-haspopup="menu"
                   aria-expanded={accountOpen}
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="flex items-center gap-2 rounded-full xl:border xl:border-sun-deep/30 xl:bg-sun/15 xl:py-1 xl:pl-1 xl:pr-3.5 xl:shadow-brick-sm hover:bg-sun/25 transition-colors cursor-pointer"
+                  aria-label={firstName ? `Mon compte (${firstName})` : "Mon compte"}
+                  className={`flex items-center gap-2 rounded-full hover:bg-sun/25 transition-colors cursor-pointer ${
+                    admin ? "" : "xl:border xl:border-sun-deep/30 xl:bg-sun/15 xl:py-1 xl:pl-1 xl:pr-3.5 xl:shadow-brick-sm"
+                  }`}
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sun text-sm font-bold text-ink-deep">
                     {firstName ? firstName[0].toUpperCase() : null}
                   </span>
-                  {firstName ? (
+                  {/* Gérant : avatar seul, la barre porte déjà « Espace de gestion ». */}
+                  {firstName && !admin ? (
                     <span className="hidden xl:inline whitespace-nowrap font-semibold text-sm text-ink-deep">{firstName}</span>
                   ) : null}
                 </button>

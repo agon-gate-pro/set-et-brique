@@ -79,6 +79,8 @@ Les boutons d'enregistrement qui modifient une donnée existante (édition d'un 
 - Mobile (< `lg`) : menu plein écran avec les mêmes liens à plat, pas de menu déroulant.
 
 - **Page courante** : le lien de la page où l'on se trouve est souligné d'un trait jaune épais (`underline decoration-sun-deep decoration-[3px] underline-offset-[10px]`), avec `aria-current="page"`, dans la barre desktop comme dans le menu mobile. Un soulignement plutôt qu'une pastille de fond : il ne change pas la largeur des liens, déjà juste entre `lg` et `xl`. Actif aussi sur les sous-pages (`/catalogue/<slug>` allume « Catalogue »). Les ancres de l'accueil (« Comment ça marche », « Vinted », « Contact ») ne sont pas des pages et ne s'allument jamais.
+- **Zone du compte séparée des liens** : dès qu'on est connecté, « Espace de gestion » (gérants) et l'avatar forment un groupe à droite, séparé des liens du site par un filet vertical (`border-l border-slate-ink/15`, marges `ml-5 pl-5`, `xl:ml-6 xl:pl-6`). Avant, tout se suivait avec le même écart et paraissait collé.
+- **Barre d'un gérant, toujours compacte** : « Vinted » masqué sur ordinateur (`wideOnly`), « Qui sommes-nous » masqué sous `xl` (`adminWideOnly`), bouton « Gestion » (au lieu d'« Espace de gestion ») sous `xl`, avatar seul sans prénom. Vérifié en captures à 1024, 1280, 1411 et 1600 px avec une session gérant simulée.
 - Liens de la barre desktop (`nav`, `lib/site.ts`) : un lien marqué `wideOnly` (aujourd'hui « Vinted ») est masqué entre `lg` et `xl`, où tous les liens ne tiennent pas sur une ligne. Le menu mobile les montre tous.
 
 ### Menu de l'espace de gestion (`components/admin/nav.tsx`)

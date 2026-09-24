@@ -37,14 +37,15 @@ export const site = {
 };
 
 /**
- * `wideOnly` : masqué dans la barre desktop entre `lg` et `xl`, où tous les liens ne tiennent
- * pas sur une ligne ; toujours présent dans le menu mobile.
+ * Liens masqués dans la barre desktop quand la place manque (toujours présents dans le menu mobile) :
+ * `wideOnly` sous `xl` (toujours pour un gérant, dont la barre porte en plus « Espace de gestion »),
+ * `adminWideOnly` sous `xl` pour un gérant seulement.
  */
-export const nav: { href: string; label: string; wideOnly?: boolean }[] = [
+export const nav: { href: string; label: string; wideOnly?: boolean; adminWideOnly?: boolean }[] = [
   { href: "/#concept", label: "Comment ça marche" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/bons-cadeaux", label: "Bons cadeaux" },
-  { href: "/qui-sommes-nous", label: "Qui sommes-nous" },
+  { href: "/qui-sommes-nous", label: "Qui sommes-nous", adminWideOnly: true },
   { href: "/#vinted", label: "Vinted", wideOnly: true },
   { href: "/#contact", label: "Contact" },
 ];
