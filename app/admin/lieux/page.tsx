@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { asc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { PickupPointCreateForm, PickupPointRow } from "./forms";
+import { PickupPointCreateDialog, PickupPointRow } from "./forms";
 import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Lieux de remise", robots: { index: false } };
@@ -19,7 +19,10 @@ export default async function PickupPointsPage() {
 
   return (
     <>
-      <h1 className="text-3xl md:text-4xl font-bold">Lieux de remise</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-3xl md:text-4xl font-bold">Lieux de remise</h1>
+        <PickupPointCreateDialog />
+      </div>
       <p className="mt-3 text-sm text-slate-ink whitespace-nowrap">
         Les lieux où vous remettez les sets en main propre, dans l&apos;ordre où le client les choisit.
       </p>
@@ -33,11 +36,6 @@ export default async function PickupPointsPage() {
           ))}
         </ul>
       )}
-
-      <section className="mt-10 brick-card p-5 bg-sky">
-        <h2 className="text-2xl font-semibold">Nouveau lieu</h2>
-        <PickupPointCreateForm />
-      </section>
     </>
   );
 }

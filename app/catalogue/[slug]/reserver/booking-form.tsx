@@ -138,6 +138,7 @@ export function BookingForm({
             <span className="text-sm font-semibold text-slate-ink"> ({centsToInput(pricePerDay)} € × {validDays ? days : "…"} jours)</span>
           </p>
           <p className="mt-1 text-sm text-slate-ink">Caution {formatCents(set.depositCents)}, bloquée à la remise, jamais débitée sauf casse ou perte.</p>
+          <p className="mt-1 text-sm text-slate-ink">Si vous disposez d&apos;un bon cadeau, vous pourrez le renseigner au moment du paiement.</p>
         </div>
         <div className="sm:col-span-2">
           <Field label="Un message pour nous ?" hint="Facultatif : créneau souhaité, question, précision">

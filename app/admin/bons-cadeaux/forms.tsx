@@ -30,7 +30,7 @@ export function GiftVoucherCreateDialog() {
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="btn btn-leaf">
-        Ajouter un bon cadeau
+        Créer des bons cadeaux
       </button>
       {open ? (
         <div

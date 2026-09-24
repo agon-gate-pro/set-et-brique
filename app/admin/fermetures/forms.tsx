@@ -62,7 +62,8 @@ function BlackoutFields({
   );
 }
 
-export function BlackoutCreateForm() {
+export function BlackoutCreateDialog() {
+  const [open, setOpen] = useState(false);
   const [state, action] = useActionState(createBlackout, null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -74,23 +75,68 @@ export function BlackoutCreateForm() {
     if (endDate && endDate < value) setEndDate(value);
   }
 
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state?.ok) {
+      setOpen(false);
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+    }
+  }
+
   return (
-    <form action={action} className="mt-4 grid gap-4 sm:grid-cols-[10rem_10rem_1fr_auto] items-end">
-      <BlackoutFields
-        startDate={startDate}
-        endDate={endDate}
-        onStartDateChange={handleStartDateChange}
-        onEndDateChange={setEndDate}
-        reason={reason}
-        onReasonChange={setReason}
-      />
-      <SubmitButton variant="leaf" disabled={!startDate || !endDate || reason.trim() === ""}>
-        Ajouter
-      </SubmitButton>
-      <div className="sm:col-span-4">
-        <FormMessage state={state} />
-      </div>
-    </form>
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-leaf">
+        Créer une période de fermeture
+      </button>
+      {open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-deep/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setOpen(false)}
+        >
+          <div className="brick-card bg-paper p-6 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-2xl font-semibold">Nouvelle période fermée</h2>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Fermer"
+                className="cursor-pointer text-xl leading-none text-slate-ink transition-colors hover:text-ink-deep"
+              >
+                ×
+              </button>
+            </div>
+            <form action={action} className="mt-4 grid gap-4">
+              <BlackoutFields
+                startDate={startDate}
+                endDate={endDate}
+                onStartDateChange={handleStartDateChange}
+                onEndDateChange={setEndDate}
+                reason={reason}
+                onReasonChange={setReason}
+              />
+              <FormMessage state={state} />
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="cursor-pointer font-bold underline underline-offset-4 transition-opacity hover:opacity-70"
+                >
+                  Annuler
+                </button>
+                <SubmitButton variant="leaf" disabled={!startDate || !endDate || reason.trim() === ""}>
+                  Ajouter
+                </SubmitButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

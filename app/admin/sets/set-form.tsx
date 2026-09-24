@@ -18,7 +18,7 @@ type Props = {
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="sm:col-span-2 grid gap-5 sm:grid-cols-2 rounded-xl border border-slate-ink/15 bg-sky/60 p-5">
-      <legend className="px-2 text-base font-bold uppercase tracking-wide text-brick-deep">{title}</legend>
+      <legend className="px-2 text-base font-bold uppercase tracking-wide text-sun-deep">{title}</legend>
       {children}
     </fieldset>
   );
