@@ -36,13 +36,21 @@ export const site = {
   },
 };
 
-export const nav = [
+/**
+ * `wideOnly` : masqué dans la barre desktop entre `lg` et `xl`, où tous les liens ne tiennent
+ * pas sur une ligne ; toujours présent dans le menu mobile.
+ */
+export const nav: { href: string; label: string; wideOnly?: boolean }[] = [
   { href: "/#concept", label: "Comment ça marche" },
   { href: "/catalogue", label: "Catalogue" },
+  { href: "/bons-cadeaux", label: "Bons cadeaux" },
   { href: "/qui-sommes-nous", label: "Qui sommes-nous" },
-  { href: "/#vinted", label: "Vinted" },
+  { href: "/#vinted", label: "Vinted", wideOnly: true },
   { href: "/#contact", label: "Contact" },
 ];
+
+/** Montants des bons cadeaux proposés à l'achat (spécification, module 6), en euros. */
+export const giftVoucherAmounts = [10, 20, 30];
 
 export const reviews = [
   {

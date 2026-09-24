@@ -4,7 +4,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import "./globals.css";
 import { BackgroundParticles } from "@/components/background-particles";
-import { FloatingReserveButton } from "@/components/floating-reserve-button";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/lib/site";
@@ -36,6 +35,12 @@ const clerkAppearance = {
     colorText: "#172554",
     borderRadius: "0.75rem",
     fontFamily: "var(--font-poppins), system-ui, sans-serif",
+    // Anneau de focus des champs : neutre plutôt que rouge (colorPrimary).
+    colorRing: "rgb(51 65 85 / 0.25)",
+  },
+  elements: {
+    // Clerk dessine déjà son anneau : pas de contour rouge global en plus.
+    formFieldInput: "focus-outline-none",
   },
 };
 
@@ -76,7 +81,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />
-          <FloatingReserveButton />
         </ClerkProvider>
       </body>
     </html>

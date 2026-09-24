@@ -163,6 +163,62 @@ h3,
   outline: none;
 }
 
+/* Curseur à deux poignées (filtres du catalogue) : deux `input type="range"` superposés,
+   seules les poignées captent le pointeur. Poignée assez grande pour le doigt. */
+.range-dual {
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  margin: 0;
+}
+
+.range-dual::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+.range-dual::-moz-range-track {
+  background: transparent;
+}
+
+.range-dual::-webkit-slider-thumb {
+  appearance: none;
+  pointer-events: auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: var(--color-paper);
+  border: 3px solid var(--color-ink-deep);
+  box-shadow: var(--shadow-brick-sm);
+  cursor: grab;
+}
+
+.range-dual::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background: var(--color-paper);
+  border: 3px solid var(--color-ink-deep);
+  box-shadow: var(--shadow-brick-sm);
+  cursor: grab;
+}
+
+/* Le contour de focus va sur la poignée, pas sur toute la barre. */
+.range-dual:focus-visible {
+  outline: none;
+}
+
+.range-dual:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--color-sun-deep);
+  outline-offset: 2px;
+}
+
+.range-dual:focus-visible::-moz-range-thumb {
+  outline: 3px solid var(--color-sun-deep);
+  outline-offset: 2px;
+}
+
 .prose-legal h2 {
   font-size: 1.5rem;
   margin-top: 2.5rem;

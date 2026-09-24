@@ -81,7 +81,7 @@ export function SiteFooter() {
             <ul className="mt-5 space-y-3 text-white/80">
               <li>
                 <Link href="/#concept" className="hover:text-white transition-colors">
-                  Concept
+                  Comment ça marche
                 </Link>
               </li>
               <li>
@@ -92,6 +92,11 @@ export function SiteFooter() {
               <li>
                 <Link href="/catalogue" className="hover:text-white transition-colors">
                   Catalogue
+                </Link>
+              </li>
+              <li>
+                <Link href="/bons-cadeaux" className="hover:text-white transition-colors">
+                  Bons cadeaux
                 </Link>
               </li>
               <li>

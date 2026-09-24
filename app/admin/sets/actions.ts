@@ -19,6 +19,7 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function revalidateSet(id?: string) {
   revalidatePath("/admin/sets");
   revalidatePath("/catalogue");
+  revalidatePath("/"); // tuiles des gammes de l'accueil
   if (id) revalidatePath(`/admin/sets/${id}`);
 }
 

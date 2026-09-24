@@ -20,6 +20,7 @@ export async function createRatePlan(_: ActionState, formData: FormData): Promis
     sortOrder: n,
   });
   revalidatePath("/admin/forfaits");
+  revalidatePath("/bons-cadeaux"); // jours de location équivalents à chaque montant
   return { ok: `Forfait « ${parsed.data.name} » créé.` };
 }
 
@@ -34,6 +35,7 @@ export async function updateRatePlan(_: ActionState, formData: FormData): Promis
     .set({ name: parsed.data.name, priceCentsPerDay: parsed.data.priceEuros })
     .where(eq(schema.ratePlans.id, id));
   revalidatePath("/admin/forfaits");
+  revalidatePath("/bons-cadeaux"); // jours de location équivalents à chaque montant
   return { ok: "Forfait enregistré." };
 }
 
@@ -46,6 +48,7 @@ export async function setDefaultRatePlan(formData: FormData) {
     await tx.update(schema.ratePlans).set({ isDefault: true }).where(eq(schema.ratePlans.id, id));
   });
   revalidatePath("/admin/forfaits");
+  revalidatePath("/bons-cadeaux"); // jours de location équivalents à chaque montant
 }
 
 export async function deleteRatePlan(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -63,5 +66,6 @@ export async function deleteRatePlan(_: ActionState, formData: FormData): Promis
 
   await db.delete(schema.ratePlans).where(eq(schema.ratePlans.id, id));
   revalidatePath("/admin/forfaits");
+  revalidatePath("/bons-cadeaux"); // jours de location équivalents à chaque montant
   return { ok: "Forfait supprimé." };
 }
