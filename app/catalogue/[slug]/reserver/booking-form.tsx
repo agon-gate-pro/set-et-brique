@@ -52,9 +52,9 @@ export function BookingForm({
   const [state, action] = useActionState(submitBookingRequest, null as ActionState);
   const [startDate, setStartDate] = useState<string | null>(preselected?.startDate ?? null);
   const [days, setDays] = useState<number | null>(preselected?.days ?? null);
-  // Calendrier fermé à l'arrivée : sur mobile, ouvert d'office il couvrait la page avant même qu'on l'ait vue.
-  // Le bouton « Choisir mes dates », rouge tant qu'aucune date n'est choisie, suffit à l'ouvrir.
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  // Calendrier ouvert à l'arrivée : choisir ses dates est la première chose à faire (demande de la cliente).
+  // Pas au retour de la connexion, les dates sont déjà choisies. Fermé, le bouton « Choisir mes dates » le rouvre.
+  const [calendarOpen, setCalendarOpen] = useState(!preselected?.startDate);
   const [pickupPointId, setPickupPointId] = useState(
     () => pickupPoints.find((p) => p.id === customer?.preferredPickupPointId)?.id ?? pickupPoints[0]?.id ?? "",
   );
