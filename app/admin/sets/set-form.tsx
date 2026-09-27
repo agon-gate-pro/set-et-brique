@@ -101,6 +101,15 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
             placeholder="150,00"
           />
         </Field>
+        <Field label="Option « rendre le set monté » (€)" hint="Prix pour rendre le set sans le démonter. Laissez vide pour ne pas proposer l'option">
+          <input
+            name="disassemblyEuros"
+            inputMode="decimal"
+            defaultValue={set?.disassemblyCents != null ? centsToInput(set.disassemblyCents) : ""}
+            className={inputClass}
+            placeholder="Non proposée"
+          />
+        </Field>
         <Field label="Forfait">
           <select name="ratePlanId" defaultValue={set?.ratePlanId ?? ""} className={inputClass}>
             <option value="">

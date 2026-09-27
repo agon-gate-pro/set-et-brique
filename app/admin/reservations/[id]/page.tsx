@@ -86,6 +86,9 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                   ) : null}
                   <Row label="Lieu">{pickupPoint?.name ?? "—"}</Row>
                   <Row label="Location">{formatCents(b.rentalCents)}</Row>
+                  <Row label="Rendu monté">
+                    {b.disassemblyCents != null ? `Oui, + ${formatCents(b.disassemblyCents)}` : "Non, le client démonte le set"}
+                  </Row>
                   <Row label="Caution">{formatCents(b.depositCents)}</Row>
                   <Row label="Demande faite le">{dateTime.format(b.createdAt)}</Row>
                   {b.pickedUpAt ? <Row label="Remis le">{dateTime.format(b.pickedUpAt)}</Row> : null}

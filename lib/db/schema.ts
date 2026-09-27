@@ -163,6 +163,11 @@ export const sets = pgTable(
     /** Poids du set complet, en grammes. Usage interne (vérification au retour), jamais affiché. */
     weightGrams: integer("weight_grams"),
     depositCents: integer("deposit_cents").notNull().default(0),
+    /**
+     * Option « rendre le set monté » : prix payé par le client pour rendre le set sans le démonter,
+     * Set et Brique s'en charge. Null = option non proposée pour ce set (27 septembre 2026).
+     */
+    disassemblyCents: integer("disassembly_cents"),
     /** Jours de battement entre deux locations. Null = réglage global `turnaround_days`. */
     turnaroundDays: integer("turnaround_days"),
     status: setStatus("status").notNull().default("draft"),
@@ -266,6 +271,8 @@ export const bookings = pgTable(
     proposedEndDate: date("proposed_end_date"),
     rentalCents: integer("rental_cents").notNull(),
     depositCents: integer("deposit_cents").notNull(),
+    /** Option « rendre le set monté » choisie à la demande, prix figé à ce moment. Null = non choisie. */
+    disassemblyCents: integer("disassembly_cents"),
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     /** Empreinte bancaire pour la caution, capturée seulement en cas de casse ou perte. */

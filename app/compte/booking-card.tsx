@@ -67,7 +67,9 @@ export function BookingCard({
         <div>
           <dt className="text-sm">Montant</dt>
           <dd className="font-semibold text-ink-deep">
-            {formatCents(booking.rentalCents)} pour {booking.days} jour{booking.days > 1 ? "s" : ""} · caution {formatCents(booking.depositCents)}
+            {formatCents(booking.rentalCents)} pour {booking.days} jour{booking.days > 1 ? "s" : ""}
+            {booking.disassemblyCents != null ? ` + ${formatCents(booking.disassemblyCents)} set rendu monté` : ""} · caution{" "}
+            {formatCents(booking.depositCents)}
           </dd>
         </div>
       </dl>

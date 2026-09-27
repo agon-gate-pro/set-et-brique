@@ -14,6 +14,20 @@ export const eurosToCents = z
     return Math.round(n * 100);
   });
 
+/** Comme `eurosToCents`, mais un champ vide donne `null` (montant facultatif). */
+const optionalEurosToCents = z
+  .string()
+  .trim()
+  .transform((s, ctx) => {
+    if (s === "") return null;
+    const n = Number(s.replace(",", "."));
+    if (Number.isNaN(n) || n < 0) {
+      ctx.addIssue({ code: "custom", message: "Montant invalide" });
+      return z.NEVER;
+    }
+    return Math.round(n * 100);
+  });
+
 const optionalText = z
   .string()
   .trim()
@@ -76,6 +90,7 @@ export const setSchema = z.object({
   buildTime: optionalText,
   weightGrams: optionalInt,
   depositEuros: eurosToCents,
+  disassemblyEuros: optionalEurosToCents,
   turnaroundDays: optionalInt,
   ratePlanId: z
     .string()
@@ -192,6 +207,11 @@ export const bookingRequestSchema = z.object({
   pickupTime: clockTime,
   pickupPointId: required("Lieu de remise"),
   customerNote: optionalText,
+  /** Option « rendre le set monté », case à cocher ; ignorée si le set ne la propose pas. */
+  returnAssembled: z
+    .string()
+    .optional()
+    .transform((v) => v === "on"),
   ...customerFields,
   terms: z
     .string()

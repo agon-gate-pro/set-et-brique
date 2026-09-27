@@ -111,6 +111,7 @@ export const bookingCustomerColumns = {
   days: true,
   rentalCents: true,
   depositCents: true,
+  disassemblyCents: true,
   proposedStartDate: true,
   proposedEndDate: true,
   customerNote: true,
@@ -139,6 +140,7 @@ export type BookingRequest = {
   days: number;
   pickupTime: string;
   customerNote: string | null;
+  returnAssembled: boolean;
 };
 
 /**
@@ -222,6 +224,8 @@ export async function createBookingRequest(req: BookingRequest) {
           status: "pending_review",
           rentalCents: req.days * pricePerDay,
           depositCents: set.depositCents,
+          // Prix relu sur le set, pas sur le formulaire, et figé sur la demande.
+          disassemblyCents: req.returnAssembled ? set.disassemblyCents : null,
           customerNote: req.customerNote,
           termsAcceptedAt: new Date(),
         })
@@ -234,7 +238,7 @@ export async function createBookingRequest(req: BookingRequest) {
       actor: "customer",
       fromStatus: null,
       toStatus: "pending_review",
-      message: "Demande envoyée",
+      message: booking.disassemblyCents != null ? "Demande envoyée, set rendu monté" : "Demande envoyée",
     });
     return booking;
   });

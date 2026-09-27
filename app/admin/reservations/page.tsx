@@ -28,6 +28,7 @@ export default async function BookingsPage() {
     endDate: b.endDate,
     days: b.days,
     rentalCents: b.rentalCents,
+    disassemblyCents: b.disassemblyCents,
     pickupTime: b.pickupTime,
     setName: b.set.name,
     pickupPointName: b.pickupPoint?.name ?? null,

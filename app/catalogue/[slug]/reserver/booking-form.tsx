@@ -14,7 +14,7 @@ import { submitBookingRequest } from "./actions";
 import { BookingCalendar } from "./booking-calendar";
 
 type Props = {
-  set: { id: string; slug: string; name: string; depositCents: number };
+  set: { id: string; slug: string; name: string; depositCents: number; disassemblyCents: number | null };
   pricePerDay: number;
   minDays: number;
   minStartDate: string;
@@ -61,11 +61,14 @@ export function BookingForm({
   const point = pickupPoints.find((p) => p.id === pickupPointId);
   const slots = point?.slots ?? [];
   const [pickupTime, setPickupTime] = useState("10:00");
+  const [returnAssembled, setReturnAssembled] = useState(false);
   // Heure ramenée au premier créneau du lieu choisi si elle ne tombe dans aucun.
   const withinASlot = slots.length === 0 || slots.some((s) => s.from <= pickupTime && pickupTime <= s.until);
   const clampedTime = withinASlot ? pickupTime : slots[0].from;
   const validDays = days != null && days >= minDays;
   const endDate = validDays && startDate && days != null ? addDays(startDate, days - 1) : null;
+  const rental = validDays && days != null ? days * pricePerDay : null;
+  const option = returnAssembled && set.disassemblyCents != null ? set.disassemblyCents : 0;
 
   return (
     <form action={action} className="grid gap-8">
@@ -134,12 +137,29 @@ export function BookingForm({
           <p className="font-bold text-ink-deep">{endDate ? <DateReadable iso={endDate} /> : "—"}</p>
           <p className="mt-2 text-sm text-slate-ink">Location</p>
           <p className="display text-2xl font-bold text-leaf-deep">
-            {validDays && days != null ? formatCents(days * pricePerDay) : "—"}
-            <span className="text-sm font-semibold text-slate-ink"> ({centsToInput(pricePerDay)} € × {validDays ? days : "…"} jours)</span>
+            {rental != null ? formatCents(rental + option) : "—"}
+            <span className="text-sm font-semibold text-slate-ink">
+              {" "}({centsToInput(pricePerDay)} € × {validDays ? days : "…"} jours{option > 0 ? ` + ${formatCents(option)} set rendu monté` : ""})
+            </span>
           </p>
           <p className="mt-1 text-sm text-slate-ink">Caution {formatCents(set.depositCents)}, bloquée à la remise, jamais débitée sauf casse ou perte.</p>
           <p className="mt-1 text-sm text-slate-ink">Si vous disposez d&apos;un bon cadeau, vous pourrez le renseigner au moment du paiement.</p>
         </div>
+        {set.disassemblyCents != null ? (
+          <label className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-slate-ink/15 bg-sky p-4 cursor-pointer hover:bg-sea/10">
+            <input
+              type="checkbox"
+              name="returnAssembled"
+              checked={returnAssembled}
+              onChange={(e) => setReturnAssembled(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-ink-deep"
+            />
+            <span>
+              <span className="block font-bold text-ink-deep">Je rendrai le set monté (+ {formatCents(set.disassemblyCents)})</span>
+              <span className="block text-sm text-slate-ink">Pas besoin de le démonter : nous nous en chargeons.</span>
+            </span>
+          </label>
+        ) : null}
         <div className="sm:col-span-2">
           <Field label="Un message pour nous ?" hint="Facultatif : créneau souhaité, question, précision">
             <textarea name="customerNote" rows={2} className={inputClass} />

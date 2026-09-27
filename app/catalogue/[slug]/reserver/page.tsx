@@ -91,7 +91,7 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
         // dates », dates reprises telles quelles au retour (`readPreselection`).
         <div className="mt-8">
           <BookingForm
-            set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents }}
+            set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents, disassemblyCents: set.disassemblyCents }}
             pricePerDay={pricePerDay}
             minDays={minDays}
             minStartDate={addDays(today, 1)}
@@ -121,7 +121,7 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
       ) : (
         <div className="mt-8">
           <BookingForm
-            set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents }}
+            set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents, disassemblyCents: set.disassemblyCents }}
             pricePerDay={pricePerDay}
             minDays={minDays}
             minStartDate={addDays(today, 1)}

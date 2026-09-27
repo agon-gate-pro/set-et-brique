@@ -42,6 +42,7 @@ export async function submitBookingRequest(_: ActionState, formData: FormData): 
       days: d.days,
       pickupTime: d.pickupTime,
       customerNote: d.customerNote,
+      returnAssembled: d.returnAssembled,
     });
     reference = booking.reference;
   } catch (e) {

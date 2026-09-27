@@ -15,6 +15,8 @@ export type BookingRow = {
   endDate: string;
   days: number;
   rentalCents: number;
+  /** Option « rendre le set monté » choisie, prix figé ; null = non choisie. */
+  disassemblyCents: number | null;
   pickupTime: string | null;
   setName: string;
   pickupPointName: string | null;
@@ -232,6 +234,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
                       du {formatDateShort(r.startDate)} au {formatDateShort(r.endDate)}
                       <span className="block text-xs">
                         {r.days} jour{r.days > 1 ? "s" : ""} · {formatCents(r.rentalCents)}
+                        {r.disassemblyCents != null ? ` + ${formatCents(r.disassemblyCents)} rendu monté` : ""}
                       </span>
                     </td>
                     <td className="p-2 sm:p-3 text-slate-ink hidden sm:table-cell break-words">

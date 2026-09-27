@@ -125,6 +125,11 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
                 Durée libre, comptée en jours calendaires. La caution est bloquée sur votre carte
                 à la remise, jamais débitée sauf casse ou perte.
               </p>
+              {set.disassemblyCents != null ? (
+                <p className="mt-2 text-sm text-slate-ink">
+                  En option : rendez le set monté pour {formatCents(set.disassemblyCents)}, nous nous chargeons de le démonter.
+                </p>
+              ) : null}
 
               {set.instructionType === "digital" ? (
                 <p className="mt-6 flex gap-3 rounded-xl border border-ink/20 bg-paper p-4 text-ink-deep">

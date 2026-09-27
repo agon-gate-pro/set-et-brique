@@ -49,6 +49,7 @@ export function BookingDialog({ row, today, onClose }: { row: BookingRow; today:
               <span className="font-normal text-slate-ink">
                 {" "}
                 · {row.days} jour{row.days > 1 ? "s" : ""} · {formatCents(row.rentalCents)}
+                {row.disassemblyCents != null ? ` + ${formatCents(row.disassemblyCents)} rendu monté` : ""}
               </span>
             </dd>
           </div>
