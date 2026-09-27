@@ -44,10 +44,14 @@ export async function createSet(_: ActionState, formData: FormData): Promise<Act
   if (!parsed.success) return { error: firstError(parsed.error) };
   const d = parsed.data;
 
+  // Un nouveau set se place à la fin du catalogue (voir « Ordre du catalogue »).
+  const [{ lastOrder }] = await db.select({ lastOrder: sql<number>`coalesce(max(${schema.sets.sortOrder}), -1)::int` }).from(schema.sets);
+
   const [created] = await db
     .insert(schema.sets)
     .values({
       slug: await uniqueSlug(d.name),
+      sortOrder: lastOrder + 1,
       name: d.name,
       brand: d.brand,
       setNumbers: d.setNumbers,
@@ -116,6 +120,21 @@ export async function updateSet(_: ActionState, formData: FormData): Promise<Act
 
   revalidateSet(id);
   return { ok: "Modification enregistrée." };
+}
+
+/**
+ * Ordre du catalogue (`/admin/sets/ordre`) : ordre complet des sets publiés, coups de cœur
+ * compris, envoyé en une fois. Les coups de cœur restent de toute façon en tête du catalogue.
+ */
+export async function reorderSets(orderedIds: string[]) {
+  await requireRole("admin");
+  await db.transaction(async (tx) => {
+    for (const [i, id] of orderedIds.entries()) {
+      await tx.update(schema.sets).set({ sortOrder: i }).where(eq(schema.sets.id, id));
+    }
+  });
+  revalidateSet();
+  revalidatePath("/admin/sets/ordre");
 }
 
 export async function deleteSet(_: ActionState, formData: FormData): Promise<ActionState> {

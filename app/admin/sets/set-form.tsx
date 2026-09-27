@@ -158,7 +158,7 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
         </Field>
         <label className="flex items-center gap-3 self-end pb-2">
           <input type="checkbox" name="featured" defaultChecked={set?.featured ?? false} className="focus-outline-none h-5 w-5 accent-brick" />
-          <span className="font-bold">Mettre en avant sur l&apos;accueil</span>
+          <span className="font-bold">Coup de cœur (en tête du catalogue)</span>
         </label>
       </Group>
 

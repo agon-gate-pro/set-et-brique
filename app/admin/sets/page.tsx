@@ -31,9 +31,14 @@ export default async function SetsPage() {
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-3xl md:text-4xl font-bold">Sets</h1>
-        <Link href="/admin/sets/nouveau" className="btn btn-leaf">
-          Ajouter un set
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/admin/sets/ordre" className="btn btn-sea">
+            Ordre du catalogue
+          </Link>
+          <Link href="/admin/sets/nouveau" className="btn btn-leaf">
+            Ajouter un set
+          </Link>
+        </div>
       </div>
       <p className="mt-2 text-sm text-slate-ink max-w-2xl">
         Le catalogue complet des sets, publiés ou non : cherchez-en un et modifiez ses informations.
