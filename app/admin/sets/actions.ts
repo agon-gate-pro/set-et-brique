@@ -8,6 +8,7 @@ import { requireRole } from "@/lib/auth";
 import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { slugify } from "@/lib/format";
+import { MAX_CROP_ZOOM } from "@/lib/image-crop";
 import { copySchema, firstError, formToObject, setSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
 
@@ -222,6 +223,19 @@ export async function updateSetImageAlt(id: string, alt: string | null) {
   const [image] = await db.select({ setId: schema.setImages.setId }).from(schema.setImages).where(eq(schema.setImages.id, id));
   if (!image) return;
   await db.update(schema.setImages).set({ alt }).where(eq(schema.setImages.id, id));
+  revalidateSet(image.setId);
+}
+
+/** Cadrage d'une photo : position du point gardé en place (0 à 100 %) et zoom (1 à 3). Le fichier n'est pas modifié. */
+export async function updateSetImageCrop(id: string, crop: { x: number; y: number; zoom: number }) {
+  await requireRole("admin");
+  const clamp = (n: number, min: number, max: number) => (Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min);
+  const [image] = await db.select({ setId: schema.setImages.setId }).from(schema.setImages).where(eq(schema.setImages.id, id));
+  if (!image) return;
+  await db
+    .update(schema.setImages)
+    .set({ cropX: clamp(crop.x, 0, 100), cropY: clamp(crop.y, 0, 100), cropZoom: clamp(crop.zoom, 1, MAX_CROP_ZOOM) })
+    .where(eq(schema.setImages.id, id));
   revalidateSet(image.setId);
 }
 

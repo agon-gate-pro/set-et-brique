@@ -1,9 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useActionState, useRef, useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
-import { ImagePlus } from "lucide-react";
+import { Crop, ImagePlus } from "lucide-react";
+import { CroppedImage } from "@/components/cropped-image";
+import { CropEditor } from "./crop-editor";
 import {
   ConfirmButton,
   Field,
@@ -152,9 +153,11 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
   }
   const dragId = useRef<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [croppingId, setCroppingId] = useState<string | null>(null);
 
   const byId = new Map(images.map((img) => [img.id, img]));
   const ordered = order.map((id) => byId.get(id)).filter((img): img is SetImage => img != null);
+  const cropping = croppingId ? byId.get(croppingId) : undefined;
 
   function handleDrop(targetId: string) {
     const draggedId = dragId.current;
@@ -177,7 +180,8 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
       <p className="mt-1 text-slate-ink">
         La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, 8 Mo maximum,
         {MAX_IMAGES_PER_SET} photos par set au plus ({images.length}/{MAX_IMAGES_PER_SET}). Glissez une photo
-        pour la réordonner, ou utilisez les flèches.
+        pour la réordonner, ou utilisez les flèches. « Recadrer » règle le zoom et la partie visible
+        de chaque photo, sans modifier le fichier.
       </p>
 
       {ordered.length > 0 ? (
@@ -203,13 +207,26 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
                 draggingId === img.id ? "opacity-40" : ""
               }`}
             >
-              <div className="relative aspect-square">
-                <Image src={img.url} alt={img.alt ?? ""} fill sizes="(min-width: 768px) 200px, 45vw" className="object-cover" />
+              {/* Même cadre 4:3 que le catalogue : la vignette montre le cadrage réel. */}
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <CroppedImage
+                  src={img.url}
+                  alt={img.alt ?? ""}
+                  sizes="(min-width: 768px) 200px, 45vw"
+                  crop={{ x: img.cropX, y: img.cropY, zoom: img.cropZoom }}
+                />
                 {i === 0 ? (
                   <span className="absolute top-2 left-2 text-xs font-bold bg-sun px-2 py-0.5 rounded-md">
                     principale
                   </span>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => setCroppingId(img.id)}
+                  className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-paper/95 px-2.5 py-1 text-xs font-bold text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-sky"
+                >
+                  <Crop className="h-3.5 w-3.5" aria-hidden /> Recadrer
+                </button>
               </div>
               <div className="flex items-center justify-between gap-2 p-2 text-sm">
                 <form className="flex gap-2">
@@ -223,6 +240,16 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {cropping ? (
+        <CropEditor
+          key={cropping.id}
+          imageId={cropping.id}
+          url={cropping.url}
+          initial={{ x: cropping.cropX, y: cropping.cropY, zoom: cropping.cropZoom }}
+          onClose={() => setCroppingId(null)}
+        />
       ) : null}
 
       {images.length >= MAX_IMAGES_PER_SET ? (

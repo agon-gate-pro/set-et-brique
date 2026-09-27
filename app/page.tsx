@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { CroppedImage } from "@/components/cropped-image";
+import type { ImageCrop } from "@/lib/image-crop";
 import {
   BookOpen,
   Gift,
@@ -53,18 +55,22 @@ async function loadThemeTiles() {
   const rows = await db
     .select({
       theme: schema.sets.theme,
+      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)
     .where(and(eq(schema.sets.status, "published"), isNotNull(schema.sets.theme)))
     .orderBy(desc(schema.sets.featured), asc(schema.sets.sortOrder), asc(schema.sets.name));
 
-  const tiles = new Map<string, { slug: string; label: string; cover: string | null; count: number }>();
+  const tiles = new Map<string, { slug: string; label: string; cover: string | null; coverCrop: ImageCrop | null; count: number }>();
   for (const r of rows) {
     const slug = slugify(r.theme!);
-    const tile = tiles.get(slug) ?? { slug, label: r.theme!, cover: null, count: 0 };
+    const tile = tiles.get(slug) ?? { slug, label: r.theme!, cover: null, coverCrop: null, count: 0 };
     tile.count += 1;
-    tile.cover ??= r.cover;
+    if (tile.cover === null && r.cover !== null) {
+      tile.cover = r.cover;
+      tile.coverCrop = r.coverCrop;
+    }
     tiles.set(slug, tile);
   }
   return [...tiles.values()].sort((a, b) => a.label.localeCompare(b.label, "fr"));
@@ -179,12 +185,12 @@ export default async function HomePage() {
                     }`}
                   >
                     {t.cover ? (
-                      <Image
+                      <CroppedImage
                         src={t.cover}
                         alt=""
-                        fill
                         sizes="(min-width: 1024px) 270px, (min-width: 768px) 33vw, 50vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        crop={t.coverCrop}
+                        className="transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : null}
                     {/* Dégradé sombre en bas pour que le nom reste lisible sur n'importe quelle photo. */}

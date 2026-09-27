@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CroppedImage } from "@/components/cropped-image";
 
-type CarouselImage = { id: string; url: string; alt: string | null };
+type CarouselImage = { id: string; url: string; alt: string | null; cropX: number; cropY: number; cropZoom: number };
+
+const cropOf = (img: CarouselImage) => ({ x: img.cropX, y: img.cropY, zoom: img.cropZoom });
 
 export function ImageCarousel({ images, name }: { images: CarouselImage[]; name: string }) {
   const [index, setIndex] = useState(0);
@@ -35,21 +37,14 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
                 i === index ? "border-brick" : "border-transparent opacity-80 hover:border-slate-ink/30 hover:opacity-100"
               }`}
             >
-              <Image src={img.url} alt={img.alt ?? `${name}, photo ${i + 1}`} fill sizes="80px" className="object-cover" />
+              <CroppedImage src={img.url} alt={img.alt ?? `${name}, photo ${i + 1}`} sizes="80px" crop={cropOf(img)} />
             </button>
           ))}
         </div>
       ) : null}
 
       <div className="relative flex-1 aspect-[4/3] rounded-2xl overflow-hidden bg-paper border border-slate-ink/15">
-        <Image
-          src={current.url}
-          alt={current.alt ?? name}
-          fill
-          priority
-          sizes="(min-width: 768px) 50vw, 90vw"
-          className="object-cover"
-        />
+        <CroppedImage src={current.url} alt={current.alt ?? name} priority sizes="(min-width: 768px) 50vw, 90vw" crop={cropOf(current)} />
         {hasMultiple ? (
           <>
             <button

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { CroppedImage } from "@/components/cropped-image";
+import type { ImageCrop } from "@/lib/image-crop";
 import { asc, desc, eq, sql } from "drizzle-orm";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
 import { loadAvailability } from "@/lib/availability";
@@ -57,6 +58,7 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
       featured: schema.sets.featured,
       pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
+      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
       coverAlt: sql<string | null>`(select alt from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)
@@ -126,14 +128,13 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
           href={`/catalogue/${s.slug}`}
           className="brick-card block overflow-hidden h-full hover:bg-sky focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sun"
         >
-          <div className="relative aspect-[4/3] bg-sky border-b border-slate-ink/10">
+          <div className="relative aspect-[4/3] overflow-hidden bg-sky border-b border-slate-ink/10">
             {s.cover ? (
-              <Image
+              <CroppedImage
                 src={s.cover}
                 alt={s.coverAlt ?? s.name}
-                fill
                 sizes="(min-width: 1280px) 300px, (min-width: 640px) 50vw, 100vw"
-                className="object-cover"
+                crop={s.coverCrop}
               />
             ) : (
               <div className="absolute inset-0 grid place-items-center text-slate-ink/50 font-semibold">

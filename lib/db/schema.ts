@@ -8,6 +8,7 @@ import {
   pgEnum,
   pgSequence,
   pgTable,
+  real,
   text,
   time,
   timestamp,
@@ -191,6 +192,14 @@ export const setImages = pgTable(
     url: text("url").notNull(),
     alt: text("alt"),
     sortOrder: integer("sort_order").notNull().default(0),
+    /**
+     * Cadrage réglé par les gérants (27 septembre 2026), sans toucher au fichier : point de la photo
+     * gardé en place, en % de sa largeur et de sa hauteur (50/50 = centre), et zoom (1 = photo entière
+     * rognée au cadre). Appliqué partout par `CroppedImage` (`components/cropped-image.tsx`).
+     */
+    cropX: real("crop_x").notNull().default(50),
+    cropY: real("crop_y").notNull().default(50),
+    cropZoom: real("crop_zoom").notNull().default(1),
     createdAt: timestamps.createdAt,
   },
   (t) => [index("set_images_set_id_idx").on(t.setId)],
