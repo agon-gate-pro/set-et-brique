@@ -262,6 +262,7 @@ Remplace l'ancienne règle "rappel 48h avant + relance quotidienne".
 | Set non restitué | Prix du set (référence Bricklink) |
 
 - **CONFIRMÉ** Forfait démontage : **20 €** si le client rapporte le set assemblé ("en vrac") au lieu de le redémonter dans ses sachets d'origine.
+- **MODIFIÉ le 27/09** Le forfait démontage devient un **prix réglable set par set** (option « rendre le set monté » proposée dans le tunnel), non proposé tant que les gérants ne l'ont pas renseigné pour le set. Les 20 € ci-dessus ne sont plus un montant fixe.
 - **CONFIRMÉ** (révision du 18/09) Ce forfait est **sélectionnable par le client au moment de la réservation** : s'il le choisit, il est payé d'avance et figure sur la note initiale (module 8). S'il n'a pas été sélectionné mais que le set revient monté, il est constaté au retour et donne lieu à une note complémentaire — cf. module 8, périmètre du décompte.
 - **CONFIRMÉ** Calcul du "% de pertes" — résolu (réponse de Marion du 13/09) : comptage précis du nombre de pièces manquantes par rapport au set de départ (pas un calcul par écart de poids). Une **zone de commentaire libre** doit être ajoutée en complément, pour que Marion documente le détail de l'état des lieux.
 - Bricklink est un site de référence communautaire pour les prix des pièces/sets LEGO d'occasion — la consultation du prix de référence sera probablement **manuelle** (Marion), pas une intégration automatisée, sauf si une API est envisagée plus tard.
