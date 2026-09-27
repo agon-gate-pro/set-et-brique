@@ -200,6 +200,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
               {sorted.map((r) => {
                 const late = r.status === "picked_up" ? daysLate(r.endDate, today) : 0;
                 const urgent = r.status === "pending_review";
+                const tone = rowTone(r.status);
                 return (
                   <tr
                     key={r.id}
@@ -214,9 +215,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
                     role="button"
                     aria-label={`Voir la réservation ${r.reference}${urgent ? ", à traiter" : ""}`}
                     className={`cursor-pointer border-l-4 ${
-                      urgent
-                        ? "border-sun-deep bg-sun/20 hover:bg-sun/30 focus:bg-sun/30"
-                        : "border-transparent hover:bg-sky/60 focus:bg-sky/60"
+                      tone?.row ?? "border-transparent hover:bg-sky/60 focus:bg-sky/60"
                     }`}
                   >
                     <td className="p-2 sm:p-3">
@@ -244,9 +243,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
                         className={`text-xs font-bold px-2 py-1 rounded-md border inline-block whitespace-nowrap ${
                           late > 0
                             ? "border-brick bg-brick text-paper"
-                            : urgent
-                              ? "border-sun-deep bg-sun text-ink-deep"
-                              : "border-slate-ink/15 bg-paper"
+                            : (tone?.badge ?? "border-slate-ink/15 bg-paper")
                         }`}
                       >
                         {late > 0 ? `Retard ${late} j` : bookingStatusLabels[r.status]}
@@ -263,4 +260,26 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
       {openRow ? <BookingDialog row={openRow} today={today} onClose={() => setOpenId(null)} /> : null}
     </>
   );
+}
+
+/**
+ * Couleur de la ligne selon l'état, demande de la cliente : jaune à traiter, orange paiement à venir,
+ * vert payé, rouge annulée. « Payé » couvre confirmée, en location et rendue : le loyer est encaissé
+ * au plus tard à la remise (TPE). Proposition de dates : sans couleur.
+ */
+function rowTone(status: BookingStatus): { row: string; badge: string } | null {
+  switch (status) {
+    case "pending_review":
+      return { row: "border-sun-deep bg-sun/20 hover:bg-sun/30 focus:bg-sun/30", badge: "border-sun-deep bg-sun text-ink-deep" };
+    case "pending_payment":
+      return { row: "border-orange-500 bg-orange-50 hover:bg-orange-100 focus:bg-orange-100", badge: "border-orange-500 bg-orange-100 text-orange-900" };
+    case "confirmed":
+    case "picked_up":
+    case "returned":
+      return { row: "border-leaf bg-green-50 hover:bg-green-100 focus:bg-green-100", badge: "border-leaf bg-green-100 text-leaf-deep" };
+    case "cancelled":
+      return { row: "border-brick bg-red-50 hover:bg-red-100 focus:bg-red-100", badge: "border-brick bg-red-100 text-brick-deep" };
+    default:
+      return null;
+  }
 }
