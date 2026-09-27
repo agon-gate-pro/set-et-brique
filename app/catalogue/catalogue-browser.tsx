@@ -7,7 +7,6 @@ export type CatalogueItem = {
   id: string;
   themeSlug: string;
   pieces: number | null;
-  ageMin: number | null;
   buildHours: number | null;
   availableToday: boolean;
   /** La carte du set, rendue côté serveur. */
@@ -19,7 +18,6 @@ type Range = [number, number];
 export type CatalogueFilters = {
   theme: string | null;
   today: boolean;
-  age: number | null;
   pieces: Range | null;
   hours: Range | null;
 };
@@ -27,7 +25,6 @@ export type CatalogueFilters = {
 type Props = {
   items: CatalogueItem[];
   themes: { slug: string; label: string }[];
-  ages: number[];
   piecesBounds: Range | null;
   hoursBounds: Range | null;
   initial: CatalogueFilters;
@@ -47,7 +44,6 @@ function filtersToQuery(f: CatalogueFilters) {
   const params = new URLSearchParams();
   if (f.theme) params.set("gamme", f.theme);
   if (f.today) params.set("dispo", "1");
-  if (f.age !== null) params.set("age", String(f.age));
   if (f.pieces) params.set("pieces", f.pieces.join("-"));
   if (f.hours) params.set("duree", f.hours.join("-"));
   const query = params.toString();
@@ -59,11 +55,11 @@ function filtersToQuery(f: CatalogueFilters) {
  * un bouton « Filtres » sur mobile. Tout se filtre dans le navigateur (les sets tiennent en
  * une page) ; l'adresse suit les filtres via `history.replaceState`, sans recharger la page.
  */
-export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBounds, initial }: Props) {
+export function CatalogueBrowser({ items, themes, piecesBounds, hoursBounds, initial }: Props) {
   const [filters, setFilters] = useState<CatalogueFilters>(initial);
   const [panelOpen, setPanelOpen] = useState(false);
   const set = (patch: Partial<CatalogueFilters>) => setFilters((f) => ({ ...f, ...patch }));
-  // Gamme ou âge choisi dans un menu : la liste change entièrement, on la montre depuis le début.
+  // Gamme choisie dans le menu : la liste change entièrement, on la montre depuis le début.
   // Pas pour les curseurs, qu'on règle par petites touches en regardant le résultat.
   const setAndScrollTop = (patch: Partial<CatalogueFilters>) => {
     set(patch);
@@ -79,7 +75,6 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
   const matches = (item: CatalogueItem, f: CatalogueFilters, ignoreTheme = false) =>
     (ignoreTheme || f.theme === null || item.themeSlug === f.theme) &&
     (!f.today || item.availableToday) &&
-    (f.age === null || item.ageMin === null || item.ageMin <= f.age) &&
     inRange(item.pieces, f.pieces) &&
     inRange(item.buildHours, f.hours);
 
@@ -95,16 +90,15 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
     }
     return counts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, filters.today, filters.age, filters.pieces, filters.hours]);
+  }, [items, filters.today, filters.pieces, filters.hours]);
 
   const activeCount = [
     filters.theme !== null,
     filters.today,
-    filters.age !== null,
     filters.pieces !== null,
     filters.hours !== null,
   ].filter(Boolean).length;
-  const reset = () => setFilters({ theme: null, today: false, age: null, pieces: null, hours: null });
+  const reset = () => setFilters({ theme: null, today: false, pieces: null, hours: null });
   const themeLabel = themes.find((t) => t.slug === filters.theme)?.label;
 
   return (
@@ -164,7 +158,7 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
             <span className="text-sm font-bold text-ink-deep">Disponible dès aujourd&apos;hui</span>
           </label>
 
-          {/* Juste sous la disponibilité, avant l'âge : la gamme est le premier critère des clients. */}
+          {/* Juste sous la disponibilité : la gamme est le premier critère des clients. */}
           {themes.length > 0 ? (
             <FilterGroup title="Gamme" htmlFor="filter-theme">
               <select
@@ -180,25 +174,6 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
                   </option>
                 ))}
               </select>
-            </FilterGroup>
-          ) : null}
-
-          {ages.length > 0 ? (
-            <FilterGroup title="Âge du constructeur" htmlFor="filter-age">
-              <select
-                id="filter-age"
-                value={filters.age ?? ""}
-                onChange={(e) => setAndScrollTop({ age: e.target.value ? Number(e.target.value) : null })}
-                className={selectClass}
-              >
-                <option value="">Tous les âges</option>
-                {ages.map((age) => (
-                  <option key={age} value={age}>
-                    {age === 18 ? "18 ans et plus" : `${age} ans`}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-slate-ink">Les sets conseillés jusqu&apos;à cet âge.</p>
             </FilterGroup>
           ) : null}
 
@@ -233,7 +208,7 @@ export function CatalogueBrowser({ items, themes, ages, piecesBounds, hoursBound
           <div className="brick-card p-8">
             <h2 className="text-2xl font-semibold">Aucun set ne correspond</h2>
             <p className="mt-3 text-slate-ink leading-relaxed">
-              Élargissez un peu vos critères : un autre âge, plus de pièces ou une autre gamme.
+              Élargissez un peu vos critères : une autre gamme, plus ou moins de pièces.
             </p>
             <button type="button" onClick={reset} className="btn btn-paper mt-6">
               Réinitialiser les filtres

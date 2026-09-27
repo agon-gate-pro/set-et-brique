@@ -85,9 +85,6 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
         <Field label="Temps de montage estimé">
           <input name="buildTime" defaultValue={set?.buildTime ?? ""} className={inputClass} placeholder="8 à 10 h" />
         </Field>
-        <Field label="Âge conseillé" hint="À partir de">
-          <input name="ageMin" type="number" min={0} defaultValue={set?.ageMin ?? ""} className={inputClass} />
-        </Field>
         <Field label="Poids du set (g)" hint="Usage interne pour vérifier le retour, jamais affiché au client">
           <input name="weightGrams" type="number" min={0} defaultValue={set?.weightGrams ?? ""} className={inputClass} placeholder="9500" />
         </Field>

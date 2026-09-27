@@ -12,7 +12,7 @@ import { CatalogueBrowser, type CatalogueFilters } from "./catalogue-browser";
 export const metadata: Metadata = {
   title: "Catalogue",
   description:
-    "Le catalogue de sets à louer chez Set et Brique : disponibilité en temps réel, prix par jour et caution de chaque set.",
+    "Le catalogue de sets à louer chez Set et Brique : disponibilité en temps réel et prix par jour de chaque set.",
 };
 export const dynamic = "force-dynamic";
 
@@ -52,9 +52,7 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
       setNumbers: schema.sets.setNumbers,
       theme: schema.sets.theme,
       pieces: schema.sets.pieces,
-      ageMin: schema.sets.ageMin,
       buildTime: schema.sets.buildTime,
-      depositCents: schema.sets.depositCents,
       turnaroundDays: schema.sets.turnaroundDays,
       featured: schema.sets.featured,
       pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
@@ -107,17 +105,10 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
 
   const piecesBounds = boundsOf(allRows.map((r) => r.pieces), 100);
   const hoursBounds = boundsOf([...buildHours.values()], 1);
-  // Âges proposés : du plus jeune âge conseillé du catalogue à « 18 ans et plus ».
-  const knownAges = allRows.map((r) => r.ageMin).filter((a): a is number => a !== null);
-  const youngest = knownAges.length > 0 ? Math.min(18, ...knownAges) : null;
-  const ages = youngest === null ? [] : Array.from({ length: 18 - youngest + 1 }, (_, i) => youngest + i);
-
-  const age = typeof params.age === "string" ? Number(params.age) : NaN;
   const theme = typeof params.gamme === "string" ? params.gamme : null;
   const initial: CatalogueFilters = {
     theme: themes.some((t) => t.slug === theme) ? theme : null,
     today: params.dispo === "1",
-    age: ages.includes(age) ? age : null,
     pieces: readRange(params.pieces, piecesBounds),
     hours: readRange(params.duree, hoursBounds),
   };
@@ -128,7 +119,6 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
       id: s.id,
       themeSlug: themeOf(s),
       pieces: s.pieces,
-      ageMin: s.ageMin,
       buildHours: buildHours.get(s.id) ?? null,
       availableToday: a?.status === "available",
       card: (
@@ -171,21 +161,18 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
             <p className="mt-2 text-sm text-slate-ink">
               {[
                 s.pieces != null ? `${s.pieces.toLocaleString("fr-FR")} pièces` : null,
-                s.ageMin != null ? `dès ${s.ageMin} ans` : null,
                 s.buildTime ? `${formatBuildTime(s.buildTime)} de montage` : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
-            <p className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {s.pricePerDay != null ? (
-                <span className="display text-xl font-bold text-brick">
-                  {formatCents(s.pricePerDay)}
-                  <span className="text-sm font-semibold text-slate-ink"> / jour</span>
-                </span>
-              ) : null}
-              <span className="text-xs text-slate-ink">caution {formatCents(s.depositCents)}</span>
-            </p>
+            {/* Caution volontairement absente : affichée seulement sur la fiche du set (demande de la cliente). */}
+            {s.pricePerDay != null ? (
+              <p className="mt-3 display text-xl font-bold text-brick">
+                {formatCents(s.pricePerDay)}
+                <span className="text-sm font-semibold text-slate-ink"> / jour</span>
+              </p>
+            ) : null}
           </div>
         </Link>
       ),
@@ -196,7 +183,6 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
     <CatalogueBrowser
       items={items}
       themes={themes}
-      ages={ages}
       piecesBounds={piecesBounds}
       hoursBounds={hoursBounds}
       initial={initial}

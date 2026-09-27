@@ -65,7 +65,6 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
     ],
     ["Dimensions une fois construit", set.dimensions],
     ["Temps de montage estimé", formatBuildTime(set.buildTime)],
-    ["Âge conseillé", set.ageMin != null ? `dès ${set.ageMin} ans` : null],
     ["Marque", set.brand],
     ["Numéro de boîte", set.setNumbers.length > 0 ? formatSetNumbers(set.setNumbers) : null],
   ];

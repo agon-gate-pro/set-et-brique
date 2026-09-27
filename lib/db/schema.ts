@@ -158,6 +158,7 @@ export const sets = pgTable(
     dimensions: text("dimensions"),
     /** Temps de montage estimé, texte libre (« 8 à 10 h »). */
     buildTime: text("build_time"),
+    /** Âge conseillé : plus affiché ni saisi depuis le 27 septembre 2026 (demande de la cliente), valeurs gardées en base. */
     ageMin: integer("age_min"),
     /** Poids du set complet, en grammes. Usage interne (vérification au retour), jamais affiché. */
     weightGrams: integer("weight_grams"),

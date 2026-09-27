@@ -74,7 +74,6 @@ export const setSchema = z.object({
   instructionType: z.enum(["paper", "digital"]),
   dimensions: optionalText,
   buildTime: optionalText,
-  ageMin: optionalInt,
   weightGrams: optionalInt,
   depositEuros: eurosToCents,
   turnaroundDays: optionalInt,
