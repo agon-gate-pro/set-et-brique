@@ -113,28 +113,37 @@ export function ReviewActions({
         </div>
       </form>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-[auto_1fr_auto] items-end">
-        {canAccept ? (
-          <form action={acceptAction}>
+      {/* Barre de décision : Accepter à droite, action principale ; le motif du refus se saisit dans la fenêtre de confirmation. */}
+      <div className="mt-6 border-t border-slate-ink/15 pt-6">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <form action={refuseAction}>
             <input type="hidden" name="id" value={booking.id} />
-            <SubmitButton variant="leaf">Accepter la demande</SubmitButton>
-            <FormMessage state={acceptState} />
+            <ConfirmButton
+              asDialog
+              state={refuseState}
+              confirmLabel="Oui, refuser"
+              pendingLabel="Envoi…"
+              className="btn btn-brick text-paper no-underline"
+              details={
+                <Field label="Motif du refus, visible du client" hint="Facultatif">
+                  <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
+                </Field>
+              }
+            >
+              Refuser la demande
+            </ConfirmButton>
           </form>
-        ) : (
-          <div />
-        )}
-        <form action={refuseAction} className="sm:col-span-2 grid gap-4 sm:grid-cols-[1fr_auto] items-end">
-          <input type="hidden" name="id" value={booking.id} />
-          <Field label="Motif du refus, visible du client" hint="Facultatif">
-            <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
-          </Field>
-          <ConfirmButton confirmLabel="Oui, refuser" className="btn btn-brick text-paper no-underline">
-            Refuser la demande
-          </ConfirmButton>
-          <div className="sm:col-span-2">
-            <FormMessage state={refuseState} />
-          </div>
-        </form>
+          {canAccept ? (
+            <form action={acceptAction}>
+              <input type="hidden" name="id" value={booking.id} />
+              <SubmitButton variant="leaf">Accepter la demande</SubmitButton>
+            </form>
+          ) : null}
+        </div>
+        <div className="mt-3 text-right">
+          <FormMessage state={acceptState} />
+          <FormMessage state={refuseState} />
+        </div>
       </div>
     </section>
   );

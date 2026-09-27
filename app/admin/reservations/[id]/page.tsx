@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
 import { AdminNoteForm, CustomerBlockForm, HandoverActions, ReviewActions } from "./forms";
+import { BookingTabs } from "./tabs";
 import { requireRole } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Réservation", robots: { index: false } };
@@ -53,83 +54,97 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
         ) : null}
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <section className="brick-card p-6">
-          <h2 className="text-2xl font-semibold">Location</h2>
-          <dl className="mt-4 grid gap-2">
-            <Row label="Set">
-              <Link href={`/admin/sets/${set.id}`} className="underline underline-offset-4">
-                {set.name}
-              </Link>
-              {copy ? ` · ${copy.label}` : " · aucun exemplaire attribué"}
-            </Row>
-            <Row label="Remise">
-              {formatDate(b.startDate)}
-              {b.pickupTime ? ` à ${formatTime(b.pickupTime)}` : ", heure à convenir"}
-            </Row>
-            <Row label="Retour">
-              {formatDate(b.endDate)} ({b.days} jour{b.days > 1 ? "s" : ""})
-            </Row>
-            {b.proposedStartDate && b.proposedEndDate ? (
-              <Row label="Dates proposées">
-                du {formatDate(b.proposedStartDate)} au {formatDate(b.proposedEndDate)}, en attente du client
-              </Row>
-            ) : null}
-            <Row label="Lieu">{pickupPoint?.name ?? "—"}</Row>
-            <Row label="Location">{formatCents(b.rentalCents)}</Row>
-            <Row label="Caution">{formatCents(b.depositCents)}</Row>
-            <Row label="Demande faite le">{dateTime.format(b.createdAt)}</Row>
-            {b.pickedUpAt ? <Row label="Remis le">{dateTime.format(b.pickedUpAt)}</Row> : null}
-            {b.returnedAt ? <Row label="Rendu le">{dateTime.format(b.returnedAt)}</Row> : null}
-            {b.returnNote ? <Row label="État des lieux">{b.returnNote}</Row> : null}
-            {b.customerNote ? <Row label="Message du client">{b.customerNote}</Row> : null}
-            {b.cancelReason && b.status === "cancelled" ? <Row label="Motif">{b.cancelReason}</Row> : null}
-          </dl>
-          <AdminNoteForm booking={b} />
-        </section>
-
-        <section className="brick-card p-6">
-          <h2 className="text-2xl font-semibold">Client</h2>
-          <dl className="mt-4 grid gap-2">
-            <Row label="Nom">
-              {customer.firstName} {customer.lastName}
-            </Row>
-            <Row label="Email">
-              <a href={`mailto:${customer.email}`} className="underline underline-offset-4">
-                {customer.email}
-              </a>
-            </Row>
-            <Row label="Téléphone">
-              {customer.phone ? (
-                <a href={phoneHref(customer.phone)} className="underline underline-offset-4">
-                  {formatPhone(customer.phone)}
-                </a>
-              ) : (
-                "—"
-              )}
-            </Row>
-            <Row label="Adresse">
-              {[customer.addressLine, [customer.postalCode, customer.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "—"}
-            </Row>
-          </dl>
-          <CustomerBlockForm customer={customer} bookingId={b.id} />
-        </section>
-      </div>
-
+      {/* Décision d'abord, c'est ce qu'on vient faire ; le détail est dans les onglets en dessous. */}
       <ReviewActions booking={b} pickupPoints={pickupPoints} />
       <HandoverActions booking={b} />
 
-      <section className="mt-8 brick-card p-6">
-        <h2 className="text-2xl font-semibold">Historique</h2>
-        <ol className="mt-4 space-y-2 text-slate-ink">
-          {events.map((e) => (
-            <li key={e.id}>
-              <span className="text-sm">{dateTime.format(e.createdAt)}</span> · {e.message ?? ""}
-              {e.toStatus ? ` → ${bookingStatusLabels[e.toStatus]}` : ""} <span className="text-sm">({actorLabels[e.actor]})</span>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <BookingTabs
+        tabs={[
+          {
+            id: "location",
+            label: "Location",
+            content: (
+              <>
+                <dl className="grid gap-2">
+                  <Row label="Set">
+                    <Link href={`/admin/sets/${set.id}`} className="underline underline-offset-4">
+                      {set.name}
+                    </Link>
+                    {copy ? ` · ${copy.label}` : " · aucun exemplaire attribué"}
+                  </Row>
+                  <Row label="Remise">
+                    {formatDate(b.startDate)}
+                    {b.pickupTime ? ` à ${formatTime(b.pickupTime)}` : ", heure à convenir"}
+                  </Row>
+                  <Row label="Retour">
+                    {formatDate(b.endDate)} ({b.days} jour{b.days > 1 ? "s" : ""})
+                  </Row>
+                  {b.proposedStartDate && b.proposedEndDate ? (
+                    <Row label="Dates proposées">
+                      du {formatDate(b.proposedStartDate)} au {formatDate(b.proposedEndDate)}, en attente du client
+                    </Row>
+                  ) : null}
+                  <Row label="Lieu">{pickupPoint?.name ?? "—"}</Row>
+                  <Row label="Location">{formatCents(b.rentalCents)}</Row>
+                  <Row label="Caution">{formatCents(b.depositCents)}</Row>
+                  <Row label="Demande faite le">{dateTime.format(b.createdAt)}</Row>
+                  {b.pickedUpAt ? <Row label="Remis le">{dateTime.format(b.pickedUpAt)}</Row> : null}
+                  {b.returnedAt ? <Row label="Rendu le">{dateTime.format(b.returnedAt)}</Row> : null}
+                  {b.returnNote ? <Row label="État des lieux">{b.returnNote}</Row> : null}
+                  {b.customerNote ? <Row label="Message du client">{b.customerNote}</Row> : null}
+                  {b.cancelReason && b.status === "cancelled" ? <Row label="Motif">{b.cancelReason}</Row> : null}
+                </dl>
+                <AdminNoteForm booking={b} />
+              </>
+            ),
+          },
+          {
+            id: "client",
+            label: "Client",
+            content: (
+              <>
+                <dl className="grid gap-2">
+                  <Row label="Nom">
+                    {customer.firstName} {customer.lastName}
+                  </Row>
+                  <Row label="Email">
+                    <a href={`mailto:${customer.email}`} className="underline underline-offset-4">
+                      {customer.email}
+                    </a>
+                  </Row>
+                  <Row label="Téléphone">
+                    {customer.phone ? (
+                      <a href={phoneHref(customer.phone)} className="underline underline-offset-4">
+                        {formatPhone(customer.phone)}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </Row>
+                  <Row label="Adresse">
+                    {[customer.addressLine, [customer.postalCode, customer.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "—"}
+                  </Row>
+                </dl>
+                <CustomerBlockForm customer={customer} bookingId={b.id} />
+              </>
+            ),
+          },
+          {
+            id: "historique",
+            label: "Historique",
+            content: (
+              <ol className="space-y-2 text-slate-ink">
+                {events.map((e) => (
+                  <li key={e.id}>
+                    <span className="text-sm">{dateTime.format(e.createdAt)}</span> · {e.message ?? ""}
+                    {e.toStatus ? ` → ${bookingStatusLabels[e.toStatus]}` : ""} <span className="text-sm">({actorLabels[e.actor]})</span>
+                  </li>
+                ))}
+              </ol>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

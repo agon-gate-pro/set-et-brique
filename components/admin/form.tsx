@@ -42,6 +42,8 @@ export function ConfirmButton({
   form,
   asDialog = false,
   state = null,
+  details,
+  pendingLabel = "Suppression…",
 }: {
   children: ReactNode;
   confirmLabel?: string;
@@ -58,6 +60,10 @@ export function ConfirmButton({
    * disparaîtrait du DOM avant que le navigateur ait fini de le soumettre).
    */
   state?: ActionState;
+  /** Contenu ajouté dans la fenêtre (`asDialog`), ex. un champ du formulaire parent à remplir avant de confirmer. */
+  details?: ReactNode;
+  /** Libellé du bouton de confirmation pendant l'envoi. */
+  pendingLabel?: string;
 }) {
   const [armed, setArmed] = useState(false);
   const { pending } = useFormStatus();
@@ -91,6 +97,7 @@ export function ConfirmButton({
           >
             <div className="brick-card bg-paper p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
               <p className="font-bold text-lg text-ink-deep">{children} ?</p>
+              {details ? <div className="mt-4 text-left">{details}</div> : null}
               <p className="mt-2 text-slate-ink">Cette action est définitive.</p>
               {state?.error ? <p className="mt-3 text-sm font-semibold text-brick-deep">{state.error}</p> : null}
               <div className="mt-5 flex items-center justify-center gap-3">
@@ -100,7 +107,7 @@ export function ConfirmButton({
                   disabled={pending}
                   className="btn btn-brick text-sm py-2 px-3 disabled:opacity-60 disabled:cursor-wait"
                 >
-                  {pending ? "Suppression…" : confirmLabel}
+                  {pending ? pendingLabel : confirmLabel}
                 </button>
                 <button
                   type="button"
@@ -126,7 +133,7 @@ export function ConfirmButton({
         disabled={pending}
         className="btn btn-brick text-sm py-2 px-3"
       >
-        {pending ? "Suppression…" : confirmLabel}
+        {pending ? pendingLabel : confirmLabel}
       </button>
       <button
         type="button"
