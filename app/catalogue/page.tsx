@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Heart } from "lucide-react";
 import { CroppedImage } from "@/components/cropped-image";
 import type { ImageCrop } from "@/lib/image-crop";
 import { asc, desc, eq, sql } from "drizzle-orm";
@@ -142,7 +143,9 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
               </div>
             )}
             {s.featured ? (
-              <span className="absolute top-3 left-3 text-xs font-bold bg-sun px-2 py-1 rounded-md border border-slate-ink/15">
+              // Blanc à cœur rouge, en haut à droite : à distance de la pastille jaune « Disponible », sous la photo.
+              <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-paper/95 px-2.5 py-1 text-xs font-bold text-ink-deep shadow-brick-sm">
+                <Heart className="h-3.5 w-3.5 fill-brick text-brick" aria-hidden />
                 Coup de cœur
               </span>
             ) : null}
