@@ -31,7 +31,7 @@ Champs confirmés (document client du 11/09, exemple détaillé "Faucon Milléni
 - **CONFIRMÉ** Type de notice : papier ou numérique — **si numérique, avertissement à afficher au client** (nécessite un accès à internet par téléphone/PC/tablette pour suivre le montage).
 - **CONFIRMÉ** Nombre de figurines.
 - **CONFIRMÉ** Temps estimatif de montage.
-- **CONFIRMÉ** Âge conseillé.
+- ~~Âge conseillé.~~ **RETIRÉ** le 27 septembre 2026 à la demande de la cliente : plus saisi, plus affiché, plus de filtre (valeurs conservées en base).
 - **CONFIRMÉ** Marque : LEGO ou autre — confirmé nécessaire, le catalogue contient au moins une référence d'une autre marque ("La mine de l'ouest", marque "PANTASY").
 - **CONFIRMÉ** Montant de la caution (par set, déjà su — cf. grille des cautions, de 100 € à 650 € selon le set).
 - **CONFIRMÉ** Champ commentaire libre, **visible côté client** sur la fiche du set (vide sur tous les sets actuels, à remplir au cas par cas par Set et Brique).

@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 23 septembre 2026.
+Dernière mise à jour : 27 septembre 2026.
 
 ## 1. Où on en est
 
@@ -46,6 +46,20 @@ Tous les points ouverts par la révision du 18 septembre 2026 (notes et exports)
 
 **À ne pas oublier à la construction du module** (demandé par avance le 23 septembre 2026, avant même que le paiement existe, pour ne pas l'oublier) : le tunnel de réservation annonce déjà, dans l'encart Location/Caution, qu'un bon cadeau pourra être renseigné « au moment du paiement » (voir `FONCTIONNEMENT.md`, section Tunnel de réservation) — cette phrase n'est vraie pour l'instant que sur le papier, il faudra vraiment câbler la saisie d'un bon cadeau à cette étape.
 
+**Pour Madus, à la construction du module paiement : délai de 24 h pour régler après acceptation** (demande de la cliente, relayée par Alexis le 27 septembre 2026, rien de construit). Une fois la demande acceptée par Set et Brique, le client a 24 h pour venir régler ; sinon, annulation pour non-paiement, e-mail d'annulation au client, et les dates redeviennent disponibles. Plan proposé, pas encore validé :
+1. Échéance posée à l'acceptation (nouvelle colonne nullable, du type `payment_due_at` = acceptation + 24 h, sans casser la prod) ; action gérant « Paiement reçu » (`pending_payment` → `confirmed`, transition qui n'existe pas aujourd'hui : on passe directement à « Set remis ») ; délai restant affiché sur la fiche, le tableau des réservations et l'espace client.
+2. Dates libérées dès l'échéance passée, en excluant les `pending_payment` échus dans `OCCUPYING_STATUSES` / `RESERVING_STATUSES` (`lib/availability-core.ts`) sans attendre l'annulation formelle ; puis une tâche planifiée (route protégée par `CRON_SECRET`) passe la réservation en `cancelled` (acteur `system`, motif « non-paiement ») et l'inscrit dans l'historique. Attention : le cron Vercel du plan gratuit ne tourne qu'une fois par jour — annulation et e-mail jusqu'à 24 h en retard. Pour un passage toutes les 15 min, plan Pro ou service externe (cron-job.org) qui appelle la route.
+3. E-mail d'annulation : aucun fournisseur à ce jour. Resend recommandé (simple avec Vercel, gratuit jusqu'à 3 000 e-mails/mois) : compte, vérification du domaine d'envoi, clé dans Vercel. À mutualiser avec les e-mails transactionnels (§4, étape 1).
+4. Facultatif : rappel quelques heures avant l'échéance.
+
+Questions à poser à Marion avant de coder :
+- Comment le client règle-t-il dans ces 24 h, tant que le paiement en ligne n'existe pas (passage sur place, virement…) ? Contradiction avec le paiement par TPE à la remise prévu aujourd'hui : si la remise a lieu plusieurs jours après l'acceptation, ces clients seraient tous annulés.
+- Remise prévue dans moins de 24 h après l'acceptation : l'échéance devient-elle l'heure de la remise ?
+- Les gérants peuvent-ils prolonger le délai au cas par cas ?
+- Faut-il un rappel avant l'échéance ?
+
+Rapport avec la spécification (module 4) : les délais de 1 h (carte refusée) et 15 min (abandon en cours de paiement) portent sur le paiement en ligne ; ce délai de 24 h s'y ajoute, il ne les remplace pas.
+
 **Bons cadeaux, commande par e-mail en attendant Stripe** (24 septembre 2026, message préparé pour Marion par Alexis) : Marion accepte-t-elle de prendre les commandes de bons par e-mail depuis le site ? Si oui, quel règlement pour ces commandes (virement, espèces, TPE à la remise) ? Faut-il mettre un montant en avant (« le plus offert ») ou laisser les trois au même niveau ? La page `/bons-cadeaux` est en ligne avec la commande par e-mail ; elle sera ajustée selon ses réponses.
 
 Autres points à poser quand l'occasion se présente :
@@ -58,7 +72,7 @@ Autres points à poser quand l'occasion se présente :
 ## 4. Prochaines étapes, dans l'ordre proposé
 
 1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée, puis set remis / set rendu. Les gérants doivent pouvoir modifier les textes (module 10).
-2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées.
+2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées — avec le délai de 24 h pour régler après acceptation (voir §3).
 3. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
 4. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF (7), bons cadeaux (6), reporting et exports (11).
 
@@ -74,6 +88,19 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate).
 
 ## 5. Journal
+
+### 27 septembre 2026
+
+- **Branche `srogath` supprimée**, entièrement fusionnée dans `main` par Madus (23 et 24 septembre, contenu identique vérifié). `main` local remis à jour, nouvelle branche de travail `semaine-40`.
+- **Notion d'âge retirée du site** (demande de la cliente). Plus de champ « Âge conseillé » dans le formulaire d'un set (`set-form.tsx`, `setSchema`, actions de création et de modification), plus de filtre « Âge du constructeur » ni de paramètre `?age=` dans le catalogue (`catalogue-browser.tsx`, `page.tsx`), plus de « dès N ans » sur les cartes ni de ligne « Âge conseillé » sur la fiche d'un set. Décision avec Alexis : la colonne `age_min` reste en base, simplement ignorée — réversible, et pas de migration sur la base Neon partagée avec la production (supprimer la colonne casserait le site en ligne tant que la branche n'est pas fusionnée). La modification d'un set ne touche plus à la valeur existante. Le script d'import de la grille (`scripts/import-sets.ts`) la remplit toujours, sans effet visible. Le document remis dans la boîte (avertissement d'âge, géré par Marion hors système) n'est pas concerné. Vérifié : types, lint.
+- **Caution retirée des cartes du catalogue** (`app/catalogue/page.tsx`, demande de la cliente) : seul le prix par jour reste sur la carte ; la caution n'est visible qu'en ouvrant la fiche du set. Description de la page (balise meta) ajustée en conséquence. Vérifié : types, lint, rendu de `/catalogue` en local (plus aucune mention de caution) et d'une fiche de set (caution toujours affichée).
+- **Tunnel de réservation, calendrier ouvert d'office à l'arrivée** (`booking-form.tsx`, demande de la cliente, signalée comme un bug) : plus besoin de cliquer sur « Choisir mes dates ». Revient sur le choix du 24 septembre (fermé à l'arrivée, parce qu'il couvrait la page sur mobile). Pas au retour d'une connexion : les dates sont déjà choisies, le calendrier reste fermé. Vérifié : types, lint, rendu serveur de `/catalogue/faucon-millenium/reserver` (fenêtre du calendrier présente dès le chargement).
+- **Fiche d'une réservation, mise en page revue** (`app/admin/reservations/[id]/page.tsx`, `forms.tsx`, demande d'Alexis) :
+  - Blocs **Location** puis **Client** l'un sous l'autre, sur toute la largeur, au lieu de deux colonnes côte à côte. Remplacé dans la foulée (voir plus bas) par des onglets.
+  - **Bloc Décision** : l'ancienne ligne « Accepter | champ du motif | Refuser », jugée désagréable (bouton, champ et bouton de hauteurs différentes, motif coincé entre les deux), remplacée par une barre séparée d'un filet sous « Modifier la remise », boutons alignés à droite : « Refuser la demande » (rouge) puis « Accepter la demande » (vert, action principale à droite). Le motif du refus se saisit dans la fenêtre de confirmation (« Refuser la demande ? », champ facultatif, « Cette action est définitive. », Oui, refuser / Annuler) : on ne peut plus refuser d'un clic malheureux, et c'est le même principe que la pop-up de la liste. Choix fait par Alexis entre deux propositions (l'autre : deux encarts Accepter | Refuser côte à côte). `ConfirmButton` gagne `details` (contenu dans la fenêtre) et `pendingLabel` (« Envoi… » ici, au lieu de « Suppression… »).
+  - Vérifié : types, lint. Pas vérifié à l'écran (page réservée aux gérants, pas de session dans l'environnement).
+  - **Retour d'Alexis : « la décision finale est trop bas »**. Le bloc Décision (ou Remise / Retour du set selon le statut) passe tout en haut, juste sous la référence ; Location, Client et Historique deviennent des **onglets** en dessous (`app/admin/reservations/[id]/tabs.tsx`, nouveau), à consulter si besoin. Choix d'Alexis entre deux propositions (l'autre : tout traiter dans la pop-up de la liste). Style repris des onglets des exemplaires de la fiche d'un set ; panneaux gardés montés (`hidden`) pour ne pas perdre une note interne en cours de saisie ; rôles ARIA `tablist` / `tab` / `tabpanel`. Vérifié : types, lint. Pas vérifié à l'écran, même raison.
+- **Réservations, lignes colorées selon l'état** (`app/admin/reservations/bookings-table.tsx`, `rowTone()`, demande de la cliente) : rouge si annulée, orange si paiement à venir, vert si payée ; jaune inchangé pour une demande à traiter. « Payée » recouvre confirmée, en location et rendue, puisqu'aucune action ne fait aujourd'hui passer une réservation en « confirmée » (le loyer est encaissé par TPE à la remise, on passe directement à « Set remis ») : un set remis est un set payé. Proposition de dates : sans couleur. Vérifié : types, lint. Pas vérifié à l'écran (page gérants).
 
 ### 24 septembre 2026
 
