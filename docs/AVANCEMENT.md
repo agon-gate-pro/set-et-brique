@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 27 septembre 2026.
+Dernière mise à jour : 4 octobre 2026.
 
 ## 1. Où on en est
 
@@ -66,7 +66,7 @@ Autres points à poser quand l'occasion se présente :
 
 - Délai minimal entre la demande et la remise (aujourd'hui : dès le lendemain).
 - Faut-il une durée minimale de location au-delà d'un jour ? (réglage `min_rental_days`, à 1)
-- Domaine final du site : lequel, et chez quel registrar ? Nécessaire pour l'instance Clerk de production (voir §4).
+- ~~Domaine final du site : lequel, et chez quel registrar ?~~ Réglé le 1er octobre 2026 : `set-et-brique.com`, acheté chez Squarespace (expire le 31 mai 2027), DNS chez Cloudflare. Il est aujourd'hui rattaché au projet Vercel `set-et-brique-vitrine` (ancien site, voir journal) : au lancement, il passera sur le projet `set-et-brique` (§4, Clerk en production, étape 1).
 - Grille des sets : la gamme (Star Wars, Ideas, Technic…) a été déduite du numéro de boîte, à vérifier. Trois sets sans gamme : Coupe du Monde (43020), La mine de l'Ouest (Pantasy 85025), Échecs pirate (40158). La description du Faucon Millenium cite le 75105 alors que le numéro saisi est 75257. Le set « Test : voiture de course » reste publié.
 
 ## 4. Prochaines étapes, dans l'ordre proposé
@@ -85,9 +85,19 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 3. Ajouter les cinq CNAME fournis par Clerk (deux pour l'authentification, trois pour les mails). Si le domaine est chez Vercel, `vercel dns add` suffit ; sinon les saisir chez le registrar. Attendre la validation par Clerk.
 4. Créer des identifiants Google OAuth dans la console Google Cloud et les renseigner dans Clerk : la connexion Google de l'instance de développement ne fonctionne pas en production.
 5. Remplacer `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` dans Vercel (Production), redéployer.
-6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate).
+6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 4 octobre 2026
+
+- **Nettoyage après la migration de la vitrine vers Vercel** (voir 1er octobre). Trois jours d'observation sans incident : les quatre pages répondent, `/docs/` renvoie 404, `www` et `http` redirigent en 308. Fait : GitHub Pages désactivé sur `Agon-Gate/set-et-brique-vitrine`, dépôt passé en **privé** (il contient le devis et le contrat), fichier `CNAME` retiré, hébergeur corrigé dans les mentions légales de `index.html` et `qui-sommes-nous.html` (Vercel Inc. à la place de Cloudflare Pages ; les CGU n'en parlent pas). Vercel déploie toujours depuis le dépôt privé (vérifié sur le commit `cc73393`). Le retour arrière vers GitHub Pages n'existe plus : en cas de souci, on redéploie un commit antérieur dans Vercel. Reste à faire dans Cloudflare : supprimer le projet Cloudflare Pages `set-et-brique-vitrine` en doublon (il répond encore sur `pages.dev`) et retirer le TXT `_acme-challenge`. À vérifier aussi : Search Console et le renouvellement automatique du domaine chez Squarespace (expiration le 31 mai 2027).
+- **Point avec la cliente** (rapporté par Alexis). Marion et Gaëtan se sont inscrits sur la démo et ont commencé à ajouter des sets et à remplir l'espace de gestion : la base partagée contient désormais leurs vraies données, à ne plus traiter comme des données de test. Les **conditions générales de location** ont été fournies (texte à intégrer, module 7). Toujours attendus de leur part : les visuels définitifs des bons cadeaux (module 6) et les textes des e-mails (module 10).
+
+### 1er octobre 2026
+
+- **Accès gérante pour Marion** (demande d'Alexis : qu'elle puisse tester l'espace de gestion et suivre les évolutions sur https://set-et-brique.vercel.app). Aucun compte n'existait pour `setetbrique@gmail.com`. Plutôt que créer le compte avec un mot de passe à lui transmettre, ou lui demander de s'inscrire avant de lancer `pnpm role`, une **invitation Clerk** portant déjà le rôle (`public_metadata: { role: "admin" }`, `redirect_url` vers `/inscription`) : elle choisit elle-même son mot de passe (ou Google) et arrive directement avec l'accès à `/admin`. Invitation créée par Alexis (statut `pending`), Marion prévenue par un message qui précise que l'e-mail vient de Clerk, que ses modifications dans l'admin sont réelles (base partagée) et que le compte sera à recréer au passage de Clerk en production (§4). Instance de **développement** : le compte n'est pas repris en production.
+- **Site vitrine actuel migré de GitHub Pages vers Vercel**, sans coupure. Ce n'est pas cette plateforme : `set-et-brique.com` affiche toujours l'ancien site statique, tel quel, tant que la plateforme n'est pas terminée. Dépôt `Agon-Gate/set-et-brique-vitrine` (ajout de `vercel.json` et `.vercelignore`), projet Vercel `set-et-brique-vitrine` dans l'équipe `madus-wws-projects`, séparé du projet `set-et-brique`. Domaine acheté chez Squarespace, DNS chez Cloudflare (A `216.150.1.1` et `216.150.16.1`, `www` en CNAME Vercel, en « DNS uniquement »), `www` redirigé en 308 vers l'apex. Certificat émis avant la bascule par défi DNS (`vercel certs issue --challenge-only`) pour éviter toute erreur HTTPS. Mêmes URL qu'avant (`/cgu` et `/cgu.html`), donc référencement conservé. Au passage : le devis, le contrat et les autres documents du dossier `docs/` du dépôt vitrine, jusque-là téléchargeables sur le site, ne sont plus publiés. Le nettoyage qui suit est au journal du 4 octobre.
 
 ### 27 septembre 2026
 
