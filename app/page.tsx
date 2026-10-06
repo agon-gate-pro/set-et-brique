@@ -4,13 +4,15 @@ import { CroppedImage } from "@/components/cropped-image";
 import type { ImageCrop } from "@/lib/image-crop";
 import {
   BookOpen,
+  Boxes,
   Gift,
+  Handshake,
   MapPin,
-  PackageOpen,
   RotateCcw,
   Search,
   ShoppingBag,
   Star,
+  ToyBrick,
   type LucideIcon,
 } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
@@ -24,22 +26,34 @@ import { giftVoucherAmounts, press, reviews, site } from "@/lib/site";
 
 const steps: { title: string; text: string; icon: LucideIcon; border: string }[] = [
   {
-    title: "Choisissez un set",
-    text: "Parcourez le catalogue et choisissez vos dates. La durée est libre : vous ne payez que les jours où vous gardez le set.",
+    title: "Réservation en ligne",
+    text: "Choisissez votre set, définissez la durée et le moment de la location.",
     icon: Search,
     border: "border-t-brick",
   },
   {
-    title: "Récupérez-le en main propre",
-    text: `On se retrouve à un lieu de rendez-vous convenu ensemble, jusqu'à ${site.radiusKm} km autour de Lorient. Le set est complet, trié et vérifié.`,
-    icon: PackageOpen,
+    title: "Premier rendez-vous",
+    text: "Retrouvez-nous pour la remise en main propre du set dans un lieu que vous aurez choisi.",
+    icon: Handshake,
     border: "border-t-ink",
   },
   {
-    title: "Construisez, puis rapportez",
-    text: "Prenez le temps de monter, d'admirer, de jouer. Une fois terminé, démontez et rapportez le set pour qu'une autre famille en profite.",
-    icon: RotateCcw,
+    title: "Montage et jeu",
+    text: "Construisez le set chez vous, profitez-en pleinement pendant toute la durée de location.",
+    icon: ToyBrick,
     border: "border-t-sun-deep",
+  },
+  {
+    title: "Démontage et tri",
+    text: "Démontez entièrement le set et triez soigneusement les pièces par sachets, à l'identique de la présentation d'origine.",
+    icon: Boxes,
+    border: "border-t-brick",
+  },
+  {
+    title: "Retour du set",
+    text: "Retrouvez-nous pour un second rendez-vous afin de nous rendre le set. Et c'est tout !",
+    icon: RotateCcw,
+    border: "border-t-ink",
   },
 ];
 
@@ -55,7 +69,7 @@ async function loadThemeTiles() {
   const rows = await db
     .select({
       theme: schema.sets.theme,
-      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
+      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom, 'rect', i.crop_rect) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)
@@ -118,13 +132,12 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-5 text-lg md:text-xl leading-relaxed text-slate-ink">
-            Les plus grands sets de briques de construction, loués pour la
-            durée de votre choix autour de Lorient.
+            Les plus grands sets de construction Lego, Pantasy ou Megabloks à
+            louer pour la durée de votre choix autour de Lorient.
           </p>
           <p className="mt-2 text-lg md:text-xl font-semibold text-ink-deep">
-            Une entreprise familiale, des sets complets et vérifiés, une
-            remise en main propre. Pour les familles, les grands-parents,
-            les écoles et les hôpitaux du pays de Lorient.
+            Une entreprise familiale pour que les Lego restent accessibles à
+            petits prix au plus grand nombre.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
@@ -140,7 +153,7 @@ export default async function HomePage() {
       </section>
 
       <section id="concept" className="scroll-mt-24 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-5 md:px-8">
+        <div className="mx-auto max-w-7xl px-5 md:px-8">
           <div className="text-center mb-14 md:mb-20">
             <p className="text-sm font-bold uppercase tracking-widest text-slate-ink">
               Comment ça marche
@@ -149,19 +162,22 @@ export default async function HomePage() {
               Simple comme un jeu d&apos;enfant
             </h2>
           </div>
-          <ol className="grid gap-6 md:grid-cols-3">
+          <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
             {steps.map((step, i) => (
               <li
                 key={step.title}
-                className={`bg-paper rounded-2xl shadow-brick-sm border-x border-b border-slate-ink/10 border-t-4 ${step.border} p-8 flex flex-col`}
+                className={`bg-paper rounded-2xl shadow-brick-sm border-x border-b border-slate-ink/10 border-t-4 ${step.border} p-6 lg:p-5 xl:p-6 flex flex-col`}
               >
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky">
                   <step.icon className="h-7 w-7 text-ink-deep" />
                 </span>
-                <h3 className="mt-6 text-xl font-semibold">
-                  {i + 1}. {step.title}
+                <p className="mt-5 text-xs font-bold uppercase tracking-widest text-slate-ink">
+                  Étape {i + 1}
+                </p>
+                <h3 className="mt-1 text-xl lg:text-lg xl:text-xl font-bold leading-snug text-ink-deep">
+                  {step.title}
                 </h3>
-                <p className="mt-3 text-slate-ink leading-relaxed">{step.text}</p>
+                <p className="mt-2 text-[0.9375rem] text-slate-ink leading-relaxed">{step.text}</p>
               </li>
             ))}
           </ol>
