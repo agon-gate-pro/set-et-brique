@@ -199,7 +199,7 @@ export function BookingForm({
               <input type="checkbox" name="terms" required className="mt-1 h-5 w-5 accent-brick" />
               <span>
                 J&apos;ai lu et j&apos;accepte les{" "}
-                <Link href="/cgu" target="_blank" className="font-bold underline underline-offset-4">
+                <Link href="/cgl" target="_blank" className="font-bold underline underline-offset-4">
                   conditions générales de location
                 </Link>
                 .

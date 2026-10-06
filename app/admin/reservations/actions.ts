@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { daysLate, todayIso } from "@/lib/availability";
+import { paymentDeadline } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { firstError, formToObject, handoverSchema, pickupSchema, refuseBookingSchema, returnSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
@@ -48,7 +49,7 @@ export async function acceptBooking(_: ActionState, formData: FormData): Promise
   const id = String(formData.get("id") ?? "");
   const r = await loadBooking(id, ["pending_review"]);
   if ("error" in r) return { error: r.error };
-  await transition(id, r.booking.status, "pending_payment", "Demande acceptée");
+  await transition(id, r.booking.status, "pending_payment", "Demande acceptée", { paymentDueAt: paymentDeadline() });
   revalidate(id);
   return { ok: "Demande acceptée. Pensez à convenir de l'heure de remise avec le client." };
 }

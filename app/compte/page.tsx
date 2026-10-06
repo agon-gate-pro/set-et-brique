@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
@@ -12,7 +11,8 @@ export const metadata: Metadata = { title: "Mon compte", robots: { index: false 
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage({ searchParams }: PageProps<"/compte">) {
-  const { demande } = await searchParams;
+  // `payer` : référence d'une réservation acceptée, dont le récapitulatif de paiement s'ouvre d'office.
+  const { demande, payer } = await searchParams;
   // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
   const { userId } = await auth.protect();
   const [user, admin, customer] = await Promise.all([
@@ -20,7 +20,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
     isAdmin(),
     userId ? findCustomerByClerkId(userId) : null,
   ]);
-  if (admin) redirect("/admin");
+  // Un gérant est aussi un client : il loue et paie comme les autres, son compte lui reste ouvert.
+  // Le tri à la connexion (gérant vers `/admin`) se fait dans `app/apres-connexion/route.ts`.
 
   const bookings = customer
     ? await db.query.bookings.findMany({
@@ -51,7 +52,14 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
       ) : (
         <ul className="mt-4 space-y-4">
           {current.map((b) => (
-            <BookingCard key={b.id} booking={b} setName={b.set.name} setSlug={b.set.slug} pickupPoint={b.pickupPoint?.name ?? null} />
+            <BookingCard
+              key={b.id}
+              booking={b}
+              setName={b.set.name}
+              setSlug={b.set.slug}
+              pickupPoint={b.pickupPoint?.name ?? null}
+              openPayment={payer === b.reference}
+            />
           ))}
         </ul>
       )}
@@ -74,6 +82,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         <Link href="/compte/profil" className="btn btn-paper">
           Gérer mon compte
         </Link>
+        {admin ? (
+          <Link href="/admin" className="btn btn-paper">
+            Espace de gestion
+          </Link>
+        ) : null}
       </div>
     </section>
   );

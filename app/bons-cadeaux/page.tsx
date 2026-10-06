@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { eq } from "drizzle-orm";
 import { BookOpen, Gift, Mail, Phone, Puzzle, Send } from "lucide-react";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { db, schema } from "@/lib/db";
 import { formatCents } from "@/lib/format";
 import { giftVoucherAmounts, site } from "@/lib/site";
+import { OrderButton, OrderButtonFallback } from "./order-button";
 
 export const metadata: Metadata = {
   title: "Bons cadeaux",
@@ -16,23 +18,19 @@ export const metadata: Metadata = {
 // Statique ; régénérée quand le forfait par défaut change (`app/admin/forfaits/actions.ts`).
 export const revalidate = 3600;
 
-/**
- * Tant que l'achat en ligne n'existe pas (paiement Stripe, module 4), on commande par e-mail :
- * Marion crée le bon dans l'espace de gestion et le remet imprimé ou par e-mail.
- */
-function orderHref(amount?: number) {
-  const subject = amount ? `Commande d'un bon cadeau de ${amount} €` : "Commande de bons cadeaux";
+/** Commande de plusieurs bons (comité d'entreprise, école) : e-mail pré-rempli, hors parcours d'achat en ligne. */
+function orderHref() {
   const body = [
     "Bonjour,",
     "",
-    amount ? `Je souhaite commander un bon cadeau de ${amount} €.` : "Je souhaite commander des bons cadeaux.",
-    "Nombre de bons : 1",
+    "Je souhaite commander des bons cadeaux.",
+    "Nombre de bons : ",
     "Bon imprimé ou envoyé par e-mail : ",
     "Mon nom et mon téléphone : ",
     "",
     "Merci !",
   ].join("\n");
-  return `mailto:${site.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `mailto:${site.email}?subject=${encodeURIComponent("Commande de bons cadeaux")}&body=${encodeURIComponent(body)}`;
 }
 
 const steps = [
@@ -100,15 +98,9 @@ export default async function GiftVouchersPage() {
                       soit {days} jours de location
                     </p>
                   ) : null}
-                  <a
-                    href={orderHref(amount)}
-                    aria-label={`Commander un bon cadeau de ${amount} €`}
-                    className="btn btn-sun justify-center mt-auto w-full px-4 text-base lg:text-[1.0625rem]"
-                  >
-                    {/* Trois colonnes étroites sur tablette : libellé court pour tenir sur une ligne. */}
-                    <span className="sm:hidden lg:inline">Commander ce bon</span>
-                    <span className="hidden sm:inline lg:hidden">Commander</span>
-                  </a>
+                  <Suspense fallback={<OrderButtonFallback amount={amount} />}>
+                    <OrderButton amount={amount} days={days} />
+                  </Suspense>
                 </li>
               );
             })}

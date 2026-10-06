@@ -7,6 +7,7 @@ import { bookingStatusLabels, formatCents, formatDate, formatTime } from "@/lib/
 import type { Booking } from "@/lib/db/schema";
 import type { CustomerBooking } from "@/lib/bookings";
 import { acceptProposedDate, cancelRequest } from "./actions";
+import { PaymentSummary } from "./payment-summary";
 
 const badge: Record<Booking["status"], string> = {
   pending_review: "bg-sun",
@@ -23,11 +24,14 @@ export function BookingCard({
   setName,
   setSlug,
   pickupPoint,
+  openPayment = false,
 }: {
   booking: CustomerBooking;
   setName: string;
   setSlug: string;
   pickupPoint: string | null;
+  /** Ouvre d'office le récapitulatif de paiement (lien de l'e-mail d'acceptation). */
+  openPayment?: boolean;
 }) {
   const [acceptState, acceptAction] = useActionState(acceptProposedDate, null);
   const [cancelState, cancelAction] = useActionState(cancelRequest, null);
@@ -76,6 +80,10 @@ export function BookingCard({
 
       {booking.status === "pending_review" ? (
         <p className="mt-4 text-slate-ink">Nous examinons votre demande et revenons vers vous rapidement.</p>
+      ) : null}
+
+      {booking.status === "pending_payment" ? (
+        <PaymentSummary booking={booking} setName={setName} pickupPoint={pickupPoint} initiallyOpen={openPayment} />
       ) : null}
 
       {booking.status === "pending_payment" || booking.status === "confirmed" ? (

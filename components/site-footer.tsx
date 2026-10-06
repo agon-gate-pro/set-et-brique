@@ -122,6 +122,9 @@ export function SiteFooter() {
             <Link href="/cgu" className="hover:text-white transition-colors">
               CGU
             </Link>
+            <Link href="/cgl" className="hover:text-white transition-colors">
+              Conditions de location
+            </Link>
           </div>
         </div>
       </div>

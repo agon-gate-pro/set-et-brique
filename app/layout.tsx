@@ -74,7 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           appearance={clerkAppearance}
           signInUrl="/connexion"
           signUpUrl="/inscription"
-          signInFallbackRedirectUrl="/compte"
+          signInFallbackRedirectUrl="/apres-connexion"
           signUpFallbackRedirectUrl="/compte"
           afterSignOutUrl="/"
         >

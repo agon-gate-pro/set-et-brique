@@ -118,7 +118,16 @@ export const bookingCustomerColumns = {
   cancelReason: true,
   pickedUpAt: true,
   returnedAt: true,
+  paymentDueAt: true,
 } as const satisfies Partial<Record<keyof Booking, true>>;
+
+/** Délai laissé au client pour régler une demande acceptée, pendant lequel le set lui reste réservé. */
+export const PAYMENT_DELAY_HOURS = 24;
+
+/** Échéance de paiement d'une demande acceptée à l'instant `from`. */
+export function paymentDeadline(from = new Date()) {
+  return new Date(from.getTime() + PAYMENT_DELAY_HOURS * 3_600_000);
+}
 
 export type CustomerBooking = Pick<Booking, keyof typeof bookingCustomerColumns>;
 
