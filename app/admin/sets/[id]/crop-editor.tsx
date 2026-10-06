@@ -144,13 +144,13 @@ export function CropEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-deep/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-deep/50 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="crop-title"
       onClick={onClose}
     >
-      <div className="brick-card bg-paper p-5 sm:p-6 w-full max-w-2xl max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="brick-card bg-paper p-4 sm:p-6 w-full max-w-2xl max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 id="crop-title" className="text-xl font-bold text-ink-deep">
           Recadrer la photo
         </h2>
@@ -201,7 +201,8 @@ export function CropEditor({
                 <span
                   key={h.id}
                   data-handle={h.id}
-                  className={`absolute h-4 w-4 rounded-sm border-2 border-ink-deep bg-paper ${h.className}`}
+                  // Zone sensible plus large que le carré visible, pour le doigt.
+                  className={`absolute h-4 w-4 rounded-sm border-2 border-ink-deep bg-paper after:absolute after:-inset-3 after:content-[''] ${h.className}`}
                 />
               ))}
             </div>
@@ -215,7 +216,7 @@ export function CropEditor({
               <CroppedImage src={url} alt="" sizes="160px" crop={rect ? { ...DEFAULT_CROP, rect } : initial} />
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-start">
             <button
               type="button"
               onClick={() => ratio && setSelection(initialSelection(DEFAULT_CROP, ratio))}

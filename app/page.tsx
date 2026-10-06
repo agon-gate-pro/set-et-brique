@@ -154,7 +154,7 @@ export default async function HomePage() {
 
       <section id="concept" className="scroll-mt-24 py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <div className="text-center mb-14 md:mb-20">
+          <div className="text-center mb-8 sm:mb-14 md:mb-20">
             <p className="text-sm font-bold uppercase tracking-widest text-slate-ink">
               Comment ça marche
             </p>
@@ -162,22 +162,25 @@ export default async function HomePage() {
               Simple comme un jeu d&apos;enfant
             </h2>
           </div>
-          <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Mobile : cartes compactes, icône à gauche du texte, pour que les cinq étapes restent courtes à faire défiler. */}
+          <ol className="grid gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-5">
             {steps.map((step, i) => (
               <li
                 key={step.title}
-                className={`bg-paper rounded-2xl shadow-brick-sm border-x border-b border-slate-ink/10 border-t-4 ${step.border} p-6 lg:p-5 xl:p-6 flex flex-col`}
+                className={`bg-paper rounded-2xl shadow-brick-sm border-x border-b border-slate-ink/10 border-t-4 ${step.border} p-4 sm:p-6 lg:p-5 xl:p-6 flex items-start gap-4 sm:flex-col sm:gap-0`}
               >
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky">
-                  <step.icon className="h-7 w-7 text-ink-deep" />
+                <span className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-sky">
+                  <step.icon className="h-6 w-6 sm:h-7 sm:w-7 text-ink-deep" />
                 </span>
-                <p className="mt-5 text-xs font-bold uppercase tracking-widest text-slate-ink">
-                  Étape {i + 1}
-                </p>
-                <h3 className="mt-1 text-xl lg:text-lg xl:text-xl font-bold leading-snug text-ink-deep">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-[0.9375rem] text-slate-ink leading-relaxed">{step.text}</p>
+                <div className="min-w-0">
+                  <p className="sm:mt-5 text-xs font-bold uppercase tracking-widest text-slate-ink">
+                    Étape {i + 1}
+                  </p>
+                  <h3 className="mt-0.5 sm:mt-1 text-lg sm:text-xl lg:text-lg xl:text-xl font-bold leading-snug text-ink-deep">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 sm:mt-2 text-[0.9375rem] text-slate-ink leading-relaxed">{step.text}</p>
+                </div>
               </li>
             ))}
           </ol>
