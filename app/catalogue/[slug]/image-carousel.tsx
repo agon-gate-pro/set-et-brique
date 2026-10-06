@@ -1,15 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { CroppedImage } from "@/components/cropped-image";
+import type { CropRect } from "@/lib/image-crop";
 
-type CarouselImage = { id: string; url: string; alt: string | null; cropX: number; cropY: number; cropZoom: number };
+type CarouselImage = {
+  id: string;
+  url: string;
+  alt: string | null;
+  cropX: number;
+  cropY: number;
+  cropZoom: number;
+  cropRect: CropRect | null;
+};
 
-const cropOf = (img: CarouselImage) => ({ x: img.cropX, y: img.cropY, zoom: img.cropZoom });
+const cropOf = (img: CarouselImage) => ({ x: img.cropX, y: img.cropY, zoom: img.cropZoom, rect: img.cropRect });
 
 export function ImageCarousel({ images, name }: { images: CarouselImage[]; name: string }) {
   const [index, setIndex] = useState(0);
+  // Photo ouverte en grand par-dessus la page.
+  const [zoomed, setZoomed] = useState(false);
+  const count = images.length;
+
+  const previous = () => setIndex((i) => (i - 1 + count) % count);
+  const next = () => setIndex((i) => (i + 1) % count);
+
+  // En grand : Échap ferme, les flèches du clavier changent de photo, la page derrière ne défile pas.
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoomed(false);
+      else if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + count) % count);
+      else if (e.key === "ArrowRight") setIndex((i) => (i + 1) % count);
+    };
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = overflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [zoomed, count]);
 
   if (images.length === 0) {
     return (
@@ -44,12 +77,19 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
       ) : null}
 
       <div className="relative flex-1 aspect-[4/3] rounded-2xl overflow-hidden bg-paper border border-slate-ink/15">
-        <CroppedImage src={current.url} alt={current.alt ?? name} priority sizes="(min-width: 768px) 50vw, 90vw" crop={cropOf(current)} />
+        <button
+          type="button"
+          onClick={() => setZoomed(true)}
+          aria-label="Agrandir la photo"
+          className="absolute inset-0 block cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-sun"
+        >
+          <CroppedImage src={current.url} alt={current.alt ?? name} priority sizes="(min-width: 768px) 50vw, 90vw" crop={cropOf(current)} />
+        </button>
         {hasMultiple ? (
           <>
             <button
               type="button"
-              onClick={() => setIndex((i) => (i - 1 + images.length) % images.length)}
+              onClick={previous}
               aria-label="Photo précédente"
               className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-slate-ink/15 bg-paper/90 text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-paper hover:text-brick"
             >
@@ -57,7 +97,7 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
             </button>
             <button
               type="button"
-              onClick={() => setIndex((i) => (i + 1) % images.length)}
+              onClick={next}
               aria-label="Photo suivante"
               className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-slate-ink/15 bg-paper/90 text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-paper hover:text-brick"
             >
@@ -69,6 +109,59 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
           </>
         ) : null}
       </div>
+
+      {zoomed ? (
+        // Photo entière, sans le cadrage du catalogue ; un clic à côté ferme.
+        <div
+          className="fixed inset-0 z-50 bg-ink-deeper/90"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${name}, photo en grand`}
+          onClick={() => setZoomed(false)}
+        >
+          <div className="absolute inset-4 sm:inset-10">
+            <Image src={current.url} alt={current.alt ?? name} fill sizes="100vw" className="object-contain" />
+          </div>
+          <button
+            type="button"
+            autoFocus
+            onClick={() => setZoomed(false)}
+            aria-label="Fermer"
+            className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-paper/90 text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-paper hover:text-brick"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {hasMultiple ? (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  previous();
+                }}
+                aria-label="Photo précédente"
+                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-paper/90 text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-paper hover:text-brick"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  next();
+                }}
+                aria-label="Photo suivante"
+                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-paper/90 text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-paper hover:text-brick"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-paper/90 px-3 py-1 text-sm font-semibold text-ink-deep">
+                {index + 1} / {images.length}
+              </span>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
