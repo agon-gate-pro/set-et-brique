@@ -59,7 +59,7 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
       featured: schema.sets.featured,
       pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
-      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
+      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom, 'rect', i.crop_rect) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
       coverAlt: sql<string | null>`(select alt from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)

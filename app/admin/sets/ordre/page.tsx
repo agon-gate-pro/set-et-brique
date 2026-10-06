@@ -19,7 +19,7 @@ export default async function SetOrderPage() {
       theme: schema.sets.theme,
       featured: schema.sets.featured,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
-      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
+      coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom, 'rect', i.crop_rect) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)
     .where(eq(schema.sets.status, "published"))

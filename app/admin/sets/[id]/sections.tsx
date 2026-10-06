@@ -213,7 +213,7 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
                   src={img.url}
                   alt={img.alt ?? ""}
                   sizes="(min-width: 768px) 200px, 45vw"
-                  crop={{ x: img.cropX, y: img.cropY, zoom: img.cropZoom }}
+                  crop={{ x: img.cropX, y: img.cropY, zoom: img.cropZoom, rect: img.cropRect }}
                 />
                 {i === 0 ? (
                   <span className="absolute top-2 left-2 text-xs font-bold bg-sun px-2 py-0.5 rounded-md">
@@ -247,7 +247,7 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
           key={cropping.id}
           imageId={cropping.id}
           url={cropping.url}
-          initial={{ x: cropping.cropX, y: cropping.cropY, zoom: cropping.cropZoom }}
+          initial={{ x: cropping.cropX, y: cropping.cropY, zoom: cropping.cropZoom, rect: cropping.cropRect }}
           onClose={() => setCroppingId(null)}
         />
       ) : null}

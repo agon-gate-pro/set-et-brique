@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { useRef, useState, type PointerEvent } from "react";
 import { CroppedImage } from "@/components/cropped-image";
-import { DEFAULT_CROP, MAX_CROP_ZOOM, type ImageCrop } from "@/lib/image-crop";
+import { DEFAULT_CROP, MIN_CROP_SIZE, type ImageCrop } from "@/lib/image-crop";
 import { updateSetImageCrop } from "../actions";
 
-/** Format des cartes du catalogue : la sélection est verrouillée à ce rapport largeur / hauteur. */
+/** Format des cartes du catalogue, pour l'aperçu et la zone de départ d'une photo jamais recadrée. */
 const FRAME_RATIO = 4 / 3;
 /** En deçà de ce déplacement (px), un clic hors de la zone ne trace pas de nouvelle sélection. */
 const DRAW_THRESHOLD = 4;
@@ -15,36 +15,45 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 
 /** Zone gardée, en fractions de la largeur et de la hauteur de la photo (0 à 1). */
 type Selection = { x: number; y: number; w: number; h: number };
-type Corner = "nw" | "ne" | "sw" | "se";
+/** Poignée : un coin ou le milieu d'un bord, nommé par ses points cardinaux. */
+type Handle = "n" | "s" | "e" | "w" | "nw" | "ne" | "sw" | "se";
 
 /**
- * Passage entre la zone sélectionnée et le cadrage enregistré (`ImageCrop`). Au zoom z, la partie
- * visible fait `cover / z` de la photo (cover : part visible à 100 %, photo rognée au cadre 4:3),
- * et son bord gauche est à `x % × (1 − largeur visible)` : une zone tracée se traduit donc
- * exactement en position + zoom, sans rien changer au rendu du site (`cropStyles`).
+ * Zone de départ : celle déjà choisie, sinon ce que le site affiche aujourd'hui pour cette photo
+ * (photo rognée au cadre 4:3 autour du point enregistré, agrandie du zoom).
  */
-function coverOf(ratio: number) {
-  return { w: Math.min(1, FRAME_RATIO / ratio), h: Math.min(1, ratio / FRAME_RATIO) };
-}
-
-function selectionFromCrop(crop: ImageCrop, ratio: number): Selection {
-  const cover = coverOf(ratio);
-  const w = cover.w / crop.zoom;
-  const h = cover.h / crop.zoom;
+function initialSelection(crop: ImageCrop, ratio: number): Selection {
+  if (crop.rect) return { x: crop.rect.x, y: crop.rect.y, w: crop.rect.w, h: crop.rect.h };
+  const zoom = Math.max(1, crop.zoom);
+  const w = Math.min(1, FRAME_RATIO / ratio) / zoom;
+  const h = Math.min(1, ratio / FRAME_RATIO) / zoom;
   return { x: (crop.x / 100) * (1 - w), y: (crop.y / 100) * (1 - h), w, h };
 }
 
-function cropFromSelection(s: Selection, ratio: number): ImageCrop {
-  const cover = coverOf(ratio);
-  const pos = (start: number, size: number) => (size < 0.999 ? clamp((start / (1 - size)) * 100, 0, 100) : 50);
-  return { x: pos(s.x, s.w), y: pos(s.y, s.h), zoom: clamp(cover.w / s.w, 1, MAX_CROP_ZOOM) };
+/** Zone entre deux points opposés, d'au moins `MIN_CROP_SIZE` de côté et dans la photo. */
+function between(ax: number, ay: number, bx: number, by: number): Selection {
+  const w = Math.max(MIN_CROP_SIZE, Math.abs(bx - ax));
+  const h = Math.max(MIN_CROP_SIZE, Math.abs(by - ay));
+  return { x: clamp(Math.min(ax, bx), 0, 1 - w), y: clamp(Math.min(ay, by), 0, 1 - h), w, h };
 }
+
+const HANDLES: { id: Handle; className: string }[] = [
+  { id: "nw", className: "-left-2 -top-2 cursor-nwse-resize" },
+  { id: "n", className: "left-1/2 -top-2 -translate-x-1/2 cursor-ns-resize" },
+  { id: "ne", className: "-right-2 -top-2 cursor-nesw-resize" },
+  { id: "e", className: "-right-2 top-1/2 -translate-y-1/2 cursor-ew-resize" },
+  { id: "se", className: "-right-2 -bottom-2 cursor-nwse-resize" },
+  { id: "s", className: "left-1/2 -bottom-2 -translate-x-1/2 cursor-ns-resize" },
+  { id: "sw", className: "-left-2 -bottom-2 cursor-nesw-resize" },
+  { id: "w", className: "-left-2 top-1/2 -translate-y-1/2 cursor-ew-resize" },
+];
 
 /**
  * Fenêtre de recadrage d'une photo, sur le modèle de l'outil Capture d'écran : la photo entière,
  * la zone gardée encadrée et le reste assombri. On trace une nouvelle zone en cliquant-glissant,
- * on la déplace de l'intérieur, on la redimensionne par ses coins ; ses proportions restent
- * celles du catalogue (4:3). Rien n'est découpé : seul le cadrage est enregistré.
+ * on la déplace de l'intérieur, on la redimensionne par ses coins ou par ses bords, sans
+ * proportions imposées : le site affiche la zone entière dans ses cadres, avec des bandes si elle
+ * n'en a pas les proportions. Rien n'est découpé : seule la zone est enregistrée.
  */
 export function CropEditor({
   imageId,
@@ -64,47 +73,40 @@ export function CropEditor({
   const photoRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<
     | { kind: "move"; px: number; py: number; start: Selection }
-    | { kind: "resize"; ax: number; ay: number }
+    | { kind: "resize"; handle: Handle; start: Selection }
     | { kind: "draw"; ax: number; ay: number; px: number; py: number; started: boolean }
     | null
   >(null);
 
-  const crop = ratio && selection ? cropFromSelection(selection, ratio) : initial;
+  const rect = ratio && selection ? { ...selection, aspect: (selection.w / selection.h) * ratio } : null;
 
   /** Point du pointeur, en fractions de la photo. */
   function pointAt(clientX: number, clientY: number) {
-    const rect = photoRef.current!.getBoundingClientRect();
-    return { x: clamp((clientX - rect.left) / rect.width, 0, 1), y: clamp((clientY - rect.top) / rect.height, 0, 1) };
+    const box = photoRef.current!.getBoundingClientRect();
+    return { x: clamp((clientX - box.left) / box.width, 0, 1), y: clamp((clientY - box.top) / box.height, 0, 1) };
   }
 
-  /** Zone en 4:3 tirée depuis un coin fixe (ax, ay) vers le point (px, py), bornée à la photo et au zoom maximal. */
-  function fromAnchor(ax: number, ay: number, px: number, py: number): Selection {
-    const r = ratio!;
-    const cover = coverOf(r);
-    const right = px >= ax;
-    const down = py >= ay;
-    // Largeur en fraction de la photo ; la hauteur s'en déduit pour rester à 4:3 à l'écran.
-    const room = Math.min(right ? 1 - ax : ax, ((down ? 1 - ay : ay) * FRAME_RATIO) / r);
-    const wanted = Math.max(Math.abs(px - ax), (Math.abs(py - ay) * FRAME_RATIO) / r);
-    const w = clamp(Math.min(wanted, room), cover.w / MAX_CROP_ZOOM, cover.w);
-    const h = (w * r) / FRAME_RATIO;
-    return {
-      x: clamp(right ? ax : ax - w, 0, 1 - w),
-      y: clamp(down ? ay : ay - h, 0, 1 - h),
-      w,
-      h,
-    };
+  /** Zone de départ dont seuls les bords tenus par la poignée suivent le pointeur ; les autres restent fixes. */
+  function resized(s: Selection, handle: Handle, p: { x: number; y: number }): Selection {
+    let left = s.x;
+    let right = s.x + s.w;
+    let top = s.y;
+    let bottom = s.y + s.h;
+    if (handle.includes("w")) left = Math.min(p.x, right - MIN_CROP_SIZE);
+    if (handle.includes("e")) right = Math.max(p.x, left + MIN_CROP_SIZE);
+    if (handle.includes("n")) top = Math.min(p.y, bottom - MIN_CROP_SIZE);
+    if (handle.includes("s")) bottom = Math.max(p.y, top + MIN_CROP_SIZE);
+    return { x: left, y: top, w: right - left, h: bottom - top };
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (!ratio || !selection) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = pointAt(e.clientX, e.clientY);
-    const corner = (e.target as HTMLElement).dataset.corner as Corner | undefined;
+    const handle = (e.target as HTMLElement).dataset.handle as Handle | undefined;
     const s = selection;
-    if (corner) {
-      // Le coin opposé reste fixe.
-      gesture.current = { kind: "resize", ax: corner.includes("w") ? s.x + s.w : s.x, ay: corner.includes("n") ? s.y + s.h : s.y };
+    if (handle) {
+      gesture.current = { kind: "resize", handle, start: s };
     } else if (p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h) {
       gesture.current = { kind: "move", px: p.x, py: p.y, start: s };
     } else {
@@ -120,11 +122,11 @@ export function CropEditor({
       const s = g.start;
       setSelection({ ...s, x: clamp(s.x + p.x - g.px, 0, 1 - s.w), y: clamp(s.y + p.y - g.py, 0, 1 - s.h) });
     } else if (g.kind === "resize") {
-      setSelection(fromAnchor(g.ax, g.ay, p.x, p.y));
+      setSelection(resized(g.start, g.handle, p));
     } else {
       if (!g.started && Math.hypot(e.clientX - g.px, e.clientY - g.py) < DRAW_THRESHOLD) return;
       g.started = true;
-      setSelection(fromAnchor(g.ax, g.ay, p.x, p.y));
+      setSelection(between(g.ax, g.ay, p.x, p.y));
     }
   }
 
@@ -133,13 +135,12 @@ export function CropEditor({
   };
 
   async function save() {
+    if (!rect) return;
     setSaving(true);
-    await updateSetImageCrop(imageId, crop);
+    await updateSetImageCrop(imageId, rect);
     setSaving(false);
     onClose();
   }
-
-  const handle = "absolute h-4 w-4 rounded-sm border-2 border-ink-deep bg-paper";
 
   return (
     <div
@@ -154,8 +155,9 @@ export function CropEditor({
           Recadrer la photo
         </h2>
         <p className="mt-1 text-sm text-slate-ink">
-          Tracez la zone à garder en cliquant-glissant sur la photo, déplacez-la, ou agrandissez-la par ses coins.
-          Ses proportions restent celles des cartes du catalogue.
+          Tracez la zone à afficher en cliquant-glissant sur la photo, déplacez-la, ou ajustez-la par ses coins et
+          ses bords. Le site l&apos;affiche en entier ; si elle n&apos;a pas les proportions de la carte, des bandes
+          claires comblent le reste.
         </p>
 
         <div
@@ -179,7 +181,7 @@ export function CropEditor({
             onLoad={(e) => {
               const r = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
               setRatio(r);
-              setSelection(selectionFromCrop(initial, r));
+              setSelection(initialSelection(initial, r));
             }}
             className="object-contain pointer-events-none"
           />
@@ -195,10 +197,13 @@ export function CropEditor({
                 boxShadow: "0 0 0 9999px rgb(15 24 55 / 0.55)",
               }}
             >
-              <span data-corner="nw" className={`${handle} -left-2 -top-2 cursor-nwse-resize`} />
-              <span data-corner="ne" className={`${handle} -right-2 -top-2 cursor-nesw-resize`} />
-              <span data-corner="sw" className={`${handle} -left-2 -bottom-2 cursor-nesw-resize`} />
-              <span data-corner="se" className={`${handle} -right-2 -bottom-2 cursor-nwse-resize`} />
+              {HANDLES.map((h) => (
+                <span
+                  key={h.id}
+                  data-handle={h.id}
+                  className={`absolute h-4 w-4 rounded-sm border-2 border-ink-deep bg-paper ${h.className}`}
+                />
+              ))}
             </div>
           ) : null}
         </div>
@@ -207,13 +212,13 @@ export function CropEditor({
           <div>
             <p className="text-sm font-bold text-ink-deep">Aperçu dans le catalogue</p>
             <div className="relative mt-1.5 aspect-[4/3] w-40 overflow-hidden rounded-lg border border-slate-ink/15 bg-sky">
-              <CroppedImage src={url} alt="" sizes="160px" crop={crop} />
+              <CroppedImage src={url} alt="" sizes="160px" crop={rect ? { ...DEFAULT_CROP, rect } : initial} />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => ratio && setSelection(selectionFromCrop(DEFAULT_CROP, ratio))}
+              onClick={() => ratio && setSelection(initialSelection(DEFAULT_CROP, ratio))}
               className="font-bold underline underline-offset-4 cursor-pointer transition-opacity hover:opacity-70"
             >
               Réinitialiser
@@ -228,7 +233,7 @@ export function CropEditor({
             <button
               type="button"
               onClick={save}
-              disabled={saving || !selection}
+              disabled={saving || !rect}
               className="btn btn-leaf disabled:opacity-60 disabled:cursor-wait"
             >
               {saving ? "Enregistrement…" : "Enregistrer le cadrage"}
