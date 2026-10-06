@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { CroppedImage } from "@/components/cropped-image";
 import type { CropRect } from "@/lib/image-crop";
@@ -23,6 +22,8 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
   // Photo ouverte en grand par-dessus la page.
   const [zoomed, setZoomed] = useState(false);
   const count = images.length;
+  // Point de départ d'un glissement du doigt sur la photo en grand.
+  const swipe = useRef<{ x: number; y: number } | null>(null);
 
   const previous = () => setIndex((i) => (i - 1 + count) % count);
   const next = () => setIndex((i) => (i + 1) % count);
@@ -111,16 +112,41 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
       </div>
 
       {zoomed ? (
-        // Photo entière, sans le cadrage du catalogue ; un clic à côté ferme.
+        // Même cadrage que dans le catalogue, en grand ; un clic à côté ferme.
         <div
           className="fixed inset-0 z-50 bg-ink-deeper/90"
           role="dialog"
           aria-modal="true"
           aria-label={`${name}, photo en grand`}
           onClick={() => setZoomed(false)}
+          // Au doigt : glisser à gauche ou à droite change de photo.
+          onTouchStart={(e) => {
+            swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          }}
+          onTouchEnd={(e) => {
+            const start = swipe.current;
+            swipe.current = null;
+            if (!start || !hasMultiple) return;
+            const dx = e.changedTouches[0].clientX - start.x;
+            const dy = e.changedTouches[0].clientY - start.y;
+            if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+            if (dx < 0) next();
+            else previous();
+          }}
         >
-          <div className="absolute inset-4 sm:inset-10">
-            <Image src={current.url} alt={current.alt ?? name} fill sizes="100vw" className="object-contain" />
+          {/* Mobile : photo bord à bord, la place en haut et en bas reste à la croix et au compteur. */}
+          <div className="absolute inset-x-0 inset-y-16 sm:inset-10" style={{ containerType: "size" }}>
+            {current.cropRect ? (
+              <CroppedImage src={current.url} alt={current.alt ?? name} sizes="100vw" crop={cropOf(current)} />
+            ) : (
+              // Sans zone choisie, le cadrage vaut pour un cadre 4:3 : le plus grand qui tienne à l'écran.
+              <div
+                className="absolute left-1/2 top-1/2 aspect-[4/3] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg"
+                style={{ width: "min(100cqw, calc(100cqh * 4 / 3))" }}
+              >
+                <CroppedImage src={current.url} alt={current.alt ?? name} sizes="100vw" crop={cropOf(current)} />
+              </div>
+            )}
           </div>
           <button
             type="button"
