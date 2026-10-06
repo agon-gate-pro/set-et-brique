@@ -200,6 +200,12 @@ export const setImages = pgTable(
     cropX: real("crop_x").notNull().default(50),
     cropY: real("crop_y").notNull().default(50),
     cropZoom: real("crop_zoom").notNull().default(1),
+    /**
+     * Zone choisie librement dans la fenêtre de recadrage (6 octobre 2026), voir `CropRect` dans
+     * `lib/image-crop.ts`. Quand elle existe, elle seule est affichée et le cadrage ci-dessus ne
+     * sert plus ; `null` pour les photos jamais recadrées ou recadrées avant cette date.
+     */
+    cropRect: jsonb("crop_rect").$type<{ x: number; y: number; w: number; h: number; aspect: number }>(),
     createdAt: timestamps.createdAt,
   },
   (t) => [index("set_images_set_id_idx").on(t.setId)],
@@ -293,6 +299,11 @@ export const bookings = pgTable(
     /** Acceptation des conditions générales par case à cocher (spécification, module 7). */
     termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    /**
+     * Échéance de paiement, posée quand la demande passe en `pending_payment` (acceptation + 24 h,
+     * voir `paymentDeadline`). Null pour les réservations acceptées avant l'ajout de la colonne.
+     */
+    paymentDueAt: timestamp("payment_due_at", { withTimezone: true }),
     pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
     /** État des lieux au retour, commentaire libre des gérants (spécification, module 9). */

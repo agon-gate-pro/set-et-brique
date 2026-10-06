@@ -1,0 +1,1 @@
+ALTER TABLE "set_images" ADD COLUMN "crop_rect" jsonb;
