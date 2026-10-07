@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { daysLate } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDateShort, formatTime } from "@/lib/format";
+import { neutralBadge, statusTone } from "./status-tone";
 import type { BookingStatus } from "@/lib/db/schema";
 import { BookingDialog } from "./booking-dialog";
 
@@ -19,6 +20,7 @@ export type BookingRow = {
   disassemblyCents: number | null;
   pickupTime: string | null;
   setName: string;
+  pickupPointId: string | null;
   pickupPointName: string | null;
   customerFirstName: string | null;
   customerLastName: string | null;
@@ -42,8 +44,26 @@ function groupIndexFor(status: BookingStatus): number {
   return i === -1 ? groups.length : i;
 }
 
-export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: string }) {
-  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
+/** Statuts « à venir » (remise pas encore faite), présélectionnés par le lien d'un lieu de remise. */
+export const UPCOMING_GROUP_KEYS = ["pending_review", "date_proposed", "to_handover"];
+
+export function BookingsTable({
+  rows,
+  today,
+  pickupPoints,
+  initialPickupPointId = "",
+  initialGroups = [],
+}: {
+  rows: BookingRow[];
+  today: string;
+  /** Lieux proposés dans le filtre, dans l'ordre de la page Lieux de remise. */
+  pickupPoints: { id: string; name: string }[];
+  /** Filtres de départ, ex. depuis le lien « N réservations à venir » d'un lieu (`?lieu=`). */
+  initialPickupPointId?: string;
+  initialGroups?: string[];
+}) {
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => new Set(initialGroups));
+  const [pickupPointId, setPickupPointId] = useState(initialPickupPointId);
   const [statusOpen, setStatusOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -57,11 +77,17 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
+  // Lieu filtré d'abord : les compteurs du menu Statut portent sur ce lieu.
+  const placeRows = useMemo(
+    () => (pickupPointId ? rows.filter((r) => r.pickupPointId === pickupPointId) : rows),
+    [rows, pickupPointId],
+  );
+
   const counts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const g of groups) m.set(g.key, rows.filter((r) => g.statuses.includes(r.status)).length);
+    for (const g of groups) m.set(g.key, placeRows.filter((r) => g.statuses.includes(r.status)).length);
     return m;
-  }, [rows]);
+  }, [placeRows]);
 
   function toggleGroup(key: string) {
     setSelectedGroups((prev) => {
@@ -74,7 +100,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter((r) => {
+    return placeRows.filter((r) => {
       if (selectedGroups.size > 0) {
         const g = groups.find((g) => g.statuses.includes(r.status));
         if (!g || !selectedGroups.has(g.key)) return false;
@@ -88,7 +114,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
         (r.customerPhone ?? "").includes(q)
       );
     });
-  }, [rows, selectedGroups, query]);
+  }, [placeRows, selectedGroups, query]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -100,7 +126,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
     });
   }, [filtered]);
 
-  const hasFilters = Boolean(selectedGroups.size > 0 || query);
+  const hasFilters = Boolean(selectedGroups.size > 0 || query || pickupPointId);
   const openRow = rows.find((r) => r.id === openId) ?? null;
   const statusLabel =
     selectedGroups.size === 0
@@ -159,6 +185,21 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
             </div>
           ) : null}
         </div>
+        <label className="block">
+          <span className="block font-bold text-ink-deep">Lieu</span>
+          <select
+            value={pickupPointId}
+            onChange={(e) => setPickupPointId(e.target.value)}
+            className="focus-outline-none mt-1 block min-w-[13rem] max-w-[18rem] rounded-xl border-2 border-slate-ink/25 bg-paper px-3 py-2 text-ink-deep shadow-sm cursor-pointer"
+          >
+            <option value="">Tous les lieux</option>
+            {pickupPoints.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="block flex-1 min-w-[16rem]">
           <span className="block font-bold text-ink-deep">Recherche</span>
           <input
@@ -174,6 +215,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
             onClick={() => {
               setSelectedGroups(new Set());
               setQuery("");
+              setPickupPointId("");
             }}
             className="focus-outline-none font-bold underline underline-offset-4 self-center"
           >
@@ -202,7 +244,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
               {sorted.map((r) => {
                 const late = r.status === "picked_up" ? daysLate(r.endDate, today) : 0;
                 const urgent = r.status === "pending_review";
-                const tone = rowTone(r.status);
+                const tone = statusTone(r.status);
                 return (
                   <tr
                     key={r.id}
@@ -246,7 +288,7 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
                         className={`text-xs font-bold px-2 py-1 rounded-md border inline-block whitespace-nowrap ${
                           late > 0
                             ? "border-brick bg-brick text-paper"
-                            : (tone?.badge ?? "border-slate-ink/15 bg-paper")
+                            : (tone?.badge ?? neutralBadge)
                         }`}
                       >
                         {late > 0 ? `Retard ${late} j` : bookingStatusLabels[r.status]}
@@ -263,26 +305,4 @@ export function BookingsTable({ rows, today }: { rows: BookingRow[]; today: stri
       {openRow ? <BookingDialog row={openRow} today={today} onClose={() => setOpenId(null)} /> : null}
     </>
   );
-}
-
-/**
- * Couleur de la ligne selon l'état, demande de la cliente : jaune à traiter, orange paiement à venir,
- * vert payé, rouge annulée. « Payé » couvre confirmée, en location et rendue : le loyer est encaissé
- * au plus tard à la remise (TPE). Proposition de dates : sans couleur.
- */
-function rowTone(status: BookingStatus): { row: string; badge: string } | null {
-  switch (status) {
-    case "pending_review":
-      return { row: "border-sun-deep bg-sun/20 hover:bg-sun/30 focus:bg-sun/30", badge: "border-sun-deep bg-sun text-ink-deep" };
-    case "pending_payment":
-      return { row: "border-orange-500 bg-orange-50 hover:bg-orange-100 focus:bg-orange-100", badge: "border-orange-500 bg-orange-100 text-orange-900" };
-    case "confirmed":
-    case "picked_up":
-    case "returned":
-      return { row: "border-leaf bg-green-50 hover:bg-green-100 focus:bg-green-100", badge: "border-leaf bg-green-100 text-leaf-deep" };
-    case "cancelled":
-      return { row: "border-brick bg-red-50 hover:bg-red-100 focus:bg-red-100", badge: "border-brick bg-red-100 text-brick-deep" };
-    default:
-      return null;
-  }
 }

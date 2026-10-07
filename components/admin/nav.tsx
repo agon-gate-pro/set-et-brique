@@ -13,6 +13,7 @@ import {
   Gift,
   BarChart3,
   FileText,
+  SlidersHorizontal,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const icons: Record<string, LucideIcon> = {
   "/admin/bons-cadeaux": Gift,
   "/admin/statistiques": BarChart3,
   "/admin/contenus": FileText,
+  "/admin/reglages": SlidersHorizontal,
   "/admin/maintenance": Wrench,
 };
 

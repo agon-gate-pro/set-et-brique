@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, or } from "drizzle-orm";
 import { addDays, monthStartIso, todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 import { getSetting } from "@/lib/settings";
 import {
   computeDayAvailability,
@@ -25,6 +26,7 @@ export async function loadAvailability(
   if (sets.length === 0) return result;
 
   const ids = sets.map((s) => s.id);
+  await expireOverduePayments();
   const globalTurnaround = await getSetting("turnaround_days");
   const maxTurnaround = Math.max(globalTurnaround, ...sets.map((s) => s.turnaroundDays ?? 0));
 
@@ -86,6 +88,7 @@ export async function loadDayAvailability(
 ) {
   const from = monthStartIso(today, 0);
   const to = addDays(monthStartIso(today, months + 1), -1);
+  await expireOverduePayments();
   const [copies, bookings, blackouts, globalTurnaround] = await Promise.all([
     db
       .select({ id: schema.setCopies.id, status: schema.setCopies.status })

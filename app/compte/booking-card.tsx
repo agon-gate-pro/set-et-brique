@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { BellRing } from "lucide-react";
 import { ConfirmButton, FormMessage, SubmitButton } from "@/components/admin/form";
 import { daysLate, todayIso } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDate, formatTime } from "@/lib/format";
 import type { Booking } from "@/lib/db/schema";
 import type { CustomerBooking } from "@/lib/bookings";
-import { acceptProposedDate, cancelRequest } from "./actions";
+import { hasUnseenHandoverChange } from "@/lib/handover";
+import { acknowledgeHandoverChange, acceptProposedDate, cancelRequest } from "./actions";
 import { PaymentSummary } from "./payment-summary";
 
 const badge: Record<Booking["status"], string> = {
@@ -24,17 +26,30 @@ export function BookingCard({
   setName,
   setSlug,
   pickupPoint,
+  previousPickupPoint = null,
   openPayment = false,
 }: {
   booking: CustomerBooking;
   setName: string;
   setSlug: string;
   pickupPoint: string | null;
+  /** Lieu tel que le client le connaissait avant une modification pas encore vue. */
+  previousPickupPoint?: string | null;
   /** Ouvre d'office le récapitulatif de paiement (lien de l'e-mail d'acceptation). */
   openPayment?: boolean;
 }) {
   const [acceptState, acceptAction] = useActionState(acceptProposedDate, null);
   const [cancelState, cancelAction] = useActionState(cancelRequest, null);
+  const [seenState, seenAction] = useActionState(acknowledgeHandoverChange, null);
+  // Le client reste sur la page après avoir répondu : on prévient le header, qui relit sa pastille
+  // d'actions en attente (même événement qu'après une mise à jour des coordonnées).
+  useEffect(() => {
+    if (acceptState?.ok || cancelState?.ok || seenState?.ok) window.dispatchEvent(new Event("customer-profile-updated"));
+  }, [acceptState, cancelState, seenState]);
+  const handoverChanged = hasUnseenHandoverChange(booking);
+  const previousTime = formatTime(booking.previousPickupTime);
+  const timeChanged = previousTime !== formatTime(booking.pickupTime);
+  const placeChanged = previousPickupPoint !== pickupPoint;
   const cancellable = booking.status === "pending_review" || booking.status === "date_proposed";
   const late = booking.status === "picked_up" ? daysLate(booking.endDate, todayIso()) : 0;
 
@@ -51,6 +66,37 @@ export function BookingCard({
           {late > 0 ? "Retour en retard" : bookingStatusLabels[booking.status]}
         </span>
       </div>
+
+      {handoverChanged ? (
+        // Modification du lieu ou de l'heure par Set et Brique : visible tant que le client ne l'a pas notée
+        // (compte aussi dans la pastille du header). L'e-mail viendra avec les e-mails transactionnels.
+        <div role="status" className="mt-4 rounded-xl border border-orange-500 bg-orange-50 p-4">
+          <p className="flex items-center gap-2 font-bold text-orange-900">
+            <BellRing aria-hidden="true" className="h-5 w-5 shrink-0" />
+            La remise a été modifiée par Set et Brique
+          </p>
+          <dl className="mt-2 grid gap-1 text-ink-deep">
+            <div>
+              <dt className="inline text-slate-ink">Heure : </dt>
+              <dd className="inline font-semibold">
+                {timeChanged ? `${previousTime ?? "à convenir"} → ${formatTime(booking.pickupTime) ?? "à convenir"}` : `inchangée, ${formatTime(booking.pickupTime) ?? "à convenir"}`}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline text-slate-ink">Lieu : </dt>
+              <dd className="inline font-semibold">
+                {placeChanged ? `${previousPickupPoint ?? "à convenir"} → ${pickupPoint ?? "à convenir"}` : `inchangé, ${pickupPoint ?? "à convenir"}`}
+              </dd>
+            </div>
+          </dl>
+          <form action={seenAction} className="mt-3 flex justify-end">
+            <input type="hidden" name="id" value={booking.id} />
+            <SubmitButton variant="leaf" className="text-sm py-2 px-4">
+              J&apos;ai bien noté
+            </SubmitButton>
+          </form>
+        </div>
+      ) : null}
 
       <dl className="mt-4 grid gap-2 sm:grid-cols-2 text-slate-ink">
         <div>
@@ -89,8 +135,8 @@ export function BookingCard({
       {booking.status === "pending_payment" || booking.status === "confirmed" ? (
         <p className="mt-4 text-slate-ink">
           Remise prévue le {formatDate(booking.startDate)}
-          {booking.pickupTime ? ` à ${formatTime(booking.pickupTime)}` : ""}. Nous vous contactons si l&apos;heure doit
-          être ajustée.
+          {booking.pickupTime ? ` à ${formatTime(booking.pickupTime)}` : ""}. Si nous devons modifier le lieu ou l&apos;heure,
+          vous le verrez ici.
         </p>
       ) : null}
 

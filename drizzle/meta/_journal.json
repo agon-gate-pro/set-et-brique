@@ -127,6 +127,13 @@
       "when": 1791306629067,
       "tag": "0017_set_image_crop_rect",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791403899455,
+      "tag": "0018_handover_change",
+      "breakpoints": true
     }
   ]
 }

@@ -5,8 +5,20 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { daysLate, todayIso } from "@/lib/availability";
 import { paymentDeadline } from "@/lib/bookings";
+import { hasUnseenHandoverChange } from "@/lib/handover";
 import { db, schema } from "@/lib/db";
-import { firstError, formToObject, handoverSchema, pickupSchema, refuseBookingSchema, returnSchema } from "@/lib/validation";
+import {
+  firstError,
+  formToObject,
+  cancelBookingSchema,
+  handoverSchema,
+  markPaidSchema,
+  paymentMethods,
+  pickupSchema,
+  refuseBookingSchema,
+  returnSchema,
+} from "@/lib/validation";
+import { getSetting } from "@/lib/settings";
 import type { ActionState } from "@/components/admin/form";
 import type { BookingStatus } from "@/lib/db/schema";
 
@@ -49,9 +61,85 @@ export async function acceptBooking(_: ActionState, formData: FormData): Promise
   const id = String(formData.get("id") ?? "");
   const r = await loadBooking(id, ["pending_review"]);
   if ("error" in r) return { error: r.error };
-  await transition(id, r.booking.status, "pending_payment", "Demande acceptée", { paymentDueAt: paymentDeadline() });
+  await transition(id, r.booking.status, "pending_payment", "Demande acceptée", { paymentDueAt: await paymentDeadline(r.booking.startDate) });
   revalidate(id);
   return { ok: "Demande acceptée. Pensez à convenir de l'heure de remise avec le client." };
+}
+
+/**
+ * Paiement reçu hors ligne (espèces, virement, TPE…) : la réservation est confirmée et le délai de
+ * paiement ne s'applique plus. Le moyen est inscrit dans l'historique, pas dans une colonne (pas de
+ * migration pour l'instant ; à reprendre avec les notes, module 8). Le paiement en ligne (module 4)
+ * fera la même transition.
+ */
+export async function markPaid(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const parsed = markPaidSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Saisie invalide" };
+  const r = await loadBooking(id, ["pending_payment"]);
+  if ("error" in r) return { error: r.error };
+  const method = paymentMethods[parsed.data.method];
+  const note = parsed.data.note;
+  await transition(id, r.booking.status, "confirmed", `Paiement reçu (${method})${note ? `. ${note}` : ""}`, {
+    paymentDueAt: null,
+  });
+  revalidate(id);
+  return { ok: `Paiement enregistré (${method}). La réservation est confirmée.` };
+}
+
+/**
+ * Prolonger le délai de paiement d'une durée égale au réglage (24 h par défaut), à partir de
+ * l'échéance actuelle ou de maintenant si elle est passée. Le plafond du jour de remise ne
+ * s'applique pas : c'est un geste choisi par les gérants au cas par cas.
+ */
+export async function extendPaymentDeadline(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const r = await loadBooking(id, ["pending_payment"]);
+  if ("error" in r) return { error: r.error };
+  const hours = await getSetting("payment_delay_hours");
+  const now = new Date();
+  const base = r.booking.paymentDueAt && r.booking.paymentDueAt > now ? r.booking.paymentDueAt : now;
+  const due = new Date(base.getTime() + hours * 3_600_000);
+  const label = dueFormatter.format(due);
+  await db.transaction(async (tx) => {
+    await tx.update(schema.bookings).set({ paymentDueAt: due }).where(eq(schema.bookings.id, id));
+    await tx.insert(schema.bookingEvents).values({
+      bookingId: id,
+      actor: "admin",
+      fromStatus: "pending_payment",
+      toStatus: "pending_payment",
+      message: `Délai de paiement prolongé de ${hours} h, jusqu'au ${label}`,
+    });
+  });
+  revalidate(id);
+  return { ok: `Délai prolongé jusqu'au ${label}.` };
+}
+
+const dueFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
+
+/**
+ * Annuler une réservation déjà acceptée, à l'initiative de Set et Brique (set indisponible, client
+ * qui a appelé pour annuler, client injoignable…). Distinct du refus d'une demande : l'engagement
+ * était pris, d'où le motif obligatoire (visible du client) et un historique « Annulée par Set et
+ * Brique ». Rien n'est encaissé en `pending_payment`, donc pas de remboursement à gérer ici ;
+ * l'annulation d'une réservation payée (`confirmed`) viendra avec le paiement (module 4).
+ */
+export async function cancelAcceptedBooking(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const parsed = cancelBookingSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Saisie invalide" };
+  const r = await loadBooking(id, ["pending_payment"]);
+  if ("error" in r) return { error: r.error };
+  await transition(id, r.booking.status, "cancelled", `Annulée par Set et Brique : ${parsed.data.reason}`, {
+    cancelledAt: new Date(),
+    cancelReason: parsed.data.reason,
+    paymentDueAt: null,
+  });
+  revalidate(id);
+  return { ok: "Réservation annulée. Pensez à prévenir le client." };
 }
 
 /** Refuser la demande, avec un motif visible du client. */
@@ -60,7 +148,7 @@ export async function refuseBooking(_: ActionState, formData: FormData): Promise
   const id = String(formData.get("id") ?? "");
   const parsed = refuseBookingSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const r = await loadBooking(id, ["pending_review", "date_proposed", "pending_payment"]);
+  const r = await loadBooking(id, ["pending_review", "date_proposed"]);
   if ("error" in r) return { error: r.error };
   await transition(id, r.booking.status, "cancelled", parsed.data.reason ?? "Demande refusée", {
     cancelledAt: new Date(),
@@ -91,21 +179,50 @@ export async function updateHandover(_: ActionState, formData: FormData): Promis
     .where(and(eq(schema.pickupPoints.id, parsed.data.pickupPointId), eq(schema.pickupPoints.active, true)));
   if (!point) return { error: "Ce lieu de remise n'est plus proposé." };
 
+  const b = r.booking;
+  const newTime = parsed.data.pickupTime;
+  const oldTime = b.pickupTime?.slice(0, 5) ?? null;
+  if (point.id === b.pickupPointId && newTime === oldTime) return { ok: "Rien n'a changé." };
+
+  // Le client doit voir « avant → après » par rapport à ce qu'il connaissait : si une modification
+  // précédente n'a pas encore été vue, on garde son « avant ». Revenir exactement à cet « avant »
+  // efface la notification (rien n'a changé pour lui).
+  const unseen = hasUnseenHandoverChange(b);
+  const previousPointId = unseen ? b.previousPickupPointId : b.pickupPointId;
+  const previousTime = unseen ? (b.previousPickupTime?.slice(0, 5) ?? null) : oldTime;
+  const backToPrevious = point.id === previousPointId && newTime === previousTime;
+
+  const [oldPoint] = b.pickupPointId
+    ? await db.select({ name: schema.pickupPoints.name }).from(schema.pickupPoints).where(eq(schema.pickupPoints.id, b.pickupPointId))
+    : [];
+  const before = `${oldPoint?.name ?? "lieu à convenir"} à ${oldTime ?? "heure à convenir"}`;
+  const after = `${point.name} à ${newTime}`;
+
   await db.transaction(async (tx) => {
     await tx
       .update(schema.bookings)
-      .set({ pickupPointId: point.id, pickupTime: parsed.data.pickupTime })
+      .set({
+        pickupPointId: point.id,
+        pickupTime: newTime,
+        ...(backToPrevious
+          ? { handoverChangedAt: null, previousPickupPointId: null, previousPickupTime: null }
+          : { handoverChangedAt: new Date(), previousPickupPointId: previousPointId, previousPickupTime: previousTime }),
+      })
       .where(eq(schema.bookings.id, id));
     await tx.insert(schema.bookingEvents).values({
       bookingId: id,
       actor: "admin",
-      fromStatus: r.booking.status,
-      toStatus: r.booking.status,
-      message: `Remise modifiée : ${point.name} à ${parsed.data.pickupTime}`,
+      fromStatus: b.status,
+      toStatus: b.status,
+      message: `Remise modifiée : ${before} → ${after}`,
     });
   });
   revalidate(id);
-  return { ok: `Remise modifiée : ${point.name} à ${parsed.data.pickupTime}.` };
+  return {
+    ok: backToPrevious
+      ? `Remise remise comme avant : ${after}. Le client n'avait pas encore vu la modification, elle ne lui est plus signalée.`
+      : `Remise modifiée : ${after}. Le client le verra dans son espace.`,
+  };
 }
 
 /** Instant d'un jour saisi : maintenant si c'est aujourd'hui, sinon midi à Paris ce jour-là. */

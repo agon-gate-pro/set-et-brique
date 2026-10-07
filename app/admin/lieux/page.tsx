@@ -3,16 +3,25 @@ import { asc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { PickupPointCreateDialog, PickupPointRow } from "./forms";
 import { requireRole } from "@/lib/auth";
+import { HANDOVER_CHANGE_STATUSES } from "@/lib/handover";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 
 export const metadata: Metadata = { title: "Lieux de remise", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
 export default async function PickupPointsPage() {
   await requireRole("admin");
+  await expireOverduePayments();
+  // Réservations à venir sur ce lieu (remise pas encore faite) : celles qu'un changement de créneaux
+  // ou une fermeture du lieu toucherait. Les réservations passées ou annulées ne comptent pas.
+  const upcoming = sql.join(
+    HANDOVER_CHANGE_STATUSES.map((s) => sql`${s}`),
+    sql`, `,
+  );
   const points = await db
     .select({
       point: schema.pickupPoints,
-      bookingCount: sql<number>`(select count(*)::int from ${schema.bookings} b where b.pickup_point_id = ${schema.pickupPoints}.id)`,
+      bookingCount: sql<number>`(select count(*)::int from ${schema.bookings} b where b.pickup_point_id = ${schema.pickupPoints}.id and b.status in (${upcoming}))`,
     })
     .from(schema.pickupPoints)
     .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt));

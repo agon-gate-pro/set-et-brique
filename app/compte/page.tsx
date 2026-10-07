@@ -5,6 +5,7 @@ import { desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
 import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 import { BookingCard } from "./booking-card";
 
 export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
@@ -15,6 +16,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
   const { demande, payer } = await searchParams;
   // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
   const { userId } = await auth.protect();
+  // Demande acceptée non payée dans le délai : affichée annulée, plus « à payer ».
+  await expireOverduePayments();
   const [user, admin, customer] = await Promise.all([
     currentUser(),
     isAdmin(),
@@ -27,7 +30,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
     ? await db.query.bookings.findMany({
         columns: bookingCustomerColumns,
         where: eq(schema.bookings.customerId, customer.id),
-        with: { set: { columns: { name: true, slug: true } }, pickupPoint: { columns: { name: true } } },
+        with: {
+          set: { columns: { name: true, slug: true } },
+          pickupPoint: { columns: { name: true } },
+          previousPickupPoint: { columns: { name: true } },
+        },
         orderBy: [desc(schema.bookings.createdAt)],
       })
     : [];
@@ -58,6 +65,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
               setName={b.set.name}
               setSlug={b.set.slug}
               pickupPoint={b.pickupPoint?.name ?? null}
+              previousPickupPoint={b.previousPickupPoint?.name ?? null}
               openPayment={payer === b.reference}
             />
           ))}

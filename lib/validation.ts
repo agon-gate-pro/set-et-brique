@@ -52,6 +52,21 @@ const checkbox = z
   .optional()
   .transform((v) => v === "on");
 
+/** Nombre entier saisi dans un champ, borné, avec un message lisible pour le gérant. */
+const boundedInt = (label: string, min: number, max: number) =>
+  z.coerce
+    .number({ error: `${label} : saisissez un nombre.` })
+    .int(`${label} : saisissez un nombre entier.`)
+    .min(min, `${label} : au moins ${min}.`)
+    .max(max, `${label} : au plus ${max}.`);
+
+/** Réglages de l'espace de gestion (`/admin/reglages`). */
+export const settingsSchema = z.object({
+  paymentDelayHours: boundedInt("Délai de paiement", 1, 168),
+  turnaroundDays: boundedInt("Battement", 0, 30),
+  minRentalDays: boundedInt("Durée minimale", 1, 60),
+});
+
 export const ratePlanSchema = z.object({
   name: z.string().trim().min(1, "Le nom est obligatoire"),
   priceEuros: eurosToCents,
@@ -227,6 +242,26 @@ export const handoverSchema = z.object({
 
 export const refuseBookingSchema = z.object({
   reason: optionalText,
+});
+
+/** Annulation par Set et Brique d'une réservation déjà acceptée : motif obligatoire, le client le voit. */
+export const cancelBookingSchema = z.object({
+  reason: z.string({ error: "Indiquez le motif, le client le verra." }).trim().min(1, "Indiquez le motif, le client le verra."),
+});
+
+/** Moyens de paiement saisis par les gérants au bouton « Paiement reçu » (libellé dans l'historique). */
+export const paymentMethods = {
+  cash: "espèces",
+  transfer: "virement",
+  card: "carte bancaire",
+  other: "autre moyen",
+} as const;
+
+export const markPaidSchema = z.object({
+  method: z.enum(Object.keys(paymentMethods) as [keyof typeof paymentMethods, ...(keyof typeof paymentMethods)[]], {
+    error: "Choisissez le moyen de paiement.",
+  }),
+  note: optionalText,
 });
 
 /** Remise en main propre constatée par les gérants. */

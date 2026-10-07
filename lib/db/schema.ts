@@ -304,6 +304,18 @@ export const bookings = pgTable(
      * voir `paymentDeadline`). Null pour les réservations acceptées avant l'ajout de la colonne.
      */
     paymentDueAt: timestamp("payment_due_at", { withTimezone: true }),
+    /**
+     * Dernière modification du lieu ou de l'heure de remise par les gérants, et moment où le client
+     * l'a vue (« J'ai bien noté »). Changement non vu = `handoverChangedAt` > `handoverSeenAt` (ou
+     * vu jamais) : encart sur la carte du client et pastille du header (7 octobre 2026).
+     */
+    handoverChangedAt: timestamp("handover_changed_at", { withTimezone: true }),
+    handoverSeenAt: timestamp("handover_seen_at", { withTimezone: true }),
+    /** Lieu et heure tels que le client les connaissait avant la modification non vue, pour « avant → après ». */
+    previousPickupPointId: uuid("previous_pickup_point_id").references(() => pickupPoints.id, {
+      onDelete: "set null",
+    }),
+    previousPickupTime: time("previous_pickup_time"),
     pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
     /** État des lieux au retour, commentaire libre des gérants (spécification, module 9). */
@@ -454,6 +466,10 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
   copy: one(setCopies, { fields: [bookings.copyId], references: [setCopies.id] }),
   pickupPoint: one(pickupPoints, {
     fields: [bookings.pickupPointId],
+    references: [pickupPoints.id],
+  }),
+  previousPickupPoint: one(pickupPoints, {
+    fields: [bookings.previousPickupPointId],
     references: [pickupPoints.id],
   }),
   events: many(bookingEvents),
