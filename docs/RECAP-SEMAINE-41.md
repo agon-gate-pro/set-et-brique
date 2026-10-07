@@ -46,11 +46,18 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 9. Une réservation **acceptée** ne se refuse plus : elle s'**annule** à l'initiative de Set et Brique, motif obligatoire, en proposant au client une autre date, un autre set ou un avoir (article 13 des CGL).
 10. Un changement de lieu ou d'heure de remise est **signalé au client sur le site** (encart + pastille) en attendant l'e-mail ; stockage par une **migration** de la base plutôt que par lecture de l'historique.
 
-## 3. À faire par Madus
+## 3. Mise en production et infrastructure (pour Madus)
 
-- **Appliquer la migration `0018_handover_change`** (`pnpm db:migrate`) sur la base **avant** de déployer : quatre colonnes vides ajoutées à `bookings`. Sans elles, les pages qui lisent les réservations échouent avec le nouveau code.
-- **Définir la variable `CRON_SECRET`** dans les variables d'environnement du projet Vercel (une valeur aléatoire longue). Elle protège la tâche planifiée quotidienne qui annule les réservations non payées même quand personne ne visite le site. Sans elle, cette tâche est refusée ; l'annulation au fil des visites fonctionne quand même.
-- Vérifier après déploiement que la tâche planifiée apparaît dans Vercel (Settings → Cron Jobs, `/api/cron/paiements-expires`, tous les jours à 5 h UTC). Le plan gratuit ne permet qu'un passage par jour.
+**Fait le 7 octobre 2026 par Alexis :**
+
+- Migration **`0018_handover_change`** appliquée à la base (`pnpm db:migrate`) : quatre colonnes vides ajoutées à `bookings`.
+- **Mise en production** : `semaine-41` avancée sur `main` (commit `d90e40f`, sans commit de fusion), déploiement Vercel réussi. Accueil, catalogue, bons cadeaux, CGL et route du header vérifiés ; la tâche planifiée refuse bien un appel sans secret.
+- Variable **`CRON_SECRET`** ajoutée dans Vercel (production uniquement), valeur aléatoire de 32 octets générée sur place et jamais affichée. Elle protège la tâche planifiée quotidienne qui annule les réservations non payées même quand personne ne visite le site.
+
+**Reste à faire :**
+
+- **Redéployer la production une fois** (Vercel → Deployments → dernier déploiement de production → Redeploy), ou attendre le prochain déploiement : `CRON_SECRET` n'est prise en compte qu'au déploiement suivant son ajout. D'ici là, la tâche planifiée est refusée ; l'annulation au fil des visites fonctionne quand même.
+- Vérifier ensuite que la tâche planifiée apparaît dans Vercel (Settings → Cron Jobs, `/api/cron/paiements-expires`, tous les jours à 5 h UTC). Le plan gratuit ne permet qu'un passage par jour.
 - Rappel : aucun fournisseur d'e-mail n'est branché. Ni l'annulation ni le rappel avant échéance ne sont envoyés par e-mail aujourd'hui (Resend recommandé, à mutualiser avec les e-mails transactionnels).
 
 ## 4. À voir avec Marion
