@@ -27,6 +27,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Réservations : filtre par lieu**, à côté du filtre par statut et de la recherche.
 - **Bouton « Prolonger de 24 h »** sur la même réservation, pour un client qui a prévenu qu'il paiera plus tard.
 - **Bons cadeaux imprimés refaits d'après la maquette de Marion** : 20 × 9 cm, trois par feuille A4, pointillé de découpe, logo, slogan, code, montant et QR code vers le catalogue.
+- **Annuler un bon cadeau** : la confirmation est une petite pastille « Oui, annuler » / « Non » au lieu d'un gros bouton rouge sur deux lignes.
 - **Recadrage des photos libre** (n'importe quelle forme), pour les sets photographiés en hauteur.
 - **Fiche d'une réservation** : la pastille d'état reprend les couleurs du tableau des réservations (jaune à traiter, orange paiement en attente, vert payé, rouge annulée).
 - **Aperçu d'une réservation** (au clic dans le tableau) plus lisible : état en couleur, puis client, montant, remise et retour en blocs séparés.
