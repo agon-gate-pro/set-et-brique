@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState, type ChangeEvent } from "react";
 import { Trash2 } from "lucide-react";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
@@ -218,9 +219,14 @@ export function PickupPointRow({
           {!point.active ? <span className="ml-3 text-sm bg-slate-200 px-2 py-0.5 rounded-md">désactivé</span> : null}
         </p>
         <div className="flex items-center gap-4 text-sm text-slate-ink">
-          <span>
-            {bookingCount} réservation{bookingCount > 1 ? "s" : ""}
-          </span>
+          {bookingCount > 0 ? (
+            <Link
+              href={`/admin/reservations?lieu=${point.id}`}
+              className="font-semibold underline underline-offset-4 hover:text-ink-deep"
+            >
+              {bookingCount} réservation{bookingCount > 1 ? "s" : ""} à venir
+            </Link>
+          ) : null}
           <form action={movePickupPoint} className="flex gap-2">
             <input type="hidden" name="id" value={point.id} />
             <button name="direction" value="up" disabled={index === 0} className="font-bold disabled:opacity-30" aria-label="Monter">

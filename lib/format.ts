@@ -6,6 +6,18 @@ export function formatDateTime(date: Date | string) {
   return dateTimeFormatter.format(typeof date === "string" ? new Date(date) : date);
 }
 
+const dateLongYear = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "Europe/Paris",
+});
+
+/** « 25 septembre 2027 » à partir d'un timestamp complet, pour les documents imprimés. */
+export function formatDateLong(date: Date | string) {
+  return dateLongYear.format(typeof date === "string" ? new Date(date) : date);
+}
+
 export function formatCents(cents: number) {
   return euro.format(cents / 100);
 }

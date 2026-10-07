@@ -22,7 +22,8 @@ export type BookingEmailEvent =
   | "cancelled_by_customer"
   | "handover_changed"
   | "picked_up"
-  | "returned";
+  | "returned"
+  | "payment_expired";
 
 export type ReminderKind = "reminder_eve" | "reminder_day" | "reminder_late";
 
@@ -321,6 +322,21 @@ function returned(b: BookingWithDetails) {
   });
 }
 
+/** B5. Annulation pour non-paiement dans le délai (`lib/payment-expiry.ts`), au client. */
+function paymentExpired(b: BookingWithDetails) {
+  return customerMail("payment_expired", b, {
+    subject: `Votre réservation ${b.reference} est annulée faute de règlement`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Nous n'avons pas reçu le règlement de votre réservation de ${b.set.name} du ${longDate(b.startDate)} au ${longDate(b.endDate)} dans le délai prévu : elle est annulée et les dates sont de nouveau libres.`,
+      ),
+      p(`Rien n'a été débité. Si vous souhaitez toujours ce set, refaites une demande depuis le catalogue, ou ${callUs}.`),
+    ],
+    button: { label: "Voir le catalogue", href: siteLink("/catalogue") },
+  });
+}
+
 /** B1. Veille du retour (J-1), au client. */
 function reminderEve(b: BookingWithDetails) {
   return customerMail("reminder_eve", b, {
@@ -379,6 +395,7 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   handover_changed: (b) => [handoverChanged(b)],
   picked_up: (b) => [pickedUp(b)],
   returned: (b) => [returned(b)],
+  payment_expired: (b) => [paymentExpired(b)],
 };
 
 export const reminderMails: Record<ReminderKind, (b: BookingWithDetails) => Mail> = {

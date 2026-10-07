@@ -7,6 +7,7 @@ import { findCustomerByClerkId, paymentDeadline } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails } from "@/lib/email/booking-emails";
 import { giftVoucherDisplayStatus } from "@/lib/gift-vouchers-core";
+import { hasUnseenHandoverChange } from "@/lib/handover";
 import type { ActionState } from "@/components/admin/form";
 
 function revalidate() {
@@ -62,6 +63,7 @@ export async function acceptProposedDate(_: ActionState, formData: FormData): Pr
   const pricePerDay = Math.round(booking.rentalCents / booking.days);
   const days =
     Math.round((Date.parse(booking.proposedEndDate) - Date.parse(booking.proposedStartDate)) / 86_400_000) + 1;
+  const paymentDueAt = await paymentDeadline(booking.proposedStartDate);
 
   await db.transaction(async (tx) => {
     await tx
@@ -74,7 +76,7 @@ export async function acceptProposedDate(_: ActionState, formData: FormData): Pr
         proposedStartDate: null,
         proposedEndDate: null,
         status: "pending_payment",
-        paymentDueAt: paymentDeadline(),
+        paymentDueAt,
       })
       .where(eq(schema.bookings.id, booking.id));
     await tx.insert(schema.bookingEvents).values({
@@ -112,4 +114,26 @@ export async function cancelRequest(_: ActionState, formData: FormData): Promise
   queueBookingEmails("cancelled_by_customer", booking.id);
   revalidate();
   return { ok: "Demande annulée." };
+}
+
+/** Le client a vu la modification du lieu ou de l'heure de remise (« J'ai bien noté »). */
+export async function acknowledgeHandoverChange(_: ActionState, formData: FormData): Promise<ActionState> {
+  const booking = await ownBooking(String(formData.get("id") ?? ""));
+  if (!booking || !hasUnseenHandoverChange(booking)) return { ok: "C'est noté." };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.bookings)
+      .set({ handoverSeenAt: new Date(), previousPickupPointId: null, previousPickupTime: null })
+      .where(eq(schema.bookings.id, booking.id));
+    await tx.insert(schema.bookingEvents).values({
+      bookingId: booking.id,
+      actor: "customer",
+      fromStatus: booking.status,
+      toStatus: booking.status,
+      message: "Modification de la remise vue par le client",
+    });
+  });
+  revalidate();
+  return { ok: "C'est noté." };
 }

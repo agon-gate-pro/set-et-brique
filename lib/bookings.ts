@@ -9,6 +9,8 @@ import {
   todayIso,
   withLateReturn,
 } from "@/lib/availability";
+import { parisEndOfDay } from "@/lib/dates";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 import { db, schema } from "@/lib/db";
 import type { Booking, Customer } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings";
@@ -119,14 +121,32 @@ export const bookingCustomerColumns = {
   pickedUpAt: true,
   returnedAt: true,
   paymentDueAt: true,
+  handoverChangedAt: true,
+  handoverSeenAt: true,
+  previousPickupTime: true,
 } as const satisfies Partial<Record<keyof Booking, true>>;
 
-/** Délai laissé au client pour régler une demande acceptée, pendant lequel le set lui reste réservé. */
-export const PAYMENT_DELAY_HOURS = 24;
+/**
+ * Statuts où la balle est dans le camp du client : payer (`pending_payment`) ou répondre à une
+ * date proposée (`date_proposed`). Comptés par la pastille du compte dans le header.
+ */
+export const CUSTOMER_ACTION_STATUSES = ["pending_payment", "date_proposed"] as const;
 
-/** Échéance de paiement d'une demande acceptée à l'instant `from`. */
-export function paymentDeadline(from = new Date()) {
-  return new Date(from.getTime() + PAYMENT_DELAY_HOURS * 3_600_000);
+/**
+ * Échéance de paiement d'une demande acceptée à l'instant `from` : délai réglable dans l'espace
+ * de gestion (réglage `payment_delay_hours`, 24 h par défaut). Figée sur la réservation
+ * (`payment_due_at`) : changer le réglage ne touche pas les demandes déjà acceptées.
+ *
+ * Plafonnée à la fin du jour de remise (`startDate`, 23:59 à Paris), décision du 7 octobre 2026 :
+ * un client qui ne paie pas et ne vient pas ne bloque pas le set au-delà. La fin de journée plutôt
+ * que l'heure de remise elle-même laisse aux gérants le temps d'enregistrer un paiement par TPE
+ * fait sur place. Sans effet si ce plafond est déjà passé (demande acceptée en retard).
+ */
+export async function paymentDeadline(startDate: string, from = new Date()) {
+  const hours = await getSetting("payment_delay_hours");
+  const byDelay = new Date(from.getTime() + hours * 3_600_000);
+  const byPickup = parisEndOfDay(startDate);
+  return byPickup > from && byPickup < byDelay ? byPickup : byDelay;
 }
 
 export type CustomerBooking = Pick<Booking, keyof typeof bookingCustomerColumns>;
@@ -188,6 +208,8 @@ export async function createBookingRequest(req: BookingRequest) {
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay;
   if (pricePerDay == null) throw new BookingError("Aucun tarif n'est défini pour ce set. Contactez-nous.");
   const turnaround = set.turnaroundDays ?? globalTurnaround;
+  // Une demande acceptée mais non payée dans le délai ne doit plus bloquer l'exemplaire.
+  await expireOverduePayments();
 
   return db.transaction(async (tx) => {
     // Verrou sur les exemplaires du set : deux demandes simultanées ne prennent pas le même.

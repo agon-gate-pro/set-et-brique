@@ -5,9 +5,13 @@ import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
-import { AdminNoteForm, CustomerBlockForm, HandoverActions, ReviewActions } from "./forms";
+import { AdminNoteForm, CustomerBlockForm, HandoverActions, PaymentActions, ReviewActions } from "./forms";
+import { getSetting } from "@/lib/settings";
 import { BookingTabs } from "./tabs";
+import { neutralBadge, statusTone } from "../status-tone";
 import { requireRole } from "@/lib/auth";
+import { hasUnseenHandoverChange } from "@/lib/handover";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 
 export const metadata: Metadata = { title: "Réservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -23,6 +27,8 @@ const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyl
 
 export default async function BookingPage({ params }: PageProps<"/admin/reservations/[id]">) {
   await requireRole("admin");
+  // Demande acceptée non payée dans le délai : annulée avant d'afficher la fiche.
+  await expireOverduePayments();
   const { id } = await params;
   const booking = await db.query.bookings.findFirst({
     where: eq(schema.bookings.id, id),
@@ -40,6 +46,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
     .from(schema.emailLog)
     .where(eq(schema.emailLog.bookingId, id))
     .orderBy(asc(schema.emailLog.createdAt));
+  const paymentDelayHours = await getSetting("payment_delay_hours");
   const pickupPoints = await db
     .select({ id: schema.pickupPoints.id, name: schema.pickupPoints.name })
     .from(schema.pickupPoints)
@@ -55,7 +62,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <h1 className="text-3xl md:text-4xl font-bold">{b.reference}</h1>
-        <span className="text-sm font-bold px-2 py-1 rounded-md border border-slate-ink/15 bg-paper">
+        <span className={`text-sm font-bold px-2 py-1 rounded-md border ${statusTone(b.status)?.badge ?? neutralBadge}`}>
           {bookingStatusLabels[b.status]}
         </span>
         {late > 0 ? (
@@ -65,8 +72,15 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
         ) : null}
       </div>
 
+      {hasUnseenHandoverChange(b) && b.handoverChangedAt ? (
+        <p className="mt-3 inline-block rounded-md border border-orange-500 bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-900">
+          Le client n&apos;a pas encore vu la modification de la remise du {dateTime.format(b.handoverChangedAt)}.
+        </p>
+      ) : null}
+
       {/* Décision d'abord, c'est ce qu'on vient faire ; le détail est dans les onglets en dessous. */}
       <ReviewActions booking={b} pickupPoints={pickupPoints} />
+      <PaymentActions booking={b} delayHours={paymentDelayHours} />
       <HandoverActions booking={b} />
 
       <BookingTabs
@@ -76,38 +90,63 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
             label: "Location",
             content: (
               <>
-                <dl className="grid gap-2">
-                  <Row label="Set">
-                    <Link href={`/admin/sets/${set.id}`} className="underline underline-offset-4">
+                {/* Mêmes blocs titrés que l'aperçu du tableau (`booking-dialog.tsx`) : quoi, combien, quand, où. */}
+                <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                  <Block label="Set">
+                    <Link href={`/admin/sets/${set.id}`} className="block font-semibold text-ink-deep underline underline-offset-4">
                       {set.name}
                     </Link>
-                    {copy ? ` · ${copy.label}` : " · aucun exemplaire attribué"}
-                  </Row>
-                  <Row label="Remise">
-                    {formatDate(b.startDate)}
-                    {b.pickupTime ? ` à ${formatTime(b.pickupTime)}` : ", heure à convenir"}
-                  </Row>
-                  <Row label="Retour">
-                    {formatDate(b.endDate)} ({b.days} jour{b.days > 1 ? "s" : ""})
-                  </Row>
-                  {b.proposedStartDate && b.proposedEndDate ? (
-                    <Row label="Dates proposées">
-                      du {formatDate(b.proposedStartDate)} au {formatDate(b.proposedEndDate)}, en attente du client
-                    </Row>
-                  ) : null}
-                  <Row label="Lieu">{pickupPoint?.name ?? "—"}</Row>
-                  <Row label="Location">{formatCents(b.rentalCents)}</Row>
-                  <Row label="Rendu monté">
-                    {b.disassemblyCents != null ? `Oui, + ${formatCents(b.disassemblyCents)}` : "Non, le client démonte le set"}
-                  </Row>
-                  <Row label="Caution">{formatCents(b.depositCents)}</Row>
-                  <Row label="Demande faite le">{dateTime.format(b.createdAt)}</Row>
-                  {b.pickedUpAt ? <Row label="Remis le">{dateTime.format(b.pickedUpAt)}</Row> : null}
-                  {b.returnedAt ? <Row label="Rendu le">{dateTime.format(b.returnedAt)}</Row> : null}
-                  {b.returnNote ? <Row label="État des lieux">{b.returnNote}</Row> : null}
-                  {b.customerNote ? <Row label="Message du client">{b.customerNote}</Row> : null}
-                  {b.cancelReason && b.status === "cancelled" ? <Row label="Motif">{b.cancelReason}</Row> : null}
+                    <span className="block text-sm text-slate-ink">{copy ? copy.label : "Aucun exemplaire attribué"}</span>
+                  </Block>
+                  <Block label="Montant">
+                    <span className="display block text-2xl font-bold leading-tight text-leaf-deep">
+                      {formatCents(b.rentalCents + (b.disassemblyCents ?? 0))}
+                    </span>
+                    <span className="block text-sm text-slate-ink">
+                      {b.days} jour{b.days > 1 ? "s" : ""} × {formatCents(Math.round(b.rentalCents / b.days))}
+                    </span>
+                    <span className="block text-sm text-slate-ink">
+                      {b.disassemblyCents != null ? `+ ${formatCents(b.disassemblyCents)} rendu monté` : "Rendu monté : non"}
+                    </span>
+                    <span className="block text-sm text-slate-ink">Caution {formatCents(b.depositCents)}</span>
+                  </Block>
+                  <Block label="Remise">
+                    <span className="block font-semibold text-ink-deep">
+                      {formatDate(b.startDate)}
+                      {b.pickupTime ? ` · ${formatTime(b.pickupTime)}` : ""}
+                    </span>
+                    {b.pickupTime ? null : <span className="block text-sm text-slate-ink">Heure à convenir</span>}
+                    <span className="block text-sm text-slate-ink">{pickupPoint?.name ?? "Lieu à convenir"}</span>
+                  </Block>
+                  <Block label="Retour">
+                    <span className={`block font-semibold ${late > 0 ? "text-brick-deep" : "text-ink-deep"}`}>
+                      {formatDate(b.endDate)}
+                    </span>
+                    <span className="block text-sm text-slate-ink">
+                      {b.days} jour{b.days > 1 ? "s" : ""} de location
+                    </span>
+                  </Block>
                 </dl>
+
+                {b.proposedStartDate && b.proposedEndDate ? (
+                  <Callout label="Dates proposées, en attente du client">
+                    du {formatDate(b.proposedStartDate)} au {formatDate(b.proposedEndDate)}
+                  </Callout>
+                ) : null}
+                {b.customerNote ? <Callout label="Message du client">{b.customerNote}</Callout> : null}
+                {b.returnNote ? <Callout label="État des lieux au retour">{b.returnNote}</Callout> : null}
+                {b.cancelReason && b.status === "cancelled" ? (
+                  <Callout label="Motif de l'annulation" tone="brick">
+                    {b.cancelReason}
+                  </Callout>
+                ) : null}
+
+                <p className="mt-5 text-sm text-slate-ink">
+                  Demande faite le {dateTime.format(b.createdAt)}
+                  {b.pickedUpAt ? ` · Remis le ${dateTime.format(b.pickedUpAt)}` : ""}
+                  {b.returnedAt ? ` · Rendu le ${dateTime.format(b.returnedAt)}` : ""}
+                </p>
+
                 <AdminNoteForm booking={b} />
               </>
             ),
@@ -179,6 +218,27 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     <div className="grid grid-cols-[9rem_1fr] gap-2">
       <dt className="text-slate-ink">{label}</dt>
       <dd className="font-semibold text-ink-deep">{children}</dd>
+    </div>
+  );
+}
+
+function Block({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold uppercase tracking-wider text-slate-ink">{label}</dt>
+      <dd className="mt-1 break-words">{children}</dd>
+    </div>
+  );
+}
+
+/** Encadré pour une information propre à cette réservation (message, état des lieux, motif…). */
+function Callout({ label, tone = "sky", children }: { label: string; tone?: "sky" | "brick"; children: React.ReactNode }) {
+  return (
+    <div
+      className={`mt-5 rounded-xl border p-4 ${tone === "brick" ? "border-brick/30 bg-red-50" : "border-slate-ink/15 bg-sky"}`}
+    >
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-ink">{label}</p>
+      <p className="mt-1 whitespace-pre-line text-ink-deep">{children}</p>
     </div>
   );
 }

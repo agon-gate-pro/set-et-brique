@@ -1,12 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { useFormDirty } from "@/lib/use-form-dirty";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
 import type { Booking, Customer } from "@/lib/db/schema";
 import { daysLate, todayIso } from "@/lib/dates";
 import { formatDate, formatTime } from "@/lib/format";
+import { paymentMethods } from "@/lib/validation";
 import {
   acceptBooking,
+  cancelAcceptedBooking,
+  extendPaymentDeadline,
+  markPaid,
   markPickedUp,
   markReturned,
   refuseBooking,
@@ -15,6 +20,66 @@ import {
   toggleReminders,
   updateHandover,
 } from "../actions";
+
+const dueFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" });
+
+/**
+ * Demande acceptée en attente de paiement : enregistrer un paiement reçu hors ligne, ou prolonger
+ * le délai au cas par cas. Passé l'échéance, la réservation est annulée d'elle-même.
+ */
+export function PaymentActions({ booking, delayHours }: { booking: Booking; delayHours: number }) {
+  const [paidState, paidAction] = useActionState(markPaid, null);
+  const [extendState, extendAction] = useActionState(extendPaymentDeadline, null);
+  if (booking.status !== "pending_payment") return null;
+
+  return (
+    <section className="mt-8 brick-card p-6 bg-sky">
+      <h2 className="text-2xl font-semibold">Paiement</h2>
+      <p className="mt-2 text-slate-ink">
+        {booking.paymentDueAt ? (
+          <>
+            À régler avant le <strong className="text-ink-deep">{dueFormatter.format(booking.paymentDueAt)}</strong>.
+            Sans paiement d&apos;ici là, la réservation est annulée automatiquement et le set remis en location.
+          </>
+        ) : (
+          "Demande acceptée avant la mise en place du délai de paiement : sans paiement, elle est annulée automatiquement une fois le jour de remise passé."
+        )}
+      </p>
+      <form action={paidAction} className="mt-4 grid gap-4 sm:grid-cols-[12rem_1fr_auto] items-end">
+        <input type="hidden" name="id" value={booking.id} />
+        <Field label="Moyen de paiement">
+          <select name="method" required defaultValue="" className={inputClass}>
+            <option value="" disabled>
+              Choisir…
+            </option>
+            {Object.entries(paymentMethods).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label.charAt(0).toUpperCase() + label.slice(1)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Précision" hint="Facultatif, pour l'historique">
+          <input name="note" className={inputClass} placeholder="Virement reçu le 8 octobre" />
+        </Field>
+        <SubmitButton variant="leaf">Paiement reçu</SubmitButton>
+        <div className="sm:col-span-3">
+          <FormMessage state={paidState} />
+        </div>
+      </form>
+      {booking.paymentDueAt ? (
+        <form action={extendAction} className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-ink/15 pt-4">
+          <input type="hidden" name="id" value={booking.id} />
+          <p className="text-sm text-slate-ink">Le client a prévenu qu&apos;il paiera plus tard ?</p>
+          <SubmitButton variant="paper" className="text-sm py-2 px-3">
+            Prolonger de {delayHours} h
+          </SubmitButton>
+          <FormMessage state={extendState} />
+        </form>
+      ) : null}
+    </section>
+  );
+}
 
 /** Remise en main propre puis retour du set : les deux gestes du quotidien. */
 export function HandoverActions({ booking }: { booking: Booking }) {
@@ -89,17 +154,21 @@ export function ReviewActions({
 }) {
   const [acceptState, acceptAction] = useActionState(acceptBooking, null);
   const [refuseState, refuseAction] = useActionState(refuseBooking, null);
+  const [cancelState, cancelAction] = useActionState(cancelAcceptedBooking, null);
   const [handoverState, handoverAction] = useActionState(updateHandover, null);
-  const canAccept = booking.status === "pending_review";
-  const canRefuse = booking.status === "pending_review" || booking.status === "pending_payment";
-  if (!canRefuse) return null;
+  // Demande pas encore acceptée : décision (accepter / refuser). Acceptée, en attente de paiement :
+  // l'engagement est pris, on n'y « refuse » plus rien — seule une annulation exceptionnelle reste.
+  const pending = booking.status === "pending_review";
+  const accepted = booking.status === "pending_payment";
+  if (!pending && !accepted) return null;
 
   return (
     <section id="decision" className="mt-8 brick-card p-6 bg-sun/30 scroll-mt-24">
-      <h2 className="text-2xl font-semibold">Décision</h2>
+      <h2 className="text-2xl font-semibold">{pending ? "Décision" : "Remise"}</h2>
       <p className="mt-2 text-slate-ink">
-        Les dates et la durée sont celles choisies par le client, elles ne se modifient pas. Vous pouvez
-        ajuster le lieu et l&apos;heure de remise avant d&apos;accepter.
+        {pending
+          ? "Les dates et la durée sont celles choisies par le client, elles ne se modifient pas. Vous pouvez ajuster le lieu et l'heure de remise avant d'accepter."
+          : "Les dates et la durée sont celles choisies par le client, elles ne se modifient pas. Vous pouvez encore ajuster le lieu et l'heure de remise."}
       </p>
 
       <form action={handoverAction} className="mt-6 grid gap-4 sm:grid-cols-[1fr_9rem_auto] items-end">
@@ -123,38 +192,70 @@ export function ReviewActions({
         </div>
       </form>
 
-      {/* Barre de décision : Accepter à droite, action principale ; le motif du refus se saisit dans la fenêtre de confirmation. */}
-      <div className="mt-6 border-t border-slate-ink/15 pt-6">
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <form action={refuseAction}>
+      {accepted ? (
+        // Annulation à l'initiative de Set et Brique (CGL, article 13) : geste exceptionnel, en lien discret.
+        <div className="mt-6 border-t border-slate-ink/15 pt-4 text-right">
+          <form action={cancelAction}>
             <input type="hidden" name="id" value={booking.id} />
             <ConfirmButton
               asDialog
-              state={refuseState}
-              confirmLabel="Oui, refuser"
-              pendingLabel="Envoi…"
-              className="btn btn-brick text-paper no-underline"
+              state={cancelState}
+              confirmLabel="Oui, annuler la réservation"
+              pendingLabel="Annulation…"
+              className="text-sm"
               details={
-                <Field label="Motif du refus, visible du client" hint="Facultatif">
-                  <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
-                </Field>
+                <>
+                  <p className="text-sm text-slate-ink">
+                    Prévenez le client et proposez-lui une autre date, un autre set ou un avoir (conditions
+                    générales, article 13).
+                  </p>
+                  <div className="mt-3">
+                    <Field label="Motif, visible du client">
+                      <input name="reason" required className={inputClass} placeholder="Le set revenu de location est incomplet" />
+                    </Field>
+                  </div>
+                </>
               }
             >
-              Refuser la demande
+              Annuler la réservation
             </ConfirmButton>
           </form>
-          {canAccept ? (
+          <div className="mt-3">
+            <FormMessage state={cancelState} />
+          </div>
+        </div>
+      ) : (
+        // Barre de décision : Accepter à droite, action principale ; le motif du refus se saisit dans la fenêtre de confirmation.
+        <div className="mt-6 border-t border-slate-ink/15 pt-6">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <form action={refuseAction}>
+              <input type="hidden" name="id" value={booking.id} />
+              <ConfirmButton
+                asDialog
+                state={refuseState}
+                confirmLabel="Oui, refuser"
+                pendingLabel="Envoi…"
+                className="btn btn-brick text-paper no-underline"
+                details={
+                  <Field label="Motif du refus, visible du client" hint="Facultatif">
+                    <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
+                  </Field>
+                }
+              >
+                Refuser la demande
+              </ConfirmButton>
+            </form>
             <form action={acceptAction}>
               <input type="hidden" name="id" value={booking.id} />
               <SubmitButton variant="leaf">Accepter la demande</SubmitButton>
             </form>
-          ) : null}
+          </div>
+          <div className="mt-3 text-right">
+            <FormMessage state={acceptState} />
+            <FormMessage state={refuseState} />
+          </div>
         </div>
-        <div className="mt-3 text-right">
-          <FormMessage state={acceptState} />
-          <FormMessage state={refuseState} />
-        </div>
-      </div>
+      )}
     </section>
   );
 }
@@ -181,14 +282,22 @@ function RemindersToggle({ booking }: { booking: Booking }) {
 
 export function AdminNoteForm({ booking }: { booking: Booking }) {
   const [state, action] = useActionState(saveAdminNote, null);
+  const { ref: formRef, dirty, markClean } = useFormDirty();
+  const [prevState, setPrevState] = useState(state);
+  if (state !== prevState) {
+    setPrevState(state);
+    if (state?.ok) markClean();
+  }
   return (
-    <form action={action} className="mt-4 grid gap-3">
+    <form ref={formRef} action={action} className="mt-6 grid gap-3 border-t border-slate-ink/10 pt-5">
       <input type="hidden" name="id" value={booking.id} />
       <Field label="Note interne" hint="Jamais visible du client">
         <textarea name="adminNote" rows={3} defaultValue={booking.adminNote ?? ""} className={inputClass} />
       </Field>
-      <div>
-        <SubmitButton variant="paper">Enregistrer la note</SubmitButton>
+      <div className="flex justify-end">
+        <SubmitButton variant="leaf" disabled={!dirty}>
+          Enregistrer la note
+        </SubmitButton>
       </div>
       <FormMessage state={state} />
     </form>

@@ -5,11 +5,14 @@ import { db, schema } from "@/lib/db";
 import { addDays, endOfMonthIso, startOfMonthIso, startOfWeekIso, todayIso } from "@/lib/dates";
 import { formatCents } from "@/lib/format";
 import { requireRole } from "@/lib/auth";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 
 export const metadata: Metadata = { title: "Gestion", robots: { index: false } };
 
 export default async function AdminHome() {
   await requireRole("admin");
+  // Demandes acceptées non payées dans le délai : annulées avant de compter les réservations.
+  await expireOverduePayments();
   const today = todayIso();
   const weekStart = startOfWeekIso(today);
   const weekEnd = addDays(weekStart, 6);

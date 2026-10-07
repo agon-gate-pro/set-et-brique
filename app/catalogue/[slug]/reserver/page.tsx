@@ -9,6 +9,7 @@ import { coordinatesUrl, findCustomerByClerkId, isCustomerComplete } from "@/lib
 import { db, schema } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { BookingForm } from "./booking-form";
+import { expireOverduePayments } from "@/lib/payment-expiry";
 
 export const metadata: Metadata = { title: "Réserver", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
   const sp = await searchParams;
   const preselected = readPreselection(sp);
   const { userId } = await auth();
+  // Demandes acceptées non payées dans le délai : annulées avant de lire le planning.
+  await expireOverduePayments();
 
   const set = await db.query.sets.findFirst({
     where: and(eq(schema.sets.slug, slug), eq(schema.sets.status, "published")),

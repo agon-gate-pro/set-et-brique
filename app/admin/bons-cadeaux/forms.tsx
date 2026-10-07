@@ -132,7 +132,7 @@ export function GiftVoucherCancelButton({ id }: { id: string }) {
     <div>
       <form action={action}>
         <input type="hidden" name="id" value={id} />
-        <ConfirmButton confirmLabel="Confirmer l'annulation" className="text-xs">
+        <ConfirmButton compact confirmLabel="Oui, annuler" pendingLabel="Annulation…" dismissLabel="Non" className="text-xs">
           Annuler ce bon
         </ConfirmButton>
       </form>

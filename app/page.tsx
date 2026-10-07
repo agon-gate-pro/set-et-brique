@@ -132,7 +132,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-5 text-lg md:text-xl leading-relaxed text-slate-ink">
-            Les plus grands sets de construction Lego, Pantasy ou Megabloks à
+            Les plus grands sets de construction Lego, Pantasy ou Mega Bloks à
             louer pour la durée de votre choix autour de Lorient.
           </p>
           <p className="mt-2 text-lg md:text-xl font-semibold text-ink-deep">

@@ -17,7 +17,7 @@ export default async function PrintGiftVoucherPage({ params }: PageProps<"/admin
   if (!voucher) notFound();
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto max-w-4xl">
       <div className="no-print mb-6 flex items-center justify-between">
         <Link href="/admin/bons-cadeaux" className="font-bold underline underline-offset-4">
           ← Retour aux bons cadeaux
@@ -25,7 +25,9 @@ export default async function PrintGiftVoucherPage({ params }: PageProps<"/admin
         <PrintButton />
       </div>
 
-      <PrintVoucherCard voucher={voucher} className="print-area" />
+      <div className="overflow-x-auto print:overflow-visible">
+        <PrintVoucherCard voucher={voucher} className="print-area" />
+      </div>
     </div>
   );
 }

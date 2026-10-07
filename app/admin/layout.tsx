@@ -11,6 +11,7 @@ const sections = [
   { href: "/admin/bons-cadeaux", label: "Bons cadeaux" },
   { href: "/admin/statistiques", label: "Statistiques" },
   { href: "/admin/contenus", label: "Contenus du site" },
+  { href: "/admin/reglages", label: "Réglages" },
 ];
 
 const superadminSections = [

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MapPin } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
 import type { CopyInput, RangeBooking } from "@/lib/availability-core";
-import { centsToInput, formatCents } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 import { DateReadable } from "./date-readable";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
@@ -84,44 +85,53 @@ export function BookingForm({
             {startDate && endDate ? (
               <>
                 <p className="text-ink-deep leading-snug">
-                  Du <DateReadable iso={startDate} /> au <DateReadable iso={endDate} />
+                  Remise le <DateReadable iso={startDate} />, retour le <DateReadable iso={endDate} />
                 </p>
                 <p className="mt-1 text-sm text-slate-ink">
                   {days} jour{days && days > 1 ? "s" : ""} de location
                 </p>
               </>
             ) : (
-              <p className="font-semibold text-ink-deep">Choisissez votre période sur le calendrier</p>
+              <>
+                <p className="font-semibold text-ink-deep">Choisissez votre période sur le calendrier</p>
+                {/* Visiteur pas encore connecté : il n'a pas encore le récapitulatif, le tarif lui est donné ici. */}
+                <p className="mt-1 text-sm text-slate-ink">
+                  {formatCents(pricePerDay)} par jour de location, caution {formatCents(set.depositCents)} bloquée à
+                  la remise.
+                </p>
+              </>
             )}
           </div>
           <button type="button" onClick={() => setCalendarOpen(true)} className={`btn ${startDate ? "btn-paper" : "btn-brick"} text-sm py-2 px-4 shrink-0`}>
             {startDate ? "Modifier les dates" : "Choisir mes dates"}
           </button>
         </div>
-        <Field label="Lieu de remise">
+        {/* Libellé, champ puis aide en dessous (et non `Field`, qui met l'aide entre libellé et champ) :
+            l'aide de l'heure faisait descendre son champ, qui ne s'alignait plus avec la liste des lieux. */}
+        <label className="block">
+          <span className="block font-bold text-ink-deep">Lieu de remise</span>
           <select
             name="pickupPointId"
             required
-            className={inputClass}
+            className={`${inputClass} mt-1`}
             value={pickupPointId}
             onChange={(e) => setPickupPointId(e.target.value)}
           >
             {pickupPoints.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
-                {p.address ? ` · ${p.address}` : ""}
               </option>
             ))}
           </select>
-        </Field>
-        <Field
-          label="Heure de remise souhaitée"
-          hint={
-            slots.length > 0
-              ? `Entre ${slots.map((s) => `${s.from} et ${s.until}`).join(", ou entre ")} à ce lieu. Nous la confirmons ou vous proposons un autre créneau`
-              : "Nous la confirmons ou vous proposons un autre créneau"
-          }
-        >
+          {point?.address ? (
+            <span className="mt-1 flex items-start gap-1 text-sm text-slate-ink">
+              <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+              {point.address}
+            </span>
+          ) : null}
+        </label>
+        <label className="block">
+          <span className="block font-bold text-ink-deep">Heure de remise souhaitée</span>
           <input
             name="pickupTime"
             type="time"
@@ -129,22 +139,15 @@ export function BookingForm({
             step={900}
             value={clampedTime}
             onChange={(e) => setPickupTime(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} mt-1`}
           />
-        </Field>
-        <div className="rounded-xl bg-sky border border-slate-ink/15 p-4 self-end">
-          <p className="text-sm text-slate-ink">Retour prévu</p>
-          <p className="font-bold text-ink-deep">{endDate ? <DateReadable iso={endDate} /> : "—"}</p>
-          <p className="mt-2 text-sm text-slate-ink">Location</p>
-          <p className="display text-2xl font-bold text-leaf-deep">
-            {rental != null ? formatCents(rental + option) : "—"}
-            <span className="text-sm font-semibold text-slate-ink">
-              {" "}({centsToInput(pricePerDay)} € × {validDays ? days : "…"} jours{option > 0 ? ` + ${formatCents(option)} set rendu monté` : ""})
-            </span>
-          </p>
-          <p className="mt-1 text-sm text-slate-ink">Caution {formatCents(set.depositCents)}, bloquée à la remise, jamais débitée sauf casse ou perte.</p>
-          <p className="mt-1 text-sm text-slate-ink">Si vous disposez d&apos;un bon cadeau, vous pourrez le renseigner au moment du paiement.</p>
-        </div>
+          <span className="mt-1 block text-sm text-slate-ink">
+            {slots.length > 0
+              ? `Entre ${slots.map((s) => `${s.from} et ${s.until}`).join(", ou entre ")} à ce lieu. `
+              : ""}
+            Nous la confirmons ou vous proposons un autre créneau.
+          </span>
+        </label>
         {set.disassemblyCents != null ? (
           <label className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-slate-ink/15 bg-sky p-4 cursor-pointer hover:bg-sea/10">
             <input
@@ -161,7 +164,7 @@ export function BookingForm({
           </label>
         ) : null}
         <div className="sm:col-span-2">
-          <Field label="Un message pour nous ?" hint="Facultatif : créneau souhaité, question, précision">
+          <Field label="Un message pour nous ?" hint="Facultatif : une question, une précision">
             <textarea name="customerNote" rows={2} className={inputClass} />
           </Field>
         </div>
@@ -171,7 +174,7 @@ export function BookingForm({
         <>
           <section className="brick-card p-6 grid gap-5 sm:grid-cols-2">
             <h2 className="sm:col-span-2 text-2xl font-semibold">Vos coordonnées</h2>
-            <p className="sm:col-span-2 -mt-3 text-slate-ink">Nécessaires pour le contrat de location et la facture.</p>
+            <p className="sm:col-span-2 -mt-3 text-slate-ink">Nécessaires pour le contrat de location.</p>
             <Field label="Prénom">
               <input name="firstName" required defaultValue={customer?.firstName ?? defaults.firstName} className={inputClass} />
             </Field>
@@ -194,7 +197,33 @@ export function BookingForm({
             </Field>
           </section>
 
-          <section className="grid gap-4">
+          {/* Récapitulatif juste avant l'envoi, après tous les choix qui changent le prix (option comprise). */}
+          <section className="brick-card p-6 grid gap-4">
+            <h2 className="text-2xl font-semibold">Récapitulatif</h2>
+            <dl className="grid gap-2">
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="text-slate-ink">
+                  Location{validDays ? ` ${days} jour${days && days > 1 ? "s" : ""}` : ""} × {formatCents(pricePerDay)}
+                </dt>
+                <dd className="font-semibold text-ink-deep">{rental != null ? formatCents(rental) : "—"}</dd>
+              </div>
+              {option > 0 ? (
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-slate-ink">Set rendu monté</dt>
+                  <dd className="font-semibold text-ink-deep">{formatCents(option)}</dd>
+                </div>
+              ) : null}
+              <div className="flex items-baseline justify-between gap-4 border-t border-slate-ink/15 pt-2">
+                <dt className="font-bold text-ink-deep">Total</dt>
+                <dd className="display text-2xl font-bold text-leaf-deep">
+                  {rental != null ? formatCents(rental + option) : "—"}
+                </dd>
+              </div>
+            </dl>
+            <div className="grid gap-1 text-sm text-slate-ink">
+              <p>Caution {formatCents(set.depositCents)}, bloquée à la remise, jamais débitée sauf casse ou perte.</p>
+              <p>Si vous disposez d&apos;un bon cadeau, vous pourrez le renseigner au moment du paiement.</p>
+            </div>
             <label className="flex items-start gap-3">
               <input type="checkbox" name="terms" required className="mt-1 h-5 w-5 accent-brick" />
               <span>
@@ -207,7 +236,7 @@ export function BookingForm({
             </label>
             <p className="text-sm text-slate-ink">
               Votre demande est examinée par nos soins avant confirmation. Rien n&apos;est à payer
-              maintenant : nous revenons vers vous rapidement pour convenir de l&apos;heure de remise.
+              maintenant : nous revenons vers vous rapidement pour confirmer la remise.
             </p>
             <div>
               <SubmitButton disabled={!validDays || !startDate}>Envoyer ma demande</SubmitButton>

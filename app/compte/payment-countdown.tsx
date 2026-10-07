@@ -25,7 +25,7 @@ export function PaymentCountdown({ dueAt, className = "" }: { dueAt: Date; class
   if (left <= 0) {
     return (
       <p className={`font-semibold text-brick-deep ${className}`} role="status">
-        Le délai de paiement est dépassé. Contactez-nous pour savoir si votre set est encore disponible.
+        Le délai de paiement est dépassé : la réservation est annulée. Vous pouvez refaire une demande depuis le catalogue.
       </p>
     );
   }

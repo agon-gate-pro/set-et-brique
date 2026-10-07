@@ -44,6 +44,8 @@ export function ConfirmButton({
   state = null,
   details,
   pendingLabel = "Suppression…",
+  compact = false,
+  dismissLabel = "Annuler",
 }: {
   children: ReactNode;
   confirmLabel?: string;
@@ -64,6 +66,10 @@ export function ConfirmButton({
   details?: ReactNode;
   /** Libellé du bouton de confirmation pendant l'envoi. */
   pendingLabel?: string;
+  /** Confirmation sur place en petit format, sur une ligne : pour une colonne étroite (ex. liste des bons cadeaux). */
+  compact?: boolean;
+  /** Libellé du lien qui renonce, sur place. « Annuler » prête à confusion quand l'action est elle-même une annulation. */
+  dismissLabel?: string;
 }) {
   const [armed, setArmed] = useState(false);
   const { pending } = useFormStatus();
@@ -126,21 +132,25 @@ export function ConfirmButton({
 
   if (!armed) return trigger;
   return (
-    <span className="inline-flex items-center gap-3">
+    <span className={`inline-flex items-center ${compact ? "gap-2 text-xs" : "gap-3"}`}>
       <button
         type="submit"
         form={form}
         disabled={pending}
-        className="btn btn-brick text-sm py-2 px-3"
+        className={
+          compact
+            ? "whitespace-nowrap rounded-full bg-brick px-3 py-1 font-bold text-paper transition-colors hover:bg-brick-deep disabled:opacity-60 cursor-pointer"
+            : "btn btn-brick text-sm py-2 px-3"
+        }
       >
         {pending ? pendingLabel : confirmLabel}
       </button>
       <button
         type="button"
         onClick={() => setArmed(false)}
-        className="font-bold underline underline-offset-4 cursor-pointer transition-opacity hover:opacity-70"
+        className="whitespace-nowrap font-bold underline underline-offset-4 cursor-pointer transition-opacity hover:opacity-70"
       >
-        Annuler
+        {dismissLabel}
       </button>
     </span>
   );

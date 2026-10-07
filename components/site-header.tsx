@@ -37,18 +37,26 @@ export function SiteHeader() {
   }, [accountOpen]);
 
   const [firstName, setFirstName] = useState<string | null>(null);
+  // Réservations qui attendent le client (payer, répondre à une date proposée) : pastille du compte.
+  const [pendingActions, setPendingActions] = useState(0);
   const loadCustomerName = useCallback(() => {
     fetch("/api/customer-name")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { firstName: string | null; lastName: string | null } | null) => {
+      .then((data: { firstName: string | null; lastName: string | null; pendingActions: number } | null) => {
         setFirstName(data?.firstName || null);
+        setPendingActions(data?.pendingActions ?? 0);
       })
       .catch(() => {});
   }, []);
 
+  // Relu à chaque changement de page : après un paiement ou une réponse à une date proposée,
+  // la pastille suit sans recharger le site.
   useEffect(() => {
     if (user) loadCustomerName();
-  }, [user, loadCustomerName]);
+  }, [user, pathname, loadCustomerName]);
+  // Après une déconnexion, le dernier chiffre lu ne doit pas rester affiché.
+  const actionCount = user ? pendingActions : 0;
+  const pendingLabel = actionCount > 0 ? `, ${actionCount} action${actionCount > 1 ? "s" : ""} en attente` : "";
 
   useEffect(() => {
     window.addEventListener("customer-profile-updated", loadCustomerName);
@@ -129,13 +137,14 @@ export function SiteHeader() {
                   aria-haspopup="menu"
                   aria-expanded={accountOpen}
                   onClick={() => setAccountOpen((v) => !v)}
-                  aria-label={firstName ? `Mon compte (${firstName})` : "Mon compte"}
+                  aria-label={`${firstName ? `Mon compte (${firstName})` : "Mon compte"}${pendingLabel}`}
                   className={`flex items-center gap-2 rounded-full hover:bg-sun/25 transition-colors cursor-pointer ${
                     admin ? "" : "xl:border xl:border-sun-deep/30 xl:bg-sun/15 xl:py-1 xl:pl-1 xl:pr-3.5 xl:shadow-brick-sm"
                   }`}
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sun text-sm font-bold text-ink-deep">
+                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sun text-sm font-bold text-ink-deep">
                     {firstName ? firstName[0].toUpperCase() : null}
+                    <PendingBadge count={actionCount} className="absolute -right-1.5 -top-1.5" />
                   </span>
                   {/* Gérant : avatar seul, la barre porte déjà « Espace de gestion ». */}
                   {firstName && !admin ? (
@@ -155,6 +164,7 @@ export function SiteHeader() {
                     >
                       <ClipboardList className="h-4 w-4" />
                       Mes locations
+                      <PendingBadge count={actionCount} className="ml-auto" />
                     </Link>
                     <Link
                       href="/compte/profil"
@@ -199,13 +209,15 @@ export function SiteHeader() {
           </Link>
           <button
             type="button"
-            className="flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors"
-            aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+            className="relative flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors"
+            aria-label={`${open ? "Fermer le menu" : "Ouvrir le menu"}${pendingLabel}`}
             aria-expanded={open}
             aria-controls="menu-mobile"
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {/* Sur mobile, le rond du compte est dans le menu replié : la pastille se pose sur le burger. */}
+            <PendingBadge count={actionCount} className="absolute -right-2 -top-2" />
           </button>
         </div>
       </div>
@@ -241,9 +253,10 @@ export function SiteHeader() {
             <Link
               href="/compte"
               onClick={() => setOpen(false)}
-              className="font-bold text-lg text-ink-deep py-3"
+              className="flex items-center gap-2 font-bold text-lg text-ink-deep py-3"
             >
               Mes locations
+              <PendingBadge count={actionCount} />
             </Link>
             <Link
               href="/compte/profil"
@@ -274,5 +287,18 @@ export function SiteHeader() {
         </nav>
       </div>
     </header>
+  );
+}
+
+/** Pastille rouge chiffrée (actions en attente du client) ; rien à zéro. */
+function PendingBadge({ count, className = "" }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-5 min-w-5 items-center justify-center rounded-full bg-brick px-1 text-[11px] font-bold leading-none text-white ring-2 ring-paper ${className}`}
+    >
+      {count > 9 ? "9+" : count}
+    </span>
   );
 }

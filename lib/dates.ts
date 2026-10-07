@@ -51,3 +51,14 @@ export function monthStartIso(today: string, offset: number) {
   const [year, month] = today.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().slice(0, 10);
 }
+
+/** Dernière seconde du jour `iso` à Paris (23:59:59, heure d'été comme d'hiver). */
+export function parisEndOfDay(iso: string) {
+  const asUtc = new Date(`${iso}T23:59:59Z`);
+  const offset = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", timeZoneName: "longOffset" })
+    .formatToParts(asUtc)
+    .find((p) => p.type === "timeZoneName")?.value; // « GMT+02:00 »
+  const match = offset?.match(/([+-])(\d{2}):(\d{2})/);
+  const minutes = match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;
+  return new Date(asUtc.getTime() - minutes * 60_000);
+}
