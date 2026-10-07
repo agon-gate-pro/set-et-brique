@@ -31,10 +31,10 @@ export default async function PrintGiftVoucherBatchPage({
       </div>
       <p className="no-print mb-6 text-sm text-slate-ink">
         {batchNumber} · {vouchers.length} bon{vouchers.length > 1 ? "s" : ""} valide{vouchers.length > 1 ? "s" : ""},
-        à découper une fois imprimés.
+        trois par page A4, à découper le long du pointillé une fois imprimés.
       </p>
 
-      <div className="print-area flex flex-wrap gap-[5mm]">
+      <div className="print-area flex flex-col gap-[3mm] overflow-x-auto print:overflow-visible">
         {vouchers.map((voucher) => (
           <PrintVoucherCard key={voucher.id} voucher={voucher} className="break-inside-avoid" />
         ))}

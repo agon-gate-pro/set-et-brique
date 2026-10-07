@@ -344,8 +344,19 @@ h3,
    .print-area lui-même, ses descendants (`.print-area *` — son propre contenu, oublié au
    premier essai : la carte restait vide, seul son cadre en pointillés s'imprimait), et ses
    ancêtres (`:has(.print-area)`, sinon le chemin jusqu'à lui serait coupé). .no-print
-   masque en plus un élément précis à l'intérieur (ex. le bouton Imprimer). */
+   masque en plus un élément précis à l'intérieur (ex. le bouton Imprimer).
+   Marge de page réduite à 5 mm : le bon cadeau fait 200 mm de large et ne tiendrait pas
+   dans une A4 avec la marge par défaut des navigateurs (~10 mm). `print-color-adjust`
+   garde le rouge et le vert du bon même si « graphiques d'arrière-plan » est décoché. */
+@page {
+  size: A4 portrait;
+  margin: 5mm;
+}
 @media print {
+  .print-area {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
   body *:not(.print-area):not(.print-area *):not(:has(.print-area)) {
     display: none !important;
   }
