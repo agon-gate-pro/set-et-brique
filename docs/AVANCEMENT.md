@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 6 octobre 2026.
+Dernière mise à jour : 7 octobre 2026.
 
 ## 1. Où on en est
 
@@ -14,10 +14,10 @@ Dernière mise à jour : 6 octobre 2026.
 | 4. Paiement Stripe | **Pas commencé** | Colonnes Stripe prévues en base, statut `pending_payment` | Tout le paiement, la caution, les délais de blocage (1 h, 15 min). Bloqué par deux questions ouvertes, voir §3 |
 | 5. Tunnel de réservation | **Fait** | Set → dates → lieu → coordonnées → CG → demande en attente ; validation manuelle par les gérants : accepter, refuser, proposer d'autres dates ; réponse du client ; annulation. Le calendrier de dates est consultable **sans compte** ; la connexion n'est demandée qu'à la validation des dates choisies, qui sont reprises telles quelles au retour | Paiement (module 4), bon cadeau (module 6) |
 | 6. Bons cadeaux | **Commencé** | Table `gift_vouchers` (migrations 0010, 0013) : montant, origine achat/admin, statut valide/utilisé/annulé, **numéro de lot** (`LOT-0001`…, un par génération même à l'unité), note interne, expiration. Écran admin `/admin/bons-cadeaux` : génération en fenêtre (bouton « Créer des bons cadeaux »), liste en tableau groupée par lot (repliable), filtres, marquer utilisé, annuler, impression d'un bon (page dédiée + styles `@media print`). Côté public : page `/bons-cadeaux` (montants, conditions), lien dans le header, bandeau sur l'accueil ; « Commander ce bon » demande la connexion puis ouvre le récapitulatif de l'achat (bouton « Payer » sans effet pour l'instant) ; saisie et vérification d'un code dans le récapitulatif de paiement de l'espace client (déduction affichée, bon pas encore consommé) | Paiement en ligne derrière le bouton « Payer » et création du bon acheté (module 4), utilisation comme moyen de paiement dans le tunnel de réservation, email d'envoi du bon |
-| 7. Contrat et CG | **Fait en partie** | Case à cocher obligatoire, horodatée en base ; conditions générales de location publiées sur `/cgl` (texte de la cliente, version du 26 septembre 2026), liées depuis la case | Contrat PDF généré, version des conditions acceptée gardée avec la réservation, médiateur de la consommation à nommer (article 16) |
+| 7. Contrat et CG | **Fait en partie** | Case à cocher obligatoire, horodatée en base ; conditions générales de location publiées sur `/cgl` (texte validé par la cliente, version du 7 octobre 2026), liées depuis la case | Contrat PDF généré, version des conditions acceptée gardée avec la réservation |
 | 8. Notes | **Pas commencé** | | Tout. La facturation est remplacée par l'émission de notes (révision de la spécification du 18 septembre 2026) : génération au paiement, mentions allégées, numéro `aaaa-mm-##`, note complémentaire pour le retard, export par lot en zip |
 | 9. État des lieux et dommages | **Commencé** | Statut « En réparation » et note interne par exemplaire, état des lieux en commentaire libre au retour, retard calculé et affiché | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits, et le solde de la restitution par deux boutons (Restitution conforme / Établir une note complémentaire) |
-| 10. Notifications | **Pas commencé** | Historique `booking_events` sur lequel se brancher | Fournisseur d'email à choisir (aucune clé dans le projet), templates modifiables |
+| 10. Notifications | **Commencé** | Resend via la Vercel Marketplace ; e-mails de la réservation (demande reçue, nouvelle demande aux gérants, acceptée, refusée, annulation, remise modifiée, set remis, set rendu) ; rappels veille, jour du retour et retard (tâche planifiée quotidienne), rappel de retard suspendable ; journal `email_log` visible dans l'historique d'une réservation | Domaine d'envoi `set-et-brique.com` à vérifier (DNS), `CRON_SECRET` dans Vercel ; e-mails liés au paiement (caution prélevée, annulation pour non-paiement) et au bon cadeau ; textes modifiables par les gérants |
 | 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord (blocs cliquables, CA du jour/semaine/mois), sets (tableau avec recherche et filtres), forfaits, lieux, fermetures, réservations, bons cadeaux, statistiques (CA 12 mois, sets les plus loués, taux d'occupation 30 jours, bons cadeaux). Rôles admin et superadmin | Contenus du site, maintenance, réglages, export des ventes sur une période (champs début et fin, bouton année civile ; CA total + une ligne par client) et export des notes par lot en zip |
 | 12. Déploiement et formation | **En cours** | Déploiement Vercel automatique, base Neon partagée | Instance Clerk de production, domaine final, formation |
 
@@ -62,14 +62,16 @@ Rapport avec la spécification (module 4) : les délais de 1 h (carte refusée) 
 
 **Bons cadeaux, commande par e-mail en attendant Stripe** (24 septembre 2026, message préparé pour Marion par Alexis) : Marion accepte-t-elle de prendre les commandes de bons par e-mail depuis le site ? Si oui, quel règlement pour ces commandes (virement, espèces, TPE à la remise) ? Faut-il mettre un montant en avant (« le plus offert ») ou laisser les trois au même niveau ? La page `/bons-cadeaux` est en ligne avec la commande par e-mail ; elle sera ajustée selon ses réponses. **Mise de côté le 5 octobre 2026** (décision d'Alexis) : le paiement en ligne arrive, les boutons « Commander ce bon » mènent désormais au récapitulatif d'achat, plus à un e-mail.
 
-**Conditions générales de location, points à faire remonter à Marion** (5 octobre 2026, à transmettre par Alexis ; texte publié tel quel sur `/cgl` en attendant) :
+**Conditions générales de location, points à faire remonter à Marion** (5 octobre 2026, à transmettre par Alexis). **Version validée par la cliente le 7 octobre 2026**, publiée sur `/cgl` : elle tranche le médiateur et la mention « version de travail », ramène le forfait démontage à 15 € et laisse le reste du texte inchangé. Restent ouverts les points sur le prix, les lieux et le démontage :
 
-- **Article 16, médiateur** : le texte dit « le médiateur de la consommation compétent : à choisir par ses soins ». Il faut le nom et les coordonnées d'un médiateur à la place.
+- ~~**Article 16, médiateur**~~ : réglé le 7 octobre 2026, le texte nomme le Médiateur des entreprises, avec le lien vers son formulaire. À faire confirmer par la cliente : ce médiateur traite d'ordinaire les litiges entre entreprises, il ne figure pas forcément sur la liste des médiateurs de la consommation référencés.
 - **Article 5, prix et durée** : 2 € par jour et durée minimale d'un jour, fixés dans le texte ; le site gère un forfait par set et une durée minimale réglable. Le texte doit-il rester chiffré, ou renvoyer au prix affiché sur la fiche du set ?
-- **Article 8, démontage** : forfait de 20 € retenu sur la garantie ; le site propose l'option « rendre le set monté » à un prix propre à chaque set, payée à la réservation. Les deux coexistent-ils (option choisie à l'avance / forfait constaté au retour), et à quels montants ?
+- **Article 8, démontage** : forfait de 15 € retenu sur la garantie (20 € jusqu'à la version du 7 octobre 2026) ; le site propose l'option « rendre le set monté » à un prix propre à chaque set, payée à la réservation. Les deux coexistent-ils (option choisie à l'avance / forfait constaté au retour), et à quels montants ?
 - **Article 7, lieux** : cinq points nommés (Lanester, Guidel, Brec'h, Lorient, Plouay), à vérifier contre les lieux actifs de l'espace de gestion ; tout ajout ou retrait de lieu oblige à retoucher le texte.
 - **Article 17, version acceptée** : la version applicable est celle acceptée à la commande, or le site n'enregistre que la date d'acceptation. Pas une question pour Marion, mais à construire avec le contrat PDF (module 7).
-- **Mention « version de travail »** : non affichée sur le site (« Version du 26 septembre 2026 »). Le texte est-il définitif ?
+- ~~**Mention « version de travail »**~~ : réglé le 7 octobre 2026, le texte est validé par la cliente.
+
+**E-mails, à faire valider par Marion** (7 octobre 2026) : les points en fin du document « E-mails automatiques » restent ouverts (pièce d'identité, moyens de paiement, rappel des pénalités dans l'e-mail de remise, avis Google, horaires de retour, signature « Marion et Gaëtan », accusé d'annulation au client). Deux sont tranchés provisoirement dans le code : l'accusé d'annulation est envoyé, et les pénalités restent rappelées dans l'e-mail de remise. L'e-mail d'acceptation annonce un paiement en ligne sous 24 h qui n'existe pas encore, et le rappel de retard un forfait de 30 € qui n'est prélevé nulle part : à garder en tête tant que Stripe n'est pas branché.
 
 Autres points à poser quand l'occasion se présente :
 
@@ -80,7 +82,7 @@ Autres points à poser quand l'occasion se présente :
 
 ## 4. Prochaines étapes, dans l'ordre proposé
 
-1. Emails transactionnels : choisir un fournisseur (Resend est le plus simple avec Vercel), ajouter la clé dans Vercel, envoyer aux transitions demande reçue / acceptée / refusée, puis set remis / set rendu. Les gérants doivent pouvoir modifier les textes (module 10).
+1. Emails transactionnels : **construits le 7 octobre 2026** (voir journal). Reste : vérifier le domaine d'envoi, faire valider les textes par Marion, puis les rendre modifiables par les gérants (module 10).
 2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées — avec le délai de 24 h pour régler après acceptation (voir §3).
 3. Contenus du site et réglages dans l'admin (avis, presse, textes, battement par défaut).
 4. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF (7), bons cadeaux (6), reporting et exports (11).
@@ -97,6 +99,12 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 7 octobre 2026
+
+- **E-mails transactionnels avec Resend** (module 10 ; `lib/email/`, `app/api/cron/rappels/route.ts`, `vercel.json`, migration `0018_email_log`). Resend ajouté depuis la Vercel Marketplace (région UE, domaine `set-et-brique.com`). Modèles écrits d'après le document « E-mails automatiques » (version de travail du 1er octobre 2026), avec les accroches envoyées par la cliente le 7 octobre en tête des sept e-mails concernés (typographie seule retouchée : espace avant « ! », « chefs-d'œuvre »). Envoyés après la réponse (`after()`), sans jamais faire échouer l'action : demande reçue (client + gérants), acceptée, refusée, annulée par le client (gérants + accusé au client), remise modifiée (seulement si le lieu ou l'heure change), set remis, set rendu. Rappels de fin de location par une tâche planifiée quotidienne : veille, jour du retour, retard (J+1), un seul envoi par étape ; bouton « Suspendre le rappel de retard » sur la fiche d'une réservation en cours. Journal `email_log`, affiché dans l'onglet Historique. Choix de l'e-mail d'acceptation : **version paiement en ligne sous 24 h** (bouton « Régler ma réservation »), alors que le paiement n'est pas encore branché. Écarts volontaires avec le document, pour coller aux CGL validées : caution présentée comme une empreinte bancaire, retour « au même endroit » sans heure imposée, au retour « nous contrôlons le set dans les 48 heures puis libérons votre caution ». Hors périmètre : B4 (caution prélevée) et B5 (non-paiement) attendent Stripe, C1 (bon cadeau) l'achat en ligne, textes modifiables par les gérants. Vérifié : types, lint, build, rendu des douze modèles sur une réservation réelle (aucun envoi). Pas vérifié : un envoi réel, faute de domaine vérifié.
+
+- **Conditions générales de location, version validée** (`app/cgl/page.tsx`). La cliente a validé le texte (PDF du 7 octobre 2026). Trois écarts avec la version du 26 septembre, repris sur `/cgl` : date de version, forfait démontage de l'article 8 ramené de 20 € à 15 €, et médiateur de l'article 16 nommé (Médiateur des entreprises, avec un lien vers son formulaire qui s'ouvre dans un nouvel onglet). Le reste du texte est identique. Point à faire confirmer, voir §3 : le Médiateur des entreprises n'est pas, d'ordinaire, un médiateur de la consommation.
 
 ### 6 octobre 2026
 

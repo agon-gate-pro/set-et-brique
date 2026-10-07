@@ -13,6 +13,12 @@ export const metadata: Metadata = { title: "Réservation", robots: { index: fals
 export const dynamic = "force-dynamic";
 
 const actorLabels = { customer: "client", admin: "gérants", system: "système" } as const;
+const emailStatusLabels: Record<string, string> = {
+  sent: "envoyé",
+  failed: "échec de l'envoi",
+  skipped: "non envoyé, Resend pas configuré",
+  pending: "en cours",
+};
 const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
 
 export default async function BookingPage({ params }: PageProps<"/admin/reservations/[id]">) {
@@ -29,6 +35,11 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
     },
   });
   if (!booking) notFound();
+  const emails = await db
+    .select()
+    .from(schema.emailLog)
+    .where(eq(schema.emailLog.bookingId, id))
+    .orderBy(asc(schema.emailLog.createdAt));
   const pickupPoints = await db
     .select({ id: schema.pickupPoints.id, name: schema.pickupPoints.name })
     .from(schema.pickupPoints)
@@ -141,6 +152,17 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                   <li key={e.id}>
                     <span className="text-sm">{dateTime.format(e.createdAt)}</span> · {e.message ?? ""}
                     {e.toStatus ? ` → ${bookingStatusLabels[e.toStatus]}` : ""} <span className="text-sm">({actorLabels[e.actor]})</span>
+                  </li>
+                ))}
+                {emails.length > 0 ? (
+                  <li className="pt-3 mt-3 border-t border-slate-ink/10 font-semibold text-ink-deep">E-mails</li>
+                ) : null}
+                {emails.map((m) => (
+                  <li key={m.id}>
+                    <span className="text-sm">{dateTime.format(m.createdAt)}</span> · {m.subject}{" "}
+                    <span className="text-sm">
+                      ({m.recipient}, {emailStatusLabels[m.status] ?? m.status})
+                    </span>
                   </li>
                 ))}
               </ol>

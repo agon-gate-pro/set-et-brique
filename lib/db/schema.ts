@@ -308,6 +308,11 @@ export const bookings = pgTable(
     returnedAt: timestamp("returned_at", { withTimezone: true }),
     /** État des lieux au retour, commentaire libre des gérants (spécification, module 9). */
     returnNote: text("return_note"),
+    /**
+     * Séquence de rappels de fin de location suspendue par les gérants (retard convenu avec le
+     * client) : le rappel de retard (J+1) ne part plus. Voir `lib/email/reminders.ts`.
+     */
+    remindersPaused: boolean("reminders_paused").notNull().default(false),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     ...timestamps,
   },
@@ -459,6 +464,32 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
   events: many(bookingEvents),
 }));
 
+/**
+ * Journal des e-mails envoyés par la plateforme (module 10), un par destinataire et par envoi.
+ * Les rappels de fin de location (`reminder_*`) n'ont qu'une ligne par réservation : l'index
+ * unique sert de verrou, deux passages de la tâche planifiée n'envoient pas deux fois le même.
+ */
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }),
+    /** Modèle envoyé, voir `EmailKind` dans `lib/email/booking-emails.ts`. */
+    kind: text("kind").notNull(),
+    recipient: text("recipient").notNull(),
+    subject: text("subject").notNull(),
+    /** `sent`, `failed`, ou `skipped` quand l'envoi n'est pas configuré (pas de clé Resend). */
+    status: text("status").notNull(),
+    providerId: text("provider_id"),
+    error: text("error"),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [
+    index("email_log_booking_id_idx").on(t.bookingId),
+    uniqueIndex("email_log_reminder_idx").on(t.bookingId, t.kind).where(sql`${t.kind} like 'reminder_%'`),
+  ],
+);
+
 export const bookingEventsRelations = relations(bookingEvents, ({ one }) => ({
   booking: one(bookings, { fields: [bookingEvents.bookingId], references: [bookings.id] }),
 }));
@@ -476,6 +507,7 @@ export type PickupPoint = typeof pickupPoints.$inferSelect;
 export type BlackoutPeriod = typeof blackoutPeriods.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type BookingEvent = typeof bookingEvents.$inferSelect;
+export type EmailLog = typeof emailLog.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type PressArticle = typeof pressArticles.$inferSelect;
 export type BookingStatus = (typeof bookingStatus.enumValues)[number];

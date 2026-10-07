@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Texte fourni par la cliente (version du 26 septembre 2026), repris tel quel : c'est un document
+ * Texte validé par la cliente (version du 7 octobre 2026), repris tel quel : c'est un document
  * contractuel, ses chiffres et ses coordonnées sont donc écrits en dur, pas tirés de `lib/site.ts`
  * ni de la base. Toute modification du texte vient d'elle.
  */
@@ -75,7 +75,7 @@ export default function RentalTermsPage() {
           <br className="hidden sm:block" /> de location
         </h1>
         <p className="mt-4 text-lg text-slate-ink">
-          Version du <strong className="text-ink-deep">26 septembre 2026</strong>
+          Version du <strong className="text-ink-deep">7 octobre 2026</strong>
         </p>
         <div className="mt-6 flex items-center gap-3">
           <span className="block h-1 w-12 rounded-full bg-brick" />
@@ -239,7 +239,7 @@ export default function RentalTermsPage() {
               <p>
                 Le client restitue le set démonté, trié et nettoyé, avec son contenant, sa notice,
                 ses figurines et les autres éléments reçus. Si Set et Brique doit effectuer le
-                démontage, le tri ou le nettoyage à sa place, elle retient un forfait de 20 € sur la
+                démontage, le tri ou le nettoyage à sa place, elle retient un forfait de 15 € sur la
                 garantie.
               </p>
             </Article>
@@ -405,8 +405,17 @@ export default function RentalTermsPage() {
               </p>
               <p>
                 Après une réclamation écrite restée sans solution, le client consommateur peut
-                saisir gratuitement le médiateur de la consommation compétent : à choisir par ses
-                soins. Il conserve le droit de saisir une juridiction compétente.
+                saisir gratuitement le médiateur de la consommation compétent : le Médiateur des
+                entreprises, via le lien{" "}
+                <a
+                  href="https://demarche.numerique.gouv.fr/commencer/mediateur-des-entreprises-contacter-le-mediateur"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${linkClass} break-all`}
+                >
+                  demarche.numerique.gouv.fr/commencer/mediateur-des-entreprises-contacter-le-mediateur
+                </a>
+                . Il conserve le droit de saisir une juridiction compétente.
               </p>
             </Article>
 

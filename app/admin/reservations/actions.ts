@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { daysLate, todayIso } from "@/lib/availability";
 import { paymentDeadline } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
+import { queueBookingEmails } from "@/lib/email/booking-emails";
 import { firstError, formToObject, handoverSchema, pickupSchema, refuseBookingSchema, returnSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
 import type { BookingStatus } from "@/lib/db/schema";
@@ -50,6 +51,7 @@ export async function acceptBooking(_: ActionState, formData: FormData): Promise
   const r = await loadBooking(id, ["pending_review"]);
   if ("error" in r) return { error: r.error };
   await transition(id, r.booking.status, "pending_payment", "Demande acceptée", { paymentDueAt: paymentDeadline() });
+  queueBookingEmails("accepted", id);
   revalidate(id);
   return { ok: "Demande acceptée. Pensez à convenir de l'heure de remise avec le client." };
 }
@@ -68,6 +70,7 @@ export async function refuseBooking(_: ActionState, formData: FormData): Promise
     proposedStartDate: null,
     proposedEndDate: null,
   });
+  queueBookingEmails("refused", id);
   revalidate(id);
   return { ok: "Demande refusée." };
 }
@@ -104,6 +107,10 @@ export async function updateHandover(_: ActionState, formData: FormData): Promis
       message: `Remise modifiée : ${point.name} à ${parsed.data.pickupTime}`,
     });
   });
+  // Le client n'est prévenu que si le rendez-vous change vraiment.
+  if (point.id !== r.booking.pickupPointId || parsed.data.pickupTime !== r.booking.pickupTime?.slice(0, 5)) {
+    queueBookingEmails("handover_changed", id);
+  }
   revalidate(id);
   return { ok: `Remise modifiée : ${point.name} à ${parsed.data.pickupTime}.` };
 }
@@ -131,6 +138,7 @@ export async function markPickedUp(_: ActionState, formData: FormData): Promise<
   await transition(id, r.booking.status, "picked_up", note ? `Set remis au client. ${note}` : "Set remis au client", {
     pickedUpAt: atDay(parsed.data.date),
   });
+  queueBookingEmails("picked_up", id);
   revalidate(id);
   return { ok: `Remise enregistrée. Retour attendu le ${r.booking.endDate.split("-").reverse().join("/")}.` };
 }
@@ -154,8 +162,33 @@ export async function markReturned(_: ActionState, formData: FormData): Promise<
     returnedAt: atDay(parsed.data.date),
     returnNote: parsed.data.returnNote,
   });
+  queueBookingEmails("returned", id);
   revalidate(id);
   return { ok: late > 0 ? `Retour enregistré, ${late} jour${late > 1 ? "s" : ""} de retard.` : "Retour enregistré." };
+}
+
+/**
+ * Suspendre ou reprendre les rappels de retard par e-mail (retard convenu avec le client) :
+ * tant que la séquence est suspendue, le rappel J+1 et son forfait de 30 € ne partent pas.
+ */
+export async function toggleReminders(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const paused = formData.get("paused") === "true";
+  const r = await loadBooking(id, ["picked_up"]);
+  if ("error" in r) return { error: r.error };
+  await db.transaction(async (tx) => {
+    await tx.update(schema.bookings).set({ remindersPaused: paused }).where(eq(schema.bookings.id, id));
+    await tx.insert(schema.bookingEvents).values({
+      bookingId: id,
+      actor: "admin",
+      fromStatus: null,
+      toStatus: null,
+      message: paused ? "Rappel de retard suspendu" : "Rappel de retard réactivé",
+    });
+  });
+  revalidate(id);
+  return { ok: paused ? "Rappel de retard suspendu pour cette location." : "Rappel de retard réactivé." };
 }
 
 export async function saveAdminNote(_: ActionState, formData: FormData): Promise<ActionState> {

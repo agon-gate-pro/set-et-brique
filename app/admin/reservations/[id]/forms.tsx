@@ -5,7 +5,16 @@ import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/c
 import type { Booking, Customer } from "@/lib/db/schema";
 import { daysLate, todayIso } from "@/lib/dates";
 import { formatDate, formatTime } from "@/lib/format";
-import { acceptBooking, markPickedUp, markReturned, refuseBooking, saveAdminNote, toggleCustomerBlock, updateHandover } from "../actions";
+import {
+  acceptBooking,
+  markPickedUp,
+  markReturned,
+  refuseBooking,
+  saveAdminNote,
+  toggleCustomerBlock,
+  toggleReminders,
+  updateHandover,
+} from "../actions";
 
 /** Remise en main propre puis retour du set : les deux gestes du quotidien. */
 export function HandoverActions({ booking }: { booking: Booking }) {
@@ -63,6 +72,7 @@ export function HandoverActions({ booking }: { booking: Booking }) {
           </div>
           <FormMessage state={returnState} />
         </form>
+        <RemindersToggle booking={booking} />
       </section>
     );
   }
@@ -146,6 +156,26 @@ export function ReviewActions({
         </div>
       </div>
     </section>
+  );
+}
+
+/** Rappels de fin de location : la veille et le jour du retour, puis le rappel de retard (J+1). */
+function RemindersToggle({ booking }: { booking: Booking }) {
+  const [state, action] = useActionState(toggleReminders, null);
+  return (
+    <form action={action} className="mt-6 pt-4 border-t border-slate-ink/10 grid gap-2">
+      <input type="hidden" name="id" value={booking.id} />
+      <input type="hidden" name="paused" value={booking.remindersPaused ? "false" : "true"} />
+      <p className="text-sm text-slate-ink">
+        {booking.remindersPaused
+          ? "Rappel de retard suspendu : le client ne recevra pas l'e-mail du lendemain de la date de retour (forfait de 30 €)."
+          : "Le client reçoit un e-mail la veille et le jour du retour, puis, si le set n'est pas rendu, un rappel de retard le lendemain (forfait de 30 €). Retard convenu avec lui ? Suspendez ce rappel."}
+      </p>
+      <div>
+        <SubmitButton variant="paper">{booking.remindersPaused ? "Réactiver le rappel de retard" : "Suspendre le rappel de retard"}</SubmitButton>
+      </div>
+      <FormMessage state={state} />
+    </form>
   );
 }
 

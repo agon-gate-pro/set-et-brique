@@ -22,6 +22,7 @@ Set et Brique loue de grands sets de briques de construction autour de Lorient. 
 | Comptes | Clerk | Inscription, connexion, rôles admin |
 | Paiement | Stripe | Paiement de la location et empreinte pour la caution |
 | Fichiers | Vercel Blob | Photos des sets |
+| E-mails | Resend (via Vercel Marketplace) | E-mails transactionnels de la réservation et rappels de fin de location (§10 bis) |
 | Hébergement | Vercel, projet `set-et-brique` | Déploiement automatique à chaque push sur `main` |
 
 Dépôt : `agon-gate-pro/set-et-brique`. Démo : https://set-et-brique.vercel.app.
@@ -116,6 +117,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 - `bookings` : une réservation = un client, un set, des dates, un exemplaire attribué dès la demande, un lieu de remise, les montants (`rental_cents`, `deposit_cents`, et `disassembly_cents` si l'option « rendre le set monté » a été choisie, voir Prix) et les identifiants Stripe. Les montants sont en centimes d'euro, en entiers, pour éviter les erreurs d'arrondi. Le champ `reference` est un code court (`SB-` + 5 caractères sans ambiguïté) communiqué au client. `proposed_start_date` / `proposed_end_date` portent une autre date proposée par les gérants, `cancel_reason` le motif visible du client, `terms_accepted_at` l'acceptation des conditions générales.
 - `booking_events` : historique des changements de statut et des actions, avec l'auteur (`customer`, `admin`, `system`).
+- `email_log` (migration 0018) : journal des e-mails envoyés, une ligne par destinataire et par envoi (`kind`, destinataire, objet, `status` : `sent`, `failed`, `skipped` sans clé Resend, `pending` le temps d'un rappel en cours ; identifiant Resend, erreur). Un index unique partiel sur (`booking_id`, `kind`) pour les `kind` en `reminder_%` garantit un seul rappel par étape. `bookings.reminders_paused` (même migration, faux par défaut) suspend le rappel de retard.
 
 **Bons cadeaux**
 
@@ -356,7 +358,7 @@ Le calendrier réutilise `findFreeCopy` et `isInBlackout` de `lib/availability-c
 
 Une fois la période choisie, le client renseigne l'heure de remise souhaitée (`pickup_time`, par quart d'heure, dans la plage horaire du lieu choisi s'il en a une, confirmée ou ajustée par les gérants), le lieu de remise parmi les lieux actifs, laisse un message facultatif, renseigne ses coordonnées et coche les conditions générales. Le bouton d'envoi reste désactivé tant qu'aucune période n'est choisie. Le total (prix par jour × jours) et la date de retour s'affichent en direct ; la fin est comptée en jours calendaires (mardi + 4 jours = vendredi). Aucun paiement à cette étape.
 
-**Conditions générales de location** (5 octobre 2026) : la case à cocher renvoie vers `/cgl` (`app/cgl/page.tsx`), ouverte dans un nouvel onglet pour ne pas perdre le formulaire. Elle pointait jusque-là vers `/cgu`, qui sont les conditions d'*utilisation* du site, un autre document. La page reprend tel quel le texte fourni par la cliente (version du 26 septembre 2026, 17 articles, deux barèmes en tableau : pièces manquantes et annulation), dans la mise en page des CGU ; lien « Conditions de location » dans le pied de page. C'est un document contractuel : ses chiffres (2 € par jour, forfait démontage de 20 €, cinq points de remise, durée minimale d'un jour) et ses coordonnées sont écrits en dur, **pas** tirés de la base ni de `lib/site.ts`. Ils peuvent donc diverger de ce que le site applique réellement (forfait par set, prix de démontage par set, lieux actifs, réglage `min_rental_days`) : toute évolution de ces réglages est à rapprocher du texte, et toute modification du texte vient de la cliente. La version acceptée n'est pas enregistrée avec la réservation (seul l'horodatage l'est), alors que l'article 17 dit que c'est elle qui s'applique : à prévoir avec le contrat PDF (module 7).
+**Conditions générales de location** (5 octobre 2026) : la case à cocher renvoie vers `/cgl` (`app/cgl/page.tsx`), ouverte dans un nouvel onglet pour ne pas perdre le formulaire. Elle pointait jusque-là vers `/cgu`, qui sont les conditions d'*utilisation* du site, un autre document. La page reprend tel quel le texte validé par la cliente (version du 7 octobre 2026, qui remplace celle du 26 septembre ; 17 articles, deux barèmes en tableau : pièces manquantes et annulation ; médiateur de l'article 16 avec un lien externe), dans la mise en page des CGU ; lien « Conditions de location » dans le pied de page. C'est un document contractuel : ses chiffres (2 € par jour, forfait démontage de 15 €, cinq points de remise, durée minimale d'un jour) et ses coordonnées sont écrits en dur, **pas** tirés de la base ni de `lib/site.ts`. Ils peuvent donc diverger de ce que le site applique réellement (forfait par set, prix de démontage par set, lieux actifs, réglage `min_rental_days`) : toute évolution de ces réglages est à rapprocher du texte, et toute modification du texte vient de la cliente. La version acceptée n'est pas enregistrée avec la réservation (seul l'horodatage l'est), alors que l'article 17 dit que c'est elle qui s'applique : à prévoir avec le contrat PDF (module 7).
 
 Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clair si : le set n'est plus publié, le lieu n'est pas actif, la remise ou le retour tombe dans une fermeture, aucun exemplaire n'est libre, ou le compte est bloqué. Sinon la réservation est créée en `pending_review` avec sa référence, et le client est redirigé vers `/compte`, où il suit ses demandes, accepte une date proposée ou annule. Chaque carte lui dit où en est la location : remise prévue le, set récupéré le et à rendre le, retour en retard (avec invitation à contacter les gérants), set rendu le (spécification, module 3).
 
@@ -387,6 +389,28 @@ Son émission se décide **à la restitution**, dans l'écran Réservations : l'
 Le nom du client figure sur la note **sauf opposition de sa part**, exprimée par un réglage de son espace client. Cette opposition ne vaut que pour la note : le récapitulatif des ventes du back-office garde le nom, puisqu'il sert au recoupement comptable.
 
 Deux exports depuis l'admin les accompagnent (module 11) : l'**export des ventes** sur une période — chiffre d'affaires total, puis une ligne par client avec la date de paiement et le set loué — et l'**export des notes** émises sur une période, par lot, dans un zip. La période se choisit avec deux champs **début** et **fin**, doublés d'un **bouton « année civile »** et de son sélecteur d'année qui remplit les deux champs.
+
+## 10 bis. E-mails (module 10)
+
+Envoi par **Resend**, ressource de la Vercel Marketplace rattachée au projet (`RESEND_API_KEY` posée par l'intégration, région UE). Code dans `lib/email/` :
+
+- `send.ts` : `sendEmail()`, l'unique point d'envoi. Expéditeur `EMAIL_FROM` (par défaut « Set et Brique <bonjour@set-et-brique.com> », domaine à vérifier chez Resend), réponse à `site.email` pour que « Répondre » arrive chez Marion. Chaque envoi est journalisé dans `email_log`. **Un envoi raté ne fait jamais échouer l'action** qui l'a déclenché. Sans `RESEND_API_KEY`, rien ne part (journalisé `skipped`). `EMAIL_TEST_RECIPIENT`, si elle est renseignée, détourne **tous** les e-mails vers cette adresse (objet préfixé `[test → vrai destinataire]`) : à poser en local, puisque la base est partagée avec la production et que les clients y sont réels.
+- `layout.ts` : mise en page commune (accroche, blocs, encadré, liste, bouton, signature « Marion et Gaëtan » et pied de page du document). Chaque e-mail part en HTML (styles en ligne) et en texte brut. Liens absolus construits sur `site.url`.
+- `booking-emails.ts` : les modèles, d'après le document « E-mails automatiques » (version de travail du 1er octobre 2026), avec en tête les accroches de la cliente (7 octobre 2026) sur la demande reçue, l'acceptation, le refus, la remise, la veille du retour, le retard et le retour. `queueBookingEmails(événement, id)` envoie après la réponse (`after()` de Next) ; il est appelé à la fin de chaque action, une fois la base écrite :
+
+| Événement | Où | E-mails |
+| --- | --- | --- |
+| `requested` | tunnel (`submitBookingRequest`) | A1 au client, A2 aux gérants (`site.email`) |
+| `accepted` | `acceptBooking`, et `acceptProposedDate` côté client | A3 : version paiement en ligne sous 24 h (choix du 7 octobre 2026), échéance tirée de `payment_due_at`, bouton vers `/compte?payer=<référence>` |
+| `refused` | `refuseBooking` | A4, avec le motif s'il a été saisi |
+| `cancelled_by_customer` | `cancelRequest` | A5 aux gérants, A5 bis (accusé) au client |
+| `handover_changed` | `updateHandover`, seulement si le lieu ou l'heure change | A6 |
+| `picked_up` | `markPickedUp` | A7 |
+| `returned` | `markReturned` | A8 |
+
+- `reminders.ts` : rappels de fin de location, envoyés par la tâche planifiée `GET /api/cron/rappels` (`vercel.json`, tous les jours à 7 h UTC, soit 8 h ou 9 h à Paris ; Vercel envoie `Authorization: Bearer <CRON_SECRET>`, la route refuse sans). Pour chaque set remis (`picked_up`) : B1 si le retour est demain, B2 s'il est aujourd'hui, B3 (retard, forfait de 30 €) s'il était hier, sauf si les gérants ont suspendu ce rappel (bouton « Suspendre le rappel de retard » sous le retour du set, inscrit à l'historique). La ligne de `email_log` est réservée avant l'envoi et l'index unique écarte un doublon ; une étape manquée n'est pas rattrapée. B4 (caution prélevée à J+2) et B5 (annulation pour non-paiement) attendent le paiement Stripe ; C1 (bon cadeau) attend l'achat en ligne.
+
+La fiche d'une réservation (onglet Historique) liste les e-mails envoyés pour elle, avec leur état.
 
 ## 11. Ce qui reste à faire
 

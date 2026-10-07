@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { findCustomerByClerkId, paymentDeadline } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
+import { queueBookingEmails } from "@/lib/email/booking-emails";
 import { giftVoucherDisplayStatus } from "@/lib/gift-vouchers-core";
 import type { ActionState } from "@/components/admin/form";
 
@@ -84,6 +85,7 @@ export async function acceptProposedDate(_: ActionState, formData: FormData): Pr
       message: "Nouvelle date acceptée par le client",
     });
   });
+  queueBookingEmails("accepted", booking.id);
   revalidate();
   return { ok: "Nouvelle date acceptée. Nous revenons vers vous pour la remise." };
 }
@@ -107,6 +109,7 @@ export async function cancelRequest(_: ActionState, formData: FormData): Promise
       message: booking.status === "date_proposed" ? "Nouvelle date refusée par le client" : "Demande annulée par le client",
     });
   });
+  queueBookingEmails("cancelled_by_customer", booking.id);
   revalidate();
   return { ok: "Demande annulée." };
 }

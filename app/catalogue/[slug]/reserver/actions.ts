@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { BookingError, createBookingRequest, upsertCustomer } from "@/lib/bookings";
+import { queueBookingEmails } from "@/lib/email/booking-emails";
 import { bookingRequestSchema, firstError, formToObject } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
 
@@ -45,6 +46,7 @@ export async function submitBookingRequest(_: ActionState, formData: FormData): 
       returnAssembled: d.returnAssembled,
     });
     reference = booking.reference;
+    queueBookingEmails("requested", booking.id);
   } catch (e) {
     if (e instanceof BookingError) return { error: e.message };
     throw e;
