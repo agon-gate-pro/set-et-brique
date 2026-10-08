@@ -7,6 +7,7 @@ import { bookingStatusLabels, formatCents, formatDateShort, formatTime } from "@
 import { neutralBadge, statusTone } from "./status-tone";
 import type { BookingStatus } from "@/lib/db/schema";
 import { BookingDialog } from "./booking-dialog";
+import { FilterBar } from "@/components/admin/filter-bar";
 
 export type BookingRow = {
   id: string;
@@ -137,7 +138,20 @@ export function BookingsTable({
 
   return (
     <>
-      <div className="mt-4 brick-card bg-sky p-4 sm:p-5 flex flex-wrap items-end gap-4">
+      <FilterBar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Référence, client, téléphone ou set"
+        activeCount={(selectedGroups.size > 0 ? 1 : 0) + (pickupPointId ? 1 : 0)}
+        hasFilters={hasFilters}
+        onReset={() => {
+          setSelectedGroups(new Set());
+          setQuery("");
+          setPickupPointId("");
+        }}
+        resultCount={sorted.length}
+        defaultOpen={initialGroups.length > 0 || Boolean(initialPickupPointId)}
+      >
         <div className="relative block" ref={statusRef}>
           <span className="block font-bold text-ink-deep">Statut</span>
           <button
@@ -200,29 +214,7 @@ export function BookingsTable({
             ))}
           </select>
         </label>
-        <label className="block flex-1 min-w-[16rem]">
-          <span className="block font-bold text-ink-deep">Recherche</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Référence, client, téléphone ou set"
-            className="focus-outline-none mt-1 w-full rounded-xl border-2 border-slate-ink/25 bg-paper px-3 py-2 text-ink-deep shadow-sm"
-          />
-        </label>
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedGroups(new Set());
-              setQuery("");
-              setPickupPointId("");
-            }}
-            className="focus-outline-none font-bold underline underline-offset-4 self-center"
-          >
-            Réinitialiser
-          </button>
-        ) : null}
-      </div>
+      </FilterBar>
 
       {sorted.length === 0 ? (
         <p className="mt-8 brick-card p-6 bg-sky max-w-xl">

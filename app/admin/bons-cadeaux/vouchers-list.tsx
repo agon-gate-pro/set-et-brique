@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { formatCents, formatDateTime, giftVoucherOriginLabels, giftVoucherStatusLabels } from "@/lib/format";
 import { giftVoucherDisplayStatus, type GiftVoucherDisplayStatus } from "@/lib/gift-vouchers-core";
 import type { GiftVoucher } from "@/lib/db/schema";
+import { FilterBar } from "@/components/admin/filter-bar";
 import { GiftVoucherCancelButton, GiftVoucherMarkUsedButton } from "./forms";
 
 const statusBadgeClass: Record<GiftVoucherDisplayStatus, string> = {
@@ -89,7 +90,20 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
 
   return (
     <>
-      <div className="mt-8 brick-card bg-sky p-4 sm:p-5 flex flex-wrap items-end gap-4">
+      <FilterBar
+        className="mt-8"
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Code, numéro ou étiquette de lot"
+        activeCount={(status ? 1 : 0) + (origin ? 1 : 0)}
+        hasFilters={hasFilters}
+        onReset={() => {
+          setStatus("");
+          setOrigin("");
+          setQuery("");
+        }}
+        resultCount={batches.length}
+      >
         <label className="block">
           <span className="block font-bold text-ink-deep">État</span>
           <select
@@ -116,31 +130,7 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
             <option value="purchase">Acheté en ligne</option>
           </select>
         </label>
-        <label className="block flex-1 min-w-[16rem]">
-          <span className="block font-bold text-ink-deep">Recherche</span>
-          <span className="mt-1 relative block">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Code, numéro ou étiquette de lot"
-              className="focus-outline-none w-full rounded-xl border-2 border-slate-ink/25 bg-paper px-3 py-2 text-ink-deep shadow-sm"
-            />
-          </span>
-        </label>
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={() => {
-              setStatus("");
-              setOrigin("");
-              setQuery("");
-            }}
-            className="focus-outline-none font-bold underline underline-offset-4 self-center"
-          >
-            Réinitialiser
-          </button>
-        ) : null}
-      </div>
+      </FilterBar>
 
       {batches.length === 0 ? (
         <p className="mt-8 brick-card p-6 bg-sky max-w-xl">

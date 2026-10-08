@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { FilterBar } from "@/components/admin/filter-bar";
 import { formatCents, formatSetNumbers, setStatusLabels } from "@/lib/format";
 
 export type SetRow = {
@@ -51,7 +51,19 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
 
   return (
     <>
-      <div className="mt-4 brick-card bg-sky p-4 sm:p-5 flex flex-wrap items-end gap-4">
+      <FilterBar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Nom ou numéro de set"
+        activeCount={(status ? 1 : 0) + (theme ? 1 : 0)}
+        hasFilters={hasFilters}
+        onReset={() => {
+          setQuery("");
+          setStatus("");
+          setTheme("");
+        }}
+        resultCount={filtered.length}
+      >
         <label className="block">
           <span className="block font-bold text-ink-deep">Statut</span>
           <select
@@ -80,32 +92,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
             ))}
           </select>
         </label>
-        <label className="block flex-1 min-w-[16rem]">
-          <span className="block font-bold text-ink-deep">Recherche</span>
-          <span className="mt-1 relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-ink" aria-hidden="true" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Nom ou numéro de set"
-              className="focus-outline-none w-full rounded-xl border-2 border-slate-ink/25 bg-paper pl-9 pr-3 py-2 text-ink-deep shadow-sm"
-            />
-          </span>
-        </label>
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setStatus("");
-              setTheme("");
-            }}
-            className="focus-outline-none font-bold underline underline-offset-4 self-center"
-          >
-            Réinitialiser
-          </button>
-        ) : null}
-      </div>
+      </FilterBar>
 
       {filtered.length === 0 ? (
         <p className="mt-8 brick-card p-6 bg-sky max-w-xl">
