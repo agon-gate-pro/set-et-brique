@@ -63,3 +63,32 @@ export function rectStyles(rect: CropRect): { window: CSSProperties; photo: CSSP
     },
   };
 }
+
+/**
+ * Facteur d'agrandissement de la photo par rapport à son cadre : la photo est affichée plus grande
+ * que le cadre (zone choisie, ou zoom des anciens cadrages) pour n'en montrer qu'une partie.
+ */
+export function cropScale(crop: ImageCrop | null | undefined): number {
+  if (crop?.rect) return 1 / crop.rect.w;
+  return Math.max(1, crop?.zoom ?? 1);
+}
+
+/**
+ * `sizes` d'un cadre ramené à la taille réelle de la photo derrière lui : sans ça, le navigateur
+ * choisit dans le `srcset` une photo à la taille du cadre, que le cadrage étire ensuite (photo
+ * pixelisée, d'autant plus que la zone gardée est petite). Chaque largeur devient
+ * `calc(<facteur> * <largeur>)` — facteur en tête, pour que Next.js reconnaisse encore les `vw`
+ * et garde un `srcset` resserré. Une entrée qu'on ne sait pas lire est laissée telle quelle.
+ */
+export function scaleSizes(sizes: string, factor: number): string {
+  if (!(factor > 1.01)) return sizes;
+  const f = Math.round(factor * 100) / 100;
+  return sizes
+    .split(",")
+    .map((entry) => {
+      const m = entry.trim().match(/^(?:(.*\))\s+)?([\d.]+(?:px|vw))$/);
+      if (!m) return entry.trim();
+      return `${m[1] ? `${m[1]} ` : ""}calc(${f} * ${m[2]})`;
+    })
+    .join(", ");
+}

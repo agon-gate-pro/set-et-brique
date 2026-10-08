@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
+import { upload } from "@vercel/blob/client";
 import { Crop, ImagePlus } from "lucide-react";
 import { CroppedImage } from "@/components/cropped-image";
 import { CropEditor } from "./crop-editor";
@@ -18,12 +19,21 @@ import { copyConditionLabels, copyStatusLabels } from "@/lib/format";
 import { useFormDirty } from "@/lib/use-form-dirty";
 import type { SetCopy, SetImage } from "@/lib/db/schema";
 import {
-  addSetImage,
+  IMAGE_TYPES,
+  MAX_IMAGE_BYTES,
+  MAX_IMAGE_SIDE,
+  MAX_IMAGES_PER_SET,
+  MULTIPART_THRESHOLD_BYTES,
+  imageExtension,
+  setImagePrefix,
+} from "@/lib/set-images";
+import {
   addCopy,
   deleteCopy,
   deleteSet,
   deleteSetImage,
   moveSetImage,
+  registerSetImage,
   reorderSetImages,
   updateCopy,
   updateSetImageAlt,
@@ -31,8 +41,36 @@ import {
 
 /* ---------------- Photos ---------------- */
 
-/** Doit rester égal à `MAX_IMAGES_PER_SET` dans `../actions.ts` (pas partageable : ce fichier tourne côté client, l'autre est "use server"). */
-const MAX_IMAGES_PER_SET = 10;
+const MAX_IMAGE_MB = MAX_IMAGE_BYTES / 1024 / 1024;
+
+/** Dimensions d'une photo, lues par le navigateur sans attendre son décodage complet. */
+function imageSize(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      resolve(null);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
+
+/** Vérifications faites avant l'envoi, pour un message clair tout de suite (le serveur revérifie). */
+async function checkImageFile(file: File): Promise<string | null> {
+  if (!IMAGE_TYPES.includes(file.type)) return `Format non accepté pour « ${file.name} » : JPEG, PNG ou WebP.`;
+  if (file.size > MAX_IMAGE_BYTES) return `« ${file.name} » dépasse ${MAX_IMAGE_MB} Mo.`;
+  const size = await imageSize(file);
+  if (!size) return `« ${file.name} » n'a pas pu être lue comme une photo.`;
+  if (Math.max(size.width, size.height) > MAX_IMAGE_SIDE) {
+    return `« ${file.name} » est trop grande (${size.width} × ${size.height} px, ${MAX_IMAGE_SIDE} px au plus de côté) : réduisez-la avant de l'envoyer.`;
+  }
+  return null;
+}
 
 /** Dans son propre composant pour que `useFormStatus` ne reflète que ce petit formulaire. */
 function MoveButtons({ imageId, canMoveLeft, canMoveRight }: { imageId: string; canMoveLeft: boolean; canMoveRight: boolean }) {
@@ -102,16 +140,16 @@ function RemoveImageButton({ imageId }: { imageId: string }) {
   );
 }
 
-export function ImagesSection({ setId, images }: { setId: string; images: SetImage[] }) {
+export function ImagesSection({ setId, setSlug, images }: { setId: string; setSlug: string; images: SetImage[] }) {
   const [uploadState, setUploadState] = useState<ActionState>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ index: number; total: number; fileName: string } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ index: number; total: number; fileName: string; percent: number } | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Une requête par photo (voir `addSetImage` côté serveur) pour ne jamais
-  // dépasser la taille de requête autorisée, quel que soit le nombre choisi.
-  // Pas de description ici : avec plusieurs photos à la fois, un texte commun
-  // au lot n'aurait pas de sens ; elle s'ajoute après coup, photo par photo.
+  // Une photo après l'autre, envoyée directement du navigateur vers Vercel Blob
+  // (autorisation : `app/api/admin/photos/route.ts`), puis inscrite en base par
+  // `registerSetImage`. Pas de description ici : avec plusieurs photos à la fois,
+  // un texte commun au lot n'aurait pas de sens ; elle s'ajoute après coup.
   async function handleUpload(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const files = Array.from(fileInputRef.current?.files ?? []);
@@ -121,10 +159,31 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
     const failures: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      setUploadProgress({ index: i + 1, total: files.length, fileName: file.name });
-      const result = await addSetImage(setId, file, null);
-      if (result.error) failures.push(result.error);
-      else uploaded += 1;
+      setUploadProgress({ index: i + 1, total: files.length, fileName: file.name, percent: 0 });
+      if (images.length + uploaded >= MAX_IMAGES_PER_SET) {
+        failures.push(`${MAX_IMAGES_PER_SET} photos maximum par set. Retirez-en une avant d'en ajouter.`);
+        continue;
+      }
+      const problem = await checkImageFile(file);
+      if (problem) {
+        failures.push(problem);
+        continue;
+      }
+      try {
+        const blob = await upload(`${setImagePrefix(setSlug)}${Date.now()}.${imageExtension(file.type)}`, file, {
+          access: "public",
+          handleUploadUrl: "/api/admin/photos",
+          clientPayload: JSON.stringify({ setId }),
+          contentType: file.type,
+          multipart: file.size > MULTIPART_THRESHOLD_BYTES,
+          onUploadProgress: ({ percentage }) => setUploadProgress((p) => (p ? { ...p, percent: percentage } : p)),
+        });
+        const result = await registerSetImage(setId, blob.url);
+        if (result.error) failures.push(`« ${file.name} » : ${result.error}`);
+        else uploaded += 1;
+      } catch {
+        failures.push(`Échec de l'envoi de « ${file.name} », réessayez.`);
+      }
     }
     setUploadProgress(null);
     if (failures.length > 0) {
@@ -178,7 +237,7 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
     <section className="mt-8 brick-card p-6">
       <h2 className="text-2xl font-semibold">Photos</h2>
       <p className="mt-1 text-slate-ink">
-        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, 8 Mo maximum,
+        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, {MAX_IMAGE_MB} Mo maximum,
         {MAX_IMAGES_PER_SET} photos par set au plus ({images.length}/{MAX_IMAGES_PER_SET}). Glissez une photo
         pour la réordonner, ou utilisez les flèches. « Recadrer » règle le zoom et la partie visible
         de chaque photo, sans modifier le fichier.
@@ -307,7 +366,7 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
           <div className="brick-card bg-paper p-6 max-w-sm w-full text-center">
             <p className="font-bold text-lg text-ink-deep">Envoi des photos…</p>
             <p className="mt-2 text-slate-ink">
-              Photo {uploadProgress.index} sur {uploadProgress.total}
+              Photo {uploadProgress.index} sur {uploadProgress.total} · {Math.round(uploadProgress.percent)} %
             </p>
             <p className="mt-1 text-sm text-slate-ink truncate" title={uploadProgress.fileName}>
               {uploadProgress.fileName}
@@ -315,7 +374,7 @@ export function ImagesSection({ setId, images }: { setId: string; images: SetIma
             <div className="mt-4 h-2 rounded-full bg-sky overflow-hidden">
               <div
                 className="h-full bg-brick transition-all"
-                style={{ width: `${((uploadProgress.index - 1) / uploadProgress.total) * 100}%` }}
+                style={{ width: `${((uploadProgress.index - 1 + uploadProgress.percent / 100) / uploadProgress.total) * 100}%` }}
               />
             </div>
           </div>

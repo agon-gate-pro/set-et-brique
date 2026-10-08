@@ -1,6 +1,6 @@
 "use server";
 
-import { del, put } from "@vercel/blob";
+import { del, head } from "@vercel/blob";
 import { asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -9,13 +9,9 @@ import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { slugify } from "@/lib/format";
 import { sanitizeCropRect, type CropRect } from "@/lib/image-crop";
+import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES_PER_SET, setImagePrefix } from "@/lib/set-images";
 import { copySchema, firstError, formToObject, setSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
-
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-/** Limite fixée avec la cliente (spécification, module 1). */
-const MAX_IMAGES_PER_SET = 10;
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function revalidateSet(id?: string) {
   revalidatePath("/admin/sets");
@@ -160,35 +156,44 @@ export async function deleteSet(_: ActionState, formData: FormData): Promise<Act
 /* ---------------- Images ---------------- */
 
 /**
- * Une photo par appel, invoquée directement depuis le client (pas de `<form>`) :
- * en boucle, ça permet d'ajouter plusieurs photos d'un coup sans jamais
- * dépasser la limite de taille d'une requête (`serverActions.bodySizeLimit`,
- * `next.config.ts`), quel que soit le nombre de photos choisies.
+ * Inscrit en base une photo que le navigateur vient d'envoyer directement sur Vercel Blob
+ * (autorisation délivrée par `app/api/admin/photos/route.ts`). Le fichier ne passe plus par le
+ * serveur, ce qui lève la limite de 4,5 Mo des fonctions Vercel. Tout est revérifié ici, sur le
+ * fichier réellement stocké : stockage, dossier du set, format, poids, nombre de photos. Un fichier
+ * refusé est supprimé du stockage.
  */
-export async function addSetImage(setId: string, file: File, alt: string | null): Promise<{ error?: string }> {
+export async function registerSetImage(setId: string, url: string): Promise<{ error?: string }> {
   await requireRole("admin");
-  if (!IMAGE_TYPES.includes(file.type)) return { error: `Format non accepté pour « ${file.name} » : JPEG, PNG ou WebP.` };
-  if (file.size > MAX_IMAGE_BYTES) return { error: `« ${file.name} » dépasse 8 Mo.` };
-
   const [set] = await db.select({ slug: schema.sets.slug }).from(schema.sets).where(eq(schema.sets.id, setId));
   if (!set) return { error: "Set introuvable" };
+
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return { error: "Adresse de photo invalide" };
+  }
+  if (!host.endsWith(".public.blob.vercel-storage.com")) return { error: "Adresse de photo invalide" };
+  // Échoue si le fichier n'est pas dans notre stockage : `head` interroge le stockage du jeton du site.
+  const meta = await head(url).catch(() => null);
+  if (!meta) return { error: "Photo introuvable dans le stockage" };
+
+  const refuse = async (error: string) => {
+    await del(url).catch(() => undefined);
+    return { error };
+  };
+  if (!meta.pathname.startsWith(setImagePrefix(set.slug))) return refuse("Photo envoyée dans le mauvais dossier");
+  if (!IMAGE_TYPES.includes(meta.contentType) || meta.size > MAX_IMAGE_BYTES) return refuse("Photo refusée (format ou poids)");
 
   const [{ n }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(schema.setImages)
     .where(eq(schema.setImages.setId, setId));
   if (n >= MAX_IMAGES_PER_SET) {
-    return { error: `${MAX_IMAGES_PER_SET} photos maximum par set. Retirez-en une avant d'en ajouter.` };
+    return refuse(`${MAX_IMAGES_PER_SET} photos maximum par set. Retirez-en une avant d'en ajouter.`);
   }
 
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const blob = await put(`sets/${set.slug}/${Date.now()}.${ext}`, file, {
-    access: "public",
-    addRandomSuffix: true,
-    contentType: file.type,
-  });
-
-  await db.insert(schema.setImages).values({ setId, url: blob.url, alt, sortOrder: n });
+  await db.insert(schema.setImages).values({ setId, url, alt: null, sortOrder: n });
   revalidateSet(setId);
   return {};
 }
