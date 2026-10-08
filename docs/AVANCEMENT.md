@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 7 octobre 2026.
+Dernière mise à jour : 8 octobre 2026.
 
 ## 1. Où on en est
 
@@ -82,7 +82,7 @@ Autres points à poser quand l'occasion se présente :
 
 ## 4. Prochaines étapes, dans l'ordre proposé
 
-1. Emails transactionnels : **construits le 7 octobre 2026** (voir journal). Reste : vérifier le domaine d'envoi, faire valider les textes par Marion, puis les rendre modifiables par les gérants (module 10).
+1. Emails transactionnels : **construits le 7 octobre 2026** (voir journal). Textes validés par Alexis le 8 octobre 2026 (sur la base des accroches envoyées par Marion). Reste : vérifier le domaine d'envoi, faire des envois réels de test (le vrai juge de paix), puis rendre les textes modifiables par les gérants (module 10).
 2. Paiement Stripe et caution (module 4), une fois les deux questions tranchées — avec le délai de 24 h pour régler après acceptation (voir §3).
 3. Contenus du site dans l'admin (avis, presse, textes).
 4. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF (7), bons cadeaux (6), reporting et exports (11).
@@ -99,6 +99,12 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 8 octobre 2026
+
+- **Textes des e-mails validés** par Alexis, d'après le document Word de relecture (`docs/EMAILS-relecture-2026-10-08.docx`, textes du code au 8 octobre) et les accroches envoyées par Marion le 7 octobre. Les trois points signalés à la relecture (A3 paiement en ligne annoncé avant Stripe, accroche de A4 qui promet un retour alors que l'e-mail refuse, « nous les renvoyer » dans B3) sont laissés tels quels pour l'instant. Prochaine étape : envois réels de test une fois le domaine vérifié chez Resend, qui diront plus que la relecture.
+- **Nouveau numéro de téléphone : 07 83 73 70 20** (`lib/site.ts`, `app/cgl/page.tsx`, `docs/EMAILS.md`, document Word de relecture). Remplace le 09 84 37 18 46 partout : header, footer, contact, CGL et tous les e-mails, qui lisent `site.phone`. Demande d'Alexis.
+- **E-mails : textes en relecture, doc locale alignée**. Les textes sont en relecture (page partagée du 6 octobre) ; `docs/EMAILS.md` reste la copie de référence dans le dépôt, à mettre à jour avec les retours de Marion et les écarts volontaires pris le 7 octobre (caution en empreinte bancaire, retour « au même endroit », contrôle sous 48 h avant libération de la caution). Les textes figés dans `lib/email/booking-emails.ts` font foi tant qu'ils ne sont pas modifiables par les gérants. La branche `semaine-41` a été alignée sur `main` (avance rapide), qui porte les e-mails Resend.
 
 ### 7 octobre 2026
 
@@ -121,6 +127,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ### 6 octobre 2026
 
+- **E-mails automatiques, déclencheurs et textes** (`docs/EMAILS.md` nouveau). Déclencheurs validés le jour même : les sept transitions de réservation déjà dans le code (demande reçue au client et aux gérants, acceptée, refusée ou annulée par les gérants, annulée par le client aux gérants, remise modifiée, set remis, set rendu), la séquence de fin de location J-1 / J / J+1 avec le forfait de 30 € / J+2 avec la caution (module 9, arrêt manuel possible), l'annulation pour non-paiement, et le bon cadeau émis. Les textes de Marion n'étant pas arrivés, AGON-GATE a rédigé les textes par défaut (prévu au module 10) : vouvoiement, bloc de rappel de la réservation commun, signature « Marion et Gaëtan », expéditeur `bonjour@set-et-brique.com` avec réponse vers `setetbrique@gmail.com`. Proposé en plus : un accusé d'annulation au client. Pas d'e-mail pour `date_proposed`, qui n'est plus produit. Points à faire valider par Marion listés en fin de document (pièce d'identité à la remise, moyens de paiement, rappel des pénalités, avis Google, signature, adresse d'envoi). Le document a aussi été publié en page partageable (Claude Doc « Set et Brique, e-mails automatiques ») pour relecture ; c'est cette version de travail qui a servi de base aux modèles construits le 7 octobre.
 - **Adaptation mobile des changements du jour** (`app/page.tsx`, `app/catalogue/[slug]/image-carousel.tsx`, `app/admin/sets/[id]/crop-editor.tsx`). Accueil : sous 640 px, les cinq étapes deviennent des cartes compactes, icône à gauche du texte, moins d'espace entre elles (cinq cartes hautes empilées faisaient beaucoup défiler). Photo en grand : bord à bord sur mobile, et glisser du doigt à gauche ou à droite change de photo. Recadrage : zone sensible des poignées élargie pour le doigt (le carré visible ne change pas), fenêtre moins margée, boutons répartis sur la largeur. Typage et lint passés ; **pas vérifié sur un téléphone**.
 - **Fiche d'un set : photo en grand** (`app/catalogue/[slug]/image-carousel.tsx`). Un clic sur la photo principale l'ouvre en plein écran sur fond sombre, **avec le même cadrage que dans le catalogue** (la zone choisie par les gérants, agrandie ; pour une photo sans zone, le cadre 4:3 habituel en grand). Une première version montrait la photo entière : retirée après test, le recadrage sert aussi à cacher ce qu'il y a autour. Fermeture par la croix, un clic à côté ou Échap ; flèches à l'écran et au clavier pour passer d'une photo à l'autre quand il y en a plusieurs ; la page derrière ne défile pas. Les vignettes de gauche gardent leur rôle (choisir la photo principale).
 - **Recadrage : sélection libre** (`app/admin/sets/[id]/crop-editor.tsx`, `lib/image-crop.ts`, `components/cropped-image.tsx`, migration `0017_set_image_crop_rect`). La cliente ne parvenait pas à cadrer une fusée photographiée en hauteur : la zone était verrouillée en 4:3 et ne pouvait pas dépasser la largeur de la photo. La zone est maintenant libre (coins et bords, huit poignées) et le site l'affiche en entier dans ses cadres, avec des bandes claires quand elle n'en a pas les proportions (choix d'Alexis, « pour le moment »). Nouvelle colonne nullable `set_images.crop_rect`, migration appliquée à la base partagée le jour même, sans effet sur le site en ligne tant que le code n'est pas déployé ; les 220 photos existantes gardent leur rendu. Typage et lint passés ; rendu à valider dans le navigateur par Alexis. Détail dans `FONCTIONNEMENT.md`.

@@ -409,6 +409,8 @@ Deux exports depuis l'admin les accompagnent (module 11) : l'**export des ventes
 
 ## 10 bis. E-mails (module 10)
 
+Les déclencheurs, les textes par défaut et leurs variables sont décrits dans `EMAILS.md` (document de travail du 6 octobre 2026, en relecture) ; les modèles du code peuvent s'en écarter volontairement, les écarts sont notés dans `AVANCEMENT.md` (journal du 7 octobre).
+
 Envoi par **Resend**, compte direct (équipe « agon-gate » sur resend.com, domaine `set-et-brique.com` vérifié en région Irlande, enregistrements DKIM et SPF dans Cloudflare). `RESEND_API_KEY` est posée à la main dans Vercel (Production et Preview) ; pas dans `.env.local` par défaut. Code dans `lib/email/` :
 
 - `send.ts` : `sendEmail()`, l'unique point d'envoi. Expéditeur `EMAIL_FROM` (par défaut « Set et Brique <bonjour@set-et-brique.com> », domaine à vérifier chez Resend), réponse à `site.email` pour que « Répondre » arrive chez Marion. Chaque envoi est journalisé dans `email_log`. **Un envoi raté ne fait jamais échouer l'action** qui l'a déclenché. Sans `RESEND_API_KEY`, rien ne part (journalisé `skipped`). `EMAIL_TEST_RECIPIENT`, si elle est renseignée, détourne **tous** les e-mails vers cette adresse (objet préfixé `[test → vrai destinataire]`) : à poser en local, puisque la base est partagée avec la production et que les clients y sont réels.
