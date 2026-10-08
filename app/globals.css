@@ -364,3 +364,11 @@ h3,
     display: none !important;
   }
 }
+
+/* Barre de menu de l'espace de gestion, fixée en bas de l'écran sur mobile (`components/admin/nav.tsx`) :
+   on réserve sa hauteur en bas de page pour qu'elle ne masque pas la fin du contenu ni le pied de page. */
+@media (max-width: 767.98px) {
+  body:has([data-admin-tabbar]) {
+    padding-bottom: 4.25rem;
+  }
+}
