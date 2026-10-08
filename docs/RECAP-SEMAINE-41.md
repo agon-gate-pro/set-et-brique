@@ -1,4 +1,4 @@
-# Récap de la semaine 41 (5 au 7 octobre 2026)
+# Récap de la semaine 41 (5 au 8 octobre 2026)
 
 Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le détail technique est dans `FONCTIONNEMENT.md`, le journal complet dans `AVANCEMENT.md`.
 
@@ -16,6 +16,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Accueil** : nouveau texte sous le titre, « Comment ça marche » en cinq étapes, version mobile plus compacte.
 - **Bons cadeaux** : « Commander ce bon » mène au récapitulatif de la commande après connexion (paiement en ligne à venir).
 - **Orthographe « Mega Bloks »** (nom officiel) sur l'accueil et sur les bons cadeaux.
+- **Photos recadrées plus nettes.** Le site envoyait une photo à la taille du cadre puis l'agrandissait pour n'en montrer que la zone choisie, d'où la pixelisation signalée par Set et Brique. Il envoie maintenant une photo assez grande pour la zone affichée. Les photos des sets sont aussi moins compressées (qualité 90 au lieu de 75), un peu plus lourdes à charger.
 
 ### Pour les gérants (espace de gestion)
 
@@ -29,6 +30,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Bons cadeaux imprimés refaits d'après la maquette de Marion** : 20 × 9 cm, trois par feuille A4, pointillé de découpe, logo, slogan, code, montant et QR code vers le catalogue.
 - **Annuler un bon cadeau** : la confirmation est une petite pastille « Oui, annuler » / « Non » au lieu d'un gros bouton rouge sur deux lignes.
 - **Recadrage des photos libre** (n'importe quelle forme), pour les sets photographiés en hauteur.
+- **Photos jusqu'à 20 Mo** (au lieu de 8, et en réalité 4,5 en ligne à cause d'une limite de Vercel) : on peut envoyer les photos du téléphone ou de l'appareil sans les réduire. La barre de progression avance pendant l'envoi de chaque photo. Une photo de plus de 8192 px de côté est refusée avec un message.
 - **Fiche d'une réservation** : la pastille d'état reprend les couleurs du tableau des réservations (jaune à traiter, orange paiement en attente, vert payé, rouge annulée).
 - **Aperçu d'une réservation** (au clic dans le tableau) plus lisible : état en couleur, puis client, montant, remise et retour en blocs séparés.
 - **Fiche d'une réservation** : onglet Location plus lisible (set, montant, remise, retour en blocs ; message du client et motif d'annulation mis en évidence ; bouton « Enregistrer la note » en vert).
@@ -59,6 +61,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 
 - **Redéployer la production une fois** (Vercel → Deployments → dernier déploiement de production → Redeploy), ou attendre le prochain déploiement : `CRON_SECRET` n'est prise en compte qu'au déploiement suivant son ajout. D'ici là, la tâche planifiée est refusée ; l'annulation au fil des visites fonctionne quand même.
 - Vérifier ensuite que la tâche planifiée apparaît dans Vercel (Settings → Cron Jobs, `/api/cron/paiements-expires`, tous les jours à 5 h UTC). Le plan gratuit ne permet qu'un passage par jour.
+- **Photos** : les photos des sets sont désormais servies en meilleure qualité et en plus grand quand elles sont recadrées. Ça consomme davantage de transformations d'images (5 000 par mois sur le plan gratuit ; au-delà, les nouvelles photos ne s'affichent plus, celles déjà calculées restent visibles). Par ailleurs, les conditions de Vercel réservent le plan gratuit (Hobby) à un usage personnel non commercial : à terme, le plan Pro.
 - Rappel : aucun fournisseur d'e-mail n'est branché. Ni l'annulation ni le rappel avant échéance ne sont envoyés par e-mail aujourd'hui (Resend recommandé, à mutualiser avec les e-mails transactionnels).
 
 ## 4. À voir avec Marion
@@ -68,6 +71,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Comment le client paie-t-il pendant le délai**, tant que le paiement en ligne n'existe pas (virement, passage sur place, TPE à la remise) ? Le bouton « Paiement reçu » couvre tous les cas, mais il faut que les gérants l'utilisent à chaque paiement, sinon la réservation est annulée à l'échéance.
 - **Rappel avant l'échéance** par e-mail : souhaité ? (nécessite le fournisseur d'e-mail.)
 - **Usage des noms de marques** (Lego, Pantasy, Mega Bloks) sur le site et les bons : à confirmer.
+- **Taille des photos d'origine** : toutes les photos des sets font 1414 × 2000 px. Sont-elles réduites ou exportées (Canva ?) avant d'être mises sur le site, et existe-t-il des originaux en meilleure résolution ? Ce sont elles qui limitent la netteté en plein écran.
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 
@@ -78,3 +82,4 @@ Ces points n'ont pas pu être testés connecté (pas de session de test) ni en �
 - Les boutons « Paiement reçu » et « Prolonger de 24 h » sur une réservation de test.
 - Une réservation dont l'échéance est passée : elle doit apparaître « Annulée » et ses dates redevenir libres dans le calendrier.
 - Le formulaire de réservation réorganisé, connecté, sur ordinateur et sur téléphone.
+- L'ajout d'une photo de plus de 4,5 Mo à un set de test (envoi direct vers le stockage), puis son retrait.
