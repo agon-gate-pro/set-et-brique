@@ -231,7 +231,7 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
               <col className="w-[18%]" />
               <col className="w-[22%]" />
               <col className="w-[18%]" />
-              <col className="w-32" />
+              <col className="w-56" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-ink/10 bg-sky text-left">

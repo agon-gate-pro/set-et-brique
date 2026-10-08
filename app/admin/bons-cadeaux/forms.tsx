@@ -110,10 +110,12 @@ export function GiftVoucherMarkUsedButton({ id }: { id: string }) {
         <SubmitButton
           variant="leaf"
           title="Marquer ce bon utilisé"
-          className="!inline-flex h-9 w-9 items-center justify-center !border !border-leaf/30 !bg-leaf/10 !p-0 !text-leaf-deep !shadow-none hover:!bg-leaf/20"
+          className="!inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap !border !border-leaf/30 !bg-leaf/10 !px-3 !py-0 text-sm !text-leaf-deep !shadow-none hover:!bg-leaf/20"
         >
+          {/* Libellé visible (8 octobre 2026) : le ✓ seul n'était pas parlant, surtout sur téléphone ; « Marquer utilisé » plutôt
+              « Utilisé », qui se confondait avec la pastille d'état d'un bon déjà utilisé. */}
           <Check className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">Marquer ce bon utilisé</span>
+          Marquer utilisé
         </SubmitButton>
       </form>
       <FormMessage state={state} />

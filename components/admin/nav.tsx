@@ -50,11 +50,17 @@ export function AdminNav({ links }: { links: AdminLink[] }) {
                 <Link
                   href={l.href}
                   aria-current={active ? "page" : undefined}
-                  className={`whitespace-nowrap rounded-md px-2.5 py-2 font-bold flex items-center gap-2 ${
-                    active ? "bg-ink-deep text-paper" : "text-ink-deep font-medium hover:bg-sea/15"
+                  className={`whitespace-nowrap rounded-lg px-2 py-1.5 flex items-center gap-2.5 ${
+                    active ? `font-bold ${TONE_BADGE[toneOf(l.href)]}` : "text-ink-deep font-medium hover:bg-sky"
                   }`}
                 >
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {/* Icône dans la couleur de sa rubrique, comme le titre de page et la barre mobile. */}
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${TONE_BADGE[toneOf(l.href)]}`}
+                    aria-hidden="true"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
                   {l.label}
                 </Link>
               </span>

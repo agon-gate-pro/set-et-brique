@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronDown, MapPin } from "lucide-react";
 import { daysLate } from "@/lib/dates";
-import { bookingStatusLabels, formatCents, formatDateShort, formatTime } from "@/lib/format";
+import { bookingStatusLabels, formatCents, formatDateRangeShort, formatDateShort, formatTime } from "@/lib/format";
 import { neutralBadge, statusTone } from "./status-tone";
 import type { BookingStatus } from "@/lib/db/schema";
 import { BookingDialog } from "./booking-dialog";
@@ -257,7 +257,7 @@ export function BookingsTable({
                   <span className="mt-2 flex items-start gap-2 text-sm text-slate-ink">
                     <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                     <span>
-                      du {formatDateShort(r.startDate)} au {formatDateShort(r.endDate)} · {r.days} jour{r.days > 1 ? "s" : ""} ·{" "}
+                      {formatDateRangeShort(r.startDate, r.endDate)} · {r.days} jour{r.days > 1 ? "s" : ""} ·{" "}
                       {formatCents(r.rentalCents)}
                       {r.disassemblyCents != null ? ` + ${formatCents(r.disassemblyCents)} rendu monté` : ""}
                     </span>

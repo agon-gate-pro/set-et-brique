@@ -141,6 +141,23 @@ export function formatDateShort(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+const MONTHS_SHORT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+/**
+ * Période courte pour les cartes de gestion sur téléphone : « 12 → 15 oct. » dans un même mois,
+ * « 28 oct. → 2 nov. » sur deux mois, années ajoutées seulement si elles diffèrent
+ * (« 28 déc. 2026 → 3 janv. 2027 »).
+ */
+export function formatDateRangeShort(startIso: string, endIso: string) {
+  const [sy, sm, sd] = startIso.split("-").map(Number);
+  const [ey, em, ed] = endIso.split("-").map(Number);
+  const end = `${ed} ${MONTHS_SHORT[em - 1]}`;
+  if (startIso === endIso) return end;
+  if (sy !== ey) return `${sd} ${MONTHS_SHORT[sm - 1]} ${sy} → ${end} ${ey}`;
+  if (sm !== em) return `${sd} ${MONTHS_SHORT[sm - 1]} → ${end}`;
+  return `${sd} → ${end}`;
+}
+
 /** « 10:30 » à partir d'une heure Postgres (« 10:30:00 »). */
 export function formatTime(value: string | null | undefined) {
   return value ? value.slice(0, 5) : null;
