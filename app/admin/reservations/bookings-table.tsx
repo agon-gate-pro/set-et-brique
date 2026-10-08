@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CalendarDays, ChevronDown, MapPin } from "lucide-react";
 import { daysLate } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDateShort, formatTime } from "@/lib/format";
 import { neutralBadge, statusTone } from "./status-tone";
@@ -229,7 +229,55 @@ export function BookingsTable({
           Aucune réservation {hasFilters ? "ne correspond à ces filtres" : "pour l'instant"}.
         </p>
       ) : (
-        <div className="mt-6 brick-card overflow-x-auto">
+        <>
+        {/* Téléphone : une carte par réservation, le tableau ne garde pas la période ni le lieu à cette largeur. */}
+        <ul className="mt-6 space-y-3 md:hidden">
+          {sorted.map((r) => {
+            const late = r.status === "picked_up" ? daysLate(r.endDate, today) : 0;
+            const tone = statusTone(r.status);
+            return (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => setOpenId(r.id)}
+                  aria-label={`Voir la réservation ${r.reference}${r.status === "pending_review" ? ", à traiter" : ""}`}
+                  className={`brick-card w-full text-left p-4 border-l-4 cursor-pointer ${tone?.row ?? "border-l-slate-ink/15 hover:bg-sky/60"}`}
+                >
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="text-xs font-bold text-slate-ink">{r.reference}</span>
+                    <span
+                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md border whitespace-nowrap ${
+                        late > 0 ? "border-brick bg-brick text-paper" : (tone?.badge ?? neutralBadge)
+                      }`}
+                    >
+                      {late > 0 ? `Retard ${late} j` : bookingStatusLabels[r.status]}
+                    </span>
+                  </span>
+                  <span className="mt-1 display font-semibold text-lg leading-snug block break-words text-ink-deep">{r.setName}</span>
+                  <span className="mt-0.5 block text-ink-deep break-words">
+                    {r.customerFirstName} {r.customerLastName}
+                    {r.customerBlocked ? <span className="ml-2 text-xs font-bold text-brick-deep">compte bloqué</span> : null}
+                  </span>
+                  <span className="mt-2 flex items-start gap-2 text-sm text-slate-ink">
+                    <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>
+                      du {formatDateShort(r.startDate)} au {formatDateShort(r.endDate)} · {r.days} jour{r.days > 1 ? "s" : ""} ·{" "}
+                      {formatCents(r.rentalCents)}
+                      {r.disassemblyCents != null ? ` + ${formatCents(r.disassemblyCents)} rendu monté` : ""}
+                    </span>
+                  </span>
+                  <span className="mt-1 flex items-start gap-2 text-sm text-slate-ink">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>
+                      {r.pickupPointName ?? "Lieu à convenir"} · {formatTime(r.pickupTime) ?? "heure à convenir"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="mt-6 brick-card overflow-x-auto hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-ink/10 bg-sky text-left">
@@ -300,6 +348,7 @@ export function BookingsTable({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {openRow ? <BookingDialog row={openRow} today={today} onClose={() => setOpenId(null)} /> : null}

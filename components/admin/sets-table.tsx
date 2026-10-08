@@ -22,6 +22,11 @@ export type SetRow = {
 
 type StatusFilter = "" | SetRow["status"];
 
+/** Couleur de la pastille de statut, partagée par le tableau et les cartes. */
+function statusBadge(status: SetRow["status"]) {
+  return status === "published" ? "bg-sun" : status === "archived" ? "bg-slate-200" : "bg-paper";
+}
+
 export function SetsTable({ rows }: { rows: SetRow[] }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("");
@@ -109,7 +114,39 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
             : "Aucun set pour l'instant. Ajoutez votre premier set : nom, caution, forfait, puis ses photos et ses exemplaires."}
         </p>
       ) : (
-        <div className="mt-6 brick-card overflow-x-auto">
+        <>
+        {/* Téléphone : une carte par set, toute la carte ouvre la fiche (le tableau ne tient pas en largeur). */}
+        <ul className="mt-6 space-y-3 md:hidden">
+          {filtered.map((s) => (
+            <li key={s.id}>
+              <Link href={`/admin/sets/${s.id}`} className="brick-card flex gap-3 p-3 hover:bg-sky/60 transition-colors">
+                <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-ink/15 bg-sky">
+                  {s.cover ? <Image src={s.cover} alt="" fill sizes="64px" className="object-cover" /> : null}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="display font-semibold leading-snug break-words text-ink-deep">{s.name}</span>
+                    <span
+                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 ${statusBadge(s.status)}`}
+                    >
+                      {setStatusLabels[s.status]}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-ink break-words">
+                    {[s.setNumbers.length > 0 ? `n° ${formatSetNumbers(s.setNumbers)}` : null, s.theme, s.brand !== "LEGO" ? s.brand : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  <span className="mt-1 block text-sm text-slate-ink">
+                    {s.copies} exempl. · {s.pricePerDay != null ? `${formatCents(s.pricePerDay)}/jour` : (s.planName ?? "forfait par défaut")} ·
+                    caution {formatCents(s.depositCents)}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6 brick-card overflow-x-auto hidden md:block">
           <table className="w-full min-w-[40rem] text-sm table-fixed">
             <colgroup>
               <col className="w-14" />
@@ -158,11 +195,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
                   </td>
                   <td className="p-2 sm:p-3 break-words">{formatCents(s.depositCents)}</td>
                   <td className="p-2 sm:p-3">
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 inline-block ${
-                        s.status === "published" ? "bg-sun" : s.status === "archived" ? "bg-slate-200" : "bg-paper"
-                      }`}
-                    >
+                    <span className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 inline-block ${statusBadge(s.status)}`}>
                       {setStatusLabels[s.status]}
                     </span>
                   </td>
@@ -176,6 +209,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </>
   );

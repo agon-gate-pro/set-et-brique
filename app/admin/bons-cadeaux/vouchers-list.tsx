@@ -17,6 +17,34 @@ const statusBadgeClass: Record<GiftVoucherDisplayStatus, string> = {
 
 const statusOrder: GiftVoucherDisplayStatus[] = ["valid", "used", "expired", "cancelled"];
 
+function countByStatus(items: GiftVoucher[]) {
+  const counts = new Map<GiftVoucherDisplayStatus, number>();
+  for (const v of items) {
+    const s = giftVoucherDisplayStatus(v);
+    counts.set(s, (counts.get(s) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Pastilles « 3 valides », « 1 utilisé »… d'un lot, partagées par le tableau et les cartes. */
+function StatusCounts({ counts, className = "" }: { counts: Map<GiftVoucherDisplayStatus, number>; className?: string }) {
+  return (
+    <div className={`flex flex-wrap gap-1 ${className}`}>
+      {statusOrder
+        .filter((s) => counts.has(s))
+        .map((s) => (
+          <span
+            key={s}
+            className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 inline-block whitespace-nowrap ${statusBadgeClass[s]}`}
+          >
+            {counts.get(s)} {giftVoucherStatusLabels[s].toLowerCase()}
+            {counts.get(s)! > 1 ? "s" : ""}
+          </span>
+        ))}
+    </div>
+  );
+}
+
 export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
   const [status, setStatus] = useState("");
   const [origin, setOrigin] = useState("");
@@ -119,7 +147,93 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
           Aucun bon cadeau {hasFilters ? "ne correspond à ces filtres" : "pour l'instant"}.
         </p>
       ) : (
-        <div className="mt-6 brick-card overflow-x-auto">
+        <>
+        {/* Téléphone : une carte par lot, repliée par défaut ; dépliée, un bloc par bon avec ses actions. */}
+        <ul className="mt-6 space-y-3 md:hidden">
+          {batches.map(({ batchNumber, items }) => {
+            const open = openBatches.has(batchNumber);
+            const first = items[0];
+            const counts = countByStatus(items);
+            return (
+              <li key={batchNumber} className={`brick-card overflow-hidden ${open ? "bg-sea/5" : ""}`}>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="display font-semibold text-lg break-words text-ink-deep">{batchNumber}</span>
+                    <span className="display shrink-0 font-bold text-lg text-ink-deep">{formatCents(first.amountCents)}</span>
+                  </div>
+                  <p className="text-sm text-slate-ink break-words">
+                    {first.batchLabel ? `« ${first.batchLabel} » · ` : ""}
+                    {items.length > 1 ? `${items.length} bons` : "1 bon"}
+                  </p>
+                  <p className="text-sm text-slate-ink">{giftVoucherOriginLabels[first.origin]}</p>
+                  <StatusCounts counts={counts} className="mt-2" />
+                  <p className="mt-2 text-xs text-slate-ink">Expire le {formatDateTime(first.expiresAt)}</p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    {counts.get("valid") ? (
+                      <Link
+                        href={`/admin/bons-cadeaux/lot/${batchNumber}/imprimer`}
+                        target="_blank"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-ink/15 bg-paper px-3 py-1.5 text-sm font-bold text-ink-deep transition-colors hover:bg-sea/15"
+                      >
+                        <Printer className="h-4 w-4" aria-hidden="true" /> Imprimer le lot
+                      </Link>
+                    ) : (
+                      <span />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleBatch(batchNumber)}
+                      aria-expanded={open}
+                      className="inline-flex items-center gap-1 text-sm font-bold text-ink-deep underline underline-offset-4 cursor-pointer"
+                    >
+                      {open ? "Masquer les bons" : "Voir les bons"}
+                      <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+                {open ? (
+                  <ul className="divide-y divide-slate-ink/10 border-t border-slate-ink/10 bg-paper">
+                    {items.map((v) => {
+                      const displayStatus = giftVoucherDisplayStatus(v);
+                      return (
+                        <li key={v.id} className="px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="display font-semibold font-mono tracking-wide break-all">{v.code}</span>
+                            <span className="flex shrink-0 items-center gap-2">
+                              <span
+                                className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 ${statusBadgeClass[displayStatus]}`}
+                              >
+                                {giftVoucherStatusLabels[displayStatus]}
+                              </span>
+                              <Link
+                                href={`/admin/bons-cadeaux/${v.id}/imprimer`}
+                                target="_blank"
+                                title="Imprimer ce bon"
+                                aria-label="Imprimer ce bon"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-ink/15 bg-paper text-ink-deep transition-colors hover:bg-sea/15"
+                              >
+                                <Printer className="h-4 w-4" aria-hidden="true" />
+                              </Link>
+                            </span>
+                          </div>
+                          {v.usedAt ? <p className="mt-1 text-xs text-slate-ink">Utilisé le {formatDateTime(v.usedAt)}</p> : null}
+                          {v.cancelledAt ? <p className="mt-1 text-xs text-slate-ink">Annulé le {formatDateTime(v.cancelledAt)}</p> : null}
+                          {displayStatus === "valid" ? (
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                              <GiftVoucherMarkUsedButton id={v.id} />
+                              <GiftVoucherCancelButton id={v.id} />
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="mt-6 brick-card overflow-x-auto hidden md:block">
           <table className="w-full min-w-[48rem] text-sm table-fixed">
             <colgroup>
               <col className="w-[18%]" />
@@ -143,11 +257,7 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
               {batches.map(({ batchNumber, items }) => {
                 const open = openBatches.has(batchNumber);
                 const first = items[0];
-                const counts = new Map<GiftVoucherDisplayStatus, number>();
-                for (const v of items) {
-                  const s = giftVoucherDisplayStatus(v);
-                  counts.set(s, (counts.get(s) ?? 0) + 1);
-                }
+                const counts = countByStatus(items);
                 return (
                   <Fragment key={batchNumber}>
                     <tr className={open ? "bg-sea/8 hover:bg-sea/15" : "bg-sky/40 hover:bg-sky/60"}>
@@ -183,19 +293,7 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
                         <span className="block">Expire le {formatDateTime(first.expiresAt)}</span>
                       </td>
                       <td className="py-3 px-2 sm:px-3">
-                        <div className="flex flex-wrap gap-1">
-                          {statusOrder
-                            .filter((s) => counts.has(s))
-                            .map((s) => (
-                              <span
-                                key={s}
-                                className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 inline-block whitespace-nowrap ${statusBadgeClass[s]}`}
-                              >
-                                {counts.get(s)} {giftVoucherStatusLabels[s].toLowerCase()}
-                                {counts.get(s)! > 1 ? "s" : ""}
-                              </span>
-                            ))}
-                        </div>
+                        <StatusCounts counts={counts} />
                       </td>
                       <td className="py-3 px-2 sm:px-3 text-right">
                         {counts.get("valid") ? (
@@ -264,6 +362,7 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </>
   );
