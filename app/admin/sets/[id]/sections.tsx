@@ -125,21 +125,62 @@ function AltEditor({ imageId, initialAlt }: { imageId: string; initialAlt: strin
   );
 }
 
-/** Retrait direct, sans confirmation en deux temps : une photo se réajoute en un envoi. */
-function RemoveImageButton({ imageId }: { imageId: string }) {
+/** Bouton « Oui » de la confirmation de retrait, dans son formulaire pour que `useFormStatus` suive l'envoi. */
+function ConfirmRemoveButton() {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      formAction={deleteSetImage.bind(null, imageId)}
       disabled={pending}
-      aria-label="Retirer la photo"
-      className="flex h-8 w-8 sm:h-auto sm:w-auto items-center justify-center rounded-full font-bold text-brick-deep sm:underline sm:underline-offset-4 cursor-pointer transition-colors hover:text-brick hover:bg-red-50 sm:hover:bg-transparent disabled:cursor-wait disabled:opacity-50"
+      className="rounded-full bg-brick px-3 py-1 text-xs font-bold text-paper cursor-pointer transition-colors hover:bg-brick-deep disabled:cursor-wait disabled:opacity-60"
     >
-      {/* Téléphone : corbeille seule, le libellé ne tenait pas à côté des flèches. */}
-      <Trash2 className="h-4 w-4 sm:hidden" aria-hidden="true" />
-      <span className="hidden sm:inline">{pending ? "Retrait…" : "Retirer"}</span>
+      {pending ? "…" : "Oui"}
     </button>
+  );
+}
+
+/**
+ * Boutons sous une vignette : flèches pour réordonner, et retrait en deux temps (ajouté le
+ * 8 octobre 2026 avec la corbeille sur téléphone, plus facile à toucher par erreur qu'un lien) :
+ * la ligne devient « Retirer ? Oui / Non » sur place.
+ */
+function ImageActions({ imageId, canMoveLeft, canMoveRight }: { imageId: string; canMoveLeft: boolean; canMoveRight: boolean }) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <form action={deleteSetImage.bind(null, imageId)} className="flex min-h-10 flex-wrap items-center justify-between gap-x-2 gap-y-1 bg-red-50 p-2 text-sm">
+        <span className="w-full sm:w-auto whitespace-nowrap font-bold text-brick-deep">Retirer ?</span>
+        <span className="flex items-center gap-3">
+          <ConfirmRemoveButton />
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            className="font-bold text-ink-deep underline underline-offset-4 cursor-pointer"
+          >
+            Non
+          </button>
+        </span>
+      </form>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 p-2 text-sm">
+      <form className="flex">
+        <MoveButtons imageId={imageId} canMoveLeft={canMoveLeft} canMoveRight={canMoveRight} />
+      </form>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        aria-label="Retirer la photo"
+        className="flex h-8 w-8 sm:h-auto sm:w-auto items-center justify-center rounded-full font-bold text-brick-deep sm:underline sm:underline-offset-4 cursor-pointer transition-colors hover:text-brick hover:bg-red-50 sm:hover:bg-transparent"
+      >
+        {/* Téléphone : corbeille seule, le libellé ne tenait pas à côté des flèches. */}
+        <Trash2 className="h-4 w-4 sm:hidden" aria-hidden="true" />
+        <span className="hidden sm:inline">Retirer</span>
+      </button>
+    </div>
   );
 }
 
@@ -293,14 +334,7 @@ export function ImagesSection({ setId, setSlug, images }: { setId: string; setSl
                   <span className="hidden sm:inline">Recadrer</span>
                 </button>
               </div>
-              <div className="flex items-center justify-between gap-2 p-2 text-sm">
-                <form className="flex">
-                  <MoveButtons imageId={img.id} canMoveLeft={i !== 0} canMoveRight={i !== ordered.length - 1} />
-                </form>
-                <form>
-                  <RemoveImageButton imageId={img.id} />
-                </form>
-              </div>
+              <ImageActions imageId={img.id} canMoveLeft={i !== 0} canMoveRight={i !== ordered.length - 1} />
               <AltEditor imageId={img.id} initialAlt={img.alt} />
             </li>
           ))}
