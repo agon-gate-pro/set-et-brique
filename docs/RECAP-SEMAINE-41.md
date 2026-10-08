@@ -57,6 +57,8 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Mise en production** : `semaine-41` avancée sur `main` (commit `d90e40f`, sans commit de fusion), déploiement Vercel réussi. Accueil, catalogue, bons cadeaux, CGL et route du header vérifiés ; la tâche planifiée refuse bien un appel sans secret.
 - Variable **`CRON_SECRET`** ajoutée dans Vercel (production uniquement), valeur aléatoire de 32 octets générée sur place et jamais affichée. Elle protège la tâche planifiée quotidienne qui annule les réservations non payées même quand personne ne visite le site.
 
+**Fait le 8 octobre 2026 au soir par Alexis :** mise en production des photos (plus nettes, qualité 90, envoi direct jusqu'à 20 Mo) : `main` avancée sur `semaine-41` (commit `2b703e2`), déploiement réussi. Envoi d'une photo depuis un téléphone testé en réel : fonctionne bien.
+
 **Reste à faire :**
 
 - **Redéployer la production une fois** (Vercel → Deployments → dernier déploiement de production → Redeploy), ou attendre le prochain déploiement : `CRON_SECRET` n'est prise en compte qu'au déploiement suivant son ajout. D'ici là, la tâche planifiée est refusée ; l'annulation au fil des visites fonctionne quand même.
@@ -82,4 +84,3 @@ Ces points n'ont pas pu être testés connecté (pas de session de test) ni en �
 - Les boutons « Paiement reçu » et « Prolonger de 24 h » sur une réservation de test.
 - Une réservation dont l'échéance est passée : elle doit apparaître « Annulée » et ses dates redevenir libres dans le calendrier.
 - Le formulaire de réservation réorganisé, connecté, sur ordinateur et sur téléphone.
-- L'ajout d'une photo de plus de 4,5 Mo à un set de test (envoi direct vers le stockage), puis son retrait.
