@@ -4,12 +4,27 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, ClipboardList, LogOut, Menu, Settings, X } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardList,
+  Gift,
+  Lightbulb,
+  LogIn,
+  LogOut,
+  Mail,
+  Menu,
+  Settings,
+  ShoppingBag,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { Show, SignOutButton, useUser } from "@clerk/nextjs";
 import { nav, site } from "@/lib/site";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const closeMenu = useCallback(() => setOpen(false), []);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
@@ -64,6 +79,7 @@ export function SiteHeader() {
   }, [loadCustomerName]);
 
   return (
+    <>
     <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur-xl border-b border-slate-ink/10">
       <div className="mx-auto max-w-7xl px-5 md:px-8 flex items-center justify-between h-20 gap-2 sm:gap-4">
         <Link
@@ -213,6 +229,7 @@ export function SiteHeader() {
             aria-label={`${open ? "Fermer le menu" : "Ouvrir le menu"}${pendingLabel}`}
             aria-expanded={open}
             aria-controls="menu-mobile"
+            aria-haspopup="dialog"
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -222,72 +239,155 @@ export function SiteHeader() {
         </div>
       </div>
 
+    </header>
+    {open ? (
+      <MobileMenu
+        onClose={closeMenu}
+        admin={admin}
+        actionCount={actionCount}
+        isCurrent={isCurrent}
+      />
+    ) : null}
+    </>
+  );
+}
+
+/** Icône de chaque lien du menu mobile. */
+const navIcons: Record<string, LucideIcon> = {
+  "/#concept": Lightbulb,
+  "/catalogue": BookOpen,
+  "/bons-cadeaux": Gift,
+  "/qui-sommes-nous": Users,
+  "/#vinted": ShoppingBag,
+  "/#contact": Mail,
+};
+
+/**
+ * Menu mobile (8 octobre 2026) : panneau qui glisse depuis la droite par-dessus la page (80 % de
+ * la largeur, 20 rem au plus), page assombrie et bloquée derrière. Avant, la liste se dépliait
+ * sous l'en-tête, couvrait presque tout l'écran et la page défilait derrière. Rendu à côté de
+ * l'en-tête et non dedans : son `backdrop-blur` ferait d'un élément fixe enfant un élément
+ * limité à l'en-tête. Fermeture : croix, toucher la page, Échap, changement de page.
+ */
+function MobileMenu({
+  onClose,
+  admin,
+  actionCount,
+  isCurrent,
+}: {
+  onClose: () => void;
+  admin: boolean;
+  actionCount: number;
+  isCurrent: (href: string) => boolean;
+}) {
+  const pathname = usePathname();
+  const [openedOn] = useState(pathname);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Changement de page (lien du menu, ou retour arrière) : le menu se referme.
+  useEffect(() => {
+    if (pathname !== openedOn) onClose();
+  }, [pathname, openedOn, onClose]);
+
+  useEffect(() => {
+    panelRef.current?.focus();
+    // Page bloquée derrière le panneau.
+    const html = document.documentElement;
+    const previous = html.style.overflow;
+    html.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      html.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const linkClass = (current: boolean) =>
+    `flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold text-ink-deep transition-colors ${
+      current ? "bg-sun/30 font-bold" : "hover:bg-sky"
+    }`;
+
+  return (
+    <div className="lg:hidden fixed inset-0 z-50 flex justify-end bg-ink-deep/50" onClick={onClose}>
       <div
         id="menu-mobile"
-        hidden={!open}
-        className="lg:hidden border-t border-slate-ink/10 bg-paper"
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu"
+        onClick={(e) => e.stopPropagation()}
+        className="drawer-in focus-outline-none flex h-full w-4/5 max-w-80 flex-col overflow-y-auto bg-paper shadow-brick-sm"
       >
-        <nav className="mx-auto max-w-7xl px-5 py-4 flex flex-col gap-1" aria-label="Principale mobile">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-ink/10 px-4 py-3">
+          <span className="display font-bold text-lg text-ink-deep">{site.name}</span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer le menu"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-ink/15 text-ink-deep cursor-pointer hover:bg-sky transition-colors"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+        <nav className="flex flex-col gap-0.5 p-3" aria-label="Principale mobile">
           {/* Gérant : en tête et en pastille jaune, comme dans la barre sur grand écran. */}
           {admin ? (
             <Link
               href="/admin"
-              onClick={() => setOpen(false)}
-              className="self-start mb-2 font-bold text-lg text-ink-deep bg-sun rounded-full px-4 py-2 hover:brightness-95 transition"
+              onClick={onClose}
+              className="self-start mb-2 font-bold text-ink-deep bg-sun rounded-full px-4 py-2 hover:brightness-95 transition"
             >
               Espace de gestion
             </Link>
           ) : null}
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              aria-current={isCurrent(item.href) ? "page" : undefined}
-              className={`font-bold text-lg text-ink-deep py-3 ${isCurrent(item.href) ? currentClass : ""}`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {nav.map((item) => {
+            const Icon = navIcons[item.href] ?? BookOpen;
+            const current = isCurrent(item.href);
+            return (
+              <Link key={item.href} href={item.href} onClick={onClose} aria-current={current ? "page" : undefined} className={linkClass(current)}>
+                <Icon className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="mt-auto border-t border-slate-ink/10 p-3">
           <Show when="signed-out">
             <Link
               href="/connexion"
-              onClick={() => setOpen(false)}
+              onClick={onClose}
               aria-current={isCurrent("/connexion") ? "page" : undefined}
-              className={`font-bold text-lg text-ink-deep py-3 ${isCurrent("/connexion") ? currentClass : ""}`}
+              className={linkClass(isCurrent("/connexion"))}
             >
+              <LogIn className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
               Connexion
             </Link>
           </Show>
           <Show when="signed-in">
-            <Link
-              href="/compte"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 font-bold text-lg text-ink-deep py-3"
-            >
+            <p className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-slate-ink">Mon compte</p>
+            <Link href="/compte" onClick={onClose} aria-current={pathname === "/compte" ? "page" : undefined} className={linkClass(pathname === "/compte")}>
+              <ClipboardList className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
               Mes locations
               <PendingBadge count={actionCount} />
             </Link>
-            <Link
-              href="/compte/profil"
-              onClick={() => setOpen(false)}
-              className="font-bold text-lg text-ink-deep py-3"
-            >
+            <Link href="/compte/profil" onClick={onClose} className={linkClass(isCurrent("/compte/profil"))}>
+              <Settings className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
               Gérer mon compte
             </Link>
             <SignOutButton>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="font-bold text-lg text-ink-deep py-3 text-left cursor-pointer"
-              >
+              <button type="button" onClick={onClose} className={`${linkClass(false)} w-full text-left cursor-pointer`}>
+                <LogOut className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
                 Se déconnecter
               </button>
             </SignOutButton>
           </Show>
-        </nav>
+        </div>
       </div>
-    </header>
+    </div>
   );
 }
 
