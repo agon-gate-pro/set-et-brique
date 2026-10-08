@@ -71,7 +71,11 @@ export const SECTION_TONES: Record<string, Tone> = {
   "/admin/maintenance": "slate",
 };
 
-/** Titre de page de l'espace de gestion, précédé de l'icône colorée de sa rubrique. */
+/**
+ * Titre de page de l'espace de gestion, précédé de l'icône colorée de sa rubrique sur téléphone
+ * seulement : sur grand écran, le menu de gauche montre déjà la rubrique (icône retirée à la
+ * demande d'Alexis, 8 octobre 2026).
+ */
 export function AdminPageTitle({
   section,
   className = "",
@@ -87,8 +91,8 @@ export function AdminPageTitle({
   return (
     <h1 className={`flex items-center gap-3 text-3xl md:text-4xl font-bold ${className}`}>
       {Icon ? (
-        <span className={`flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl ${tone}`} aria-hidden="true">
-          <Icon className="h-5 w-5 md:h-6 md:w-6" />
+        <span className={`flex md:hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone}`} aria-hidden="true">
+          <Icon className="h-5 w-5" />
         </span>
       ) : null}
       <span className="min-w-0 break-words">{children}</span>
