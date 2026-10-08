@@ -30,7 +30,7 @@ export default async function RatePlansPage() {
         <h1 className="text-3xl md:text-4xl font-bold">Forfaits</h1>
         <RatePlanCreateDialog />
       </div>
-      <p className="mt-3 text-sm text-slate-ink whitespace-nowrap">
+      <p className="mt-3 text-sm text-slate-ink">
         Un forfait fixe un prix par jour ; chaque set utilise le sien ou celui par défaut
         {unassigned > 0 ? ` (${unassigned} set${unassigned > 1 ? "s" : ""})` : ""}.
       </p>

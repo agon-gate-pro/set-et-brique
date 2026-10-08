@@ -32,7 +32,7 @@ export default async function PickupPointsPage() {
         <h1 className="text-3xl md:text-4xl font-bold">Lieux de remise</h1>
         <PickupPointCreateDialog />
       </div>
-      <p className="mt-3 text-sm text-slate-ink whitespace-nowrap">
+      <p className="mt-3 text-sm text-slate-ink">
         Les lieux où vous remettez les sets en main propre, dans l&apos;ordre où le client les choisit.
       </p>
 

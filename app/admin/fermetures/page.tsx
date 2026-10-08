@@ -37,7 +37,7 @@ export default async function BlackoutsPage() {
         <h1 className="text-3xl md:text-4xl font-bold">Périodes fermées</h1>
         <BlackoutCreateDialog />
       </div>
-      <p className="mt-3 text-sm text-slate-ink whitespace-nowrap">
+      <p className="mt-3 text-sm text-slate-ink">
         Vos congés et absences : aucune remise ni aucun retour n&apos;est possible à ces dates.
       </p>
 

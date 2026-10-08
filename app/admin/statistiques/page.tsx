@@ -73,7 +73,22 @@ export default async function StatistiquesPage() {
       <section className="mt-8 brick-card p-5">
         <h2 className="text-xl font-semibold">Chiffre d&apos;affaires par mois</h2>
         <p className="mt-1 text-sm text-slate-ink">Réservations confirmées ou au-delà, à la date de début de location.</p>
-        <div className="mt-6 flex items-end gap-2 md:gap-3 h-40">
+        {/* Téléphone : barres horizontales, une ligne par mois (12 colonnes verticales ne tiennent pas en largeur). */}
+        <ul className="mt-5 space-y-2 md:hidden">
+          {history.map((h) => (
+            <li key={h.month} className="flex items-center gap-3 text-sm">
+              <span className="w-16 shrink-0 text-slate-ink">{monthLabel.format(new Date(`${h.month}-01T12:00:00Z`))}</span>
+              <span className="h-3 flex-1 overflow-hidden rounded-full bg-sky">
+                <span
+                  className="block h-full rounded-full bg-brick"
+                  style={{ width: `${h.total > 0 ? Math.max(2, Math.round((h.total / maxRevenue) * 100)) : 0}%` }}
+                />
+              </span>
+              <span className="w-20 shrink-0 text-right font-semibold text-ink-deep">{h.total > 0 ? formatCents(h.total) : "—"}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6 hidden md:flex items-end gap-2 md:gap-3 h-40">
           {history.map((h) => (
             <div key={h.month} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
               <span className="text-xs font-semibold text-ink-deep">{h.total > 0 ? formatCents(h.total) : ""}</span>

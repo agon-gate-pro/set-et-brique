@@ -3,7 +3,7 @@
 import { useActionState, useRef, useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { upload } from "@vercel/blob/client";
-import { Crop, ImagePlus } from "lucide-react";
+import { Crop, ImagePlus, Trash2 } from "lucide-react";
 import { CroppedImage } from "@/components/cropped-image";
 import { CropEditor } from "./crop-editor";
 import {
@@ -81,7 +81,7 @@ function MoveButtons({ imageId, canMoveLeft, canMoveRight }: { imageId: string; 
         type="submit"
         formAction={moveSetImage.bind(null, imageId, "up")}
         disabled={!canMoveLeft || pending}
-        className="font-bold cursor-pointer transition-colors hover:text-brick disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-inherit"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold cursor-pointer transition-colors hover:bg-sky hover:text-brick disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit"
         aria-label="Avancer"
       >
         {pending ? "…" : "←"}
@@ -90,7 +90,7 @@ function MoveButtons({ imageId, canMoveLeft, canMoveRight }: { imageId: string; 
         type="submit"
         formAction={moveSetImage.bind(null, imageId, "down")}
         disabled={!canMoveRight || pending}
-        className="font-bold cursor-pointer transition-colors hover:text-brick disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-inherit"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold cursor-pointer transition-colors hover:bg-sky hover:text-brick disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit"
         aria-label="Reculer"
       >
         {pending ? "…" : "→"}
@@ -118,7 +118,7 @@ function AltEditor({ imageId, initialAlt }: { imageId: string; initialAlt: strin
       onChange={(e) => setValue(e.target.value)}
       onBlur={save}
       disabled={saving}
-      placeholder="Description (facultatif)"
+      placeholder="Description…"
       aria-label="Description de la photo"
       className="focus-outline-none w-full border-t border-slate-ink/15 bg-paper px-2 py-1.5 text-xs text-ink-deep disabled:opacity-60"
     />
@@ -133,9 +133,12 @@ function RemoveImageButton({ imageId }: { imageId: string }) {
       type="submit"
       formAction={deleteSetImage.bind(null, imageId)}
       disabled={pending}
-      className="font-bold text-brick-deep underline underline-offset-4 cursor-pointer transition-colors hover:text-brick disabled:cursor-wait disabled:opacity-50"
+      aria-label="Retirer la photo"
+      className="flex h-8 w-8 sm:h-auto sm:w-auto items-center justify-center rounded-full font-bold text-brick-deep sm:underline sm:underline-offset-4 cursor-pointer transition-colors hover:text-brick hover:bg-red-50 sm:hover:bg-transparent disabled:cursor-wait disabled:opacity-50"
     >
-      {pending ? "Retrait…" : "Retirer"}
+      {/* Téléphone : corbeille seule, le libellé ne tenait pas à côté des flèches. */}
+      <Trash2 className="h-4 w-4 sm:hidden" aria-hidden="true" />
+      <span className="hidden sm:inline">{pending ? "Retrait…" : "Retirer"}</span>
     </button>
   );
 }
@@ -237,7 +240,7 @@ export function ImagesSection({ setId, setSlug, images }: { setId: string; setSl
     <section className="mt-8 brick-card p-6">
       <h2 className="text-2xl font-semibold">Photos</h2>
       <p className="mt-1 text-slate-ink">
-        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, {MAX_IMAGE_MB} Mo maximum,
+        La première photo est celle affichée dans le catalogue. JPEG, PNG ou WebP, {MAX_IMAGE_MB} Mo maximum,{" "}
         {MAX_IMAGES_PER_SET} photos par set au plus ({images.length}/{MAX_IMAGES_PER_SET}). Glissez une photo
         pour la réordonner, ou utilisez les flèches. « Recadrer » règle le zoom et la partie visible
         de chaque photo, sans modifier le fichier.
@@ -282,13 +285,16 @@ export function ImagesSection({ setId, setSlug, images }: { setId: string; setSl
                 <button
                   type="button"
                   onClick={() => setCroppingId(img.id)}
-                  className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-paper/95 px-2.5 py-1 text-xs font-bold text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-sky"
+                  aria-label="Recadrer"
+                  className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-paper/95 p-2 sm:px-2.5 sm:py-1 text-xs font-bold text-ink-deep shadow-brick-sm cursor-pointer transition-colors hover:bg-sky"
                 >
-                  <Crop className="h-3.5 w-3.5" aria-hidden /> Recadrer
+                  <Crop className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
+                  {/* Téléphone : icône seule, le libellé couvrait la moitié de la vignette. */}
+                  <span className="hidden sm:inline">Recadrer</span>
                 </button>
               </div>
               <div className="flex items-center justify-between gap-2 p-2 text-sm">
-                <form className="flex gap-2">
+                <form className="flex">
                   <MoveButtons imageId={img.id} canMoveLeft={i !== 0} canMoveRight={i !== ordered.length - 1} />
                 </form>
                 <form>

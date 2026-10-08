@@ -40,7 +40,7 @@ export function RatePlanCreateDialog() {
           aria-modal="true"
           onClick={() => setOpen(false)}
         >
-          <div className="brick-card bg-paper p-6 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="brick-card bg-paper p-5 sm:p-6 max-w-lg w-full max-h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <h2 className="text-2xl font-semibold">Nouveau forfait</h2>
               <button
