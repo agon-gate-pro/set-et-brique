@@ -47,6 +47,16 @@ export const TONE_BADGE: Record<Tone, string> = {
   slate: "bg-slate-ink/10 text-ink-deep",
 };
 
+/** Texte d'un élément actif dans la couleur de sa rubrique (le jaune, illisible en texte, passe en bleu nuit). */
+export const TONE_TEXT: Record<Tone, string> = {
+  ink: "text-ink-deep",
+  sun: "text-ink-deep",
+  sea: "text-sea-deep",
+  leaf: "text-leaf-deep",
+  brick: "text-brick-deep",
+  slate: "text-ink-deep",
+};
+
 export const SECTION_TONES: Record<string, Tone> = {
   "/admin": "ink",
   "/admin/sets": "sun",

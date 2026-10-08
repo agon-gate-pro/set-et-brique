@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Ellipsis, X, type LucideIcon } from "lucide-react";
-import { SECTION_ICONS as icons } from "@/components/admin/sections";
+import { SECTION_ICONS as icons, SECTION_TONES, TONE_BADGE, TONE_TEXT, type Tone } from "@/components/admin/sections";
+
+const toneOf = (href: string): Tone => SECTION_TONES[href] ?? "slate";
 
 export type AdminLink = { href: string; label: string; separatorBefore?: boolean };
 
@@ -85,7 +87,9 @@ function MobileTabBar({
 
   const primary = PRIMARY_HREFS.map((href) => links.find((l) => l.href === href)).filter((l): l is AdminLink => l != null);
   const more = links.filter((l) => !PRIMARY_HREFS.includes(l.href));
-  const moreActive = more.some((l) => isActive(l.href));
+  // « Plus » prend la couleur de la rubrique ouverte quand elle est dans le panneau.
+  const moreActiveLink = more.find((l) => isActive(l.href));
+  const moreTone = moreActiveLink ? toneOf(moreActiveLink.href) : null;
 
   return (
     <>
@@ -98,7 +102,12 @@ function MobileTabBar({
         <ul className="grid grid-cols-5">
           {primary.map((l) => (
             <li key={l.href}>
-              <TabLink href={l.href} label={SHORT_LABELS[l.href] ?? l.label} Icon={icons[l.href]} active={isActive(l.href)} />
+              <TabLink
+                href={l.href}
+                label={SHORT_LABELS[l.href] ?? l.label}
+                Icon={icons[l.href]}
+                tone={isActive(l.href) ? toneOf(l.href) : null}
+              />
             </li>
           ))}
           <li>
@@ -108,10 +117,10 @@ function MobileTabBar({
               aria-haspopup="dialog"
               aria-expanded={moreOpen}
               className={`flex w-full flex-col items-center gap-0.5 px-0.5 pt-2 pb-2.5 text-[10px] min-[380px]:text-[11px] font-semibold tracking-tight cursor-pointer ${
-                moreActive ? "text-brick-deep" : "text-slate-ink"
+                moreTone ? `font-bold ${TONE_TEXT[moreTone]}` : "text-slate-ink"
               }`}
             >
-              <TabIcon Icon={Ellipsis} active={moreActive} />
+              <TabIcon Icon={Ellipsis} tone={moreTone} />
               Plus
             </button>
           </li>
@@ -122,24 +131,25 @@ function MobileTabBar({
   );
 }
 
-function TabIcon({ Icon, active }: { Icon: LucideIcon; active: boolean }) {
+/** Icône d'onglet ; active (`tone` renseigné), dans une pastille de la couleur de sa rubrique, comme les titres de page. */
+function TabIcon({ Icon, tone }: { Icon: LucideIcon; tone: Tone | null }) {
   return (
-    <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${active ? "bg-brick/10" : ""}`}>
+    <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${tone ? TONE_BADGE[tone] : ""}`}>
       <Icon className="h-5 w-5" aria-hidden="true" />
     </span>
   );
 }
 
-function TabLink({ href, label, Icon, active }: { href: string; label: string; Icon: LucideIcon; active: boolean }) {
+function TabLink({ href, label, Icon, tone }: { href: string; label: string; Icon: LucideIcon; tone: Tone | null }) {
   return (
     <Link
       href={href}
-      aria-current={active ? "page" : undefined}
+      aria-current={tone ? "page" : undefined}
       className={`flex flex-col items-center gap-0.5 px-0.5 pt-2 pb-2.5 text-[10px] min-[380px]:text-[11px] font-semibold tracking-tight ${
-        active ? "text-brick-deep" : "text-slate-ink"
+        tone ? `font-bold ${TONE_TEXT[tone]}` : "text-slate-ink"
       }`}
     >
-      <TabIcon Icon={Icon} active={active} />
+      <TabIcon Icon={Icon} tone={tone} />
       <span className="max-w-full truncate">{label}</span>
     </Link>
   );
@@ -205,7 +215,7 @@ function MoreSheet({
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={`flex items-center gap-3 rounded-xl px-3 py-3 font-semibold ${
-                    active ? "bg-ink-deep text-paper" : "text-ink-deep hover:bg-sea/15"
+                    active ? TONE_BADGE[toneOf(l.href)] : "text-ink-deep hover:bg-sea/15"
                   }`}
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
