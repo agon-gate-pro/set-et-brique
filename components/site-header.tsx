@@ -228,6 +228,16 @@ export function SiteHeader() {
         className="lg:hidden border-t border-slate-ink/10 bg-paper"
       >
         <nav className="mx-auto max-w-7xl px-5 py-4 flex flex-col gap-1" aria-label="Principale mobile">
+          {/* Gérant : en tête et en pastille jaune, comme dans la barre sur grand écran. */}
+          {admin ? (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="self-start mb-2 font-bold text-lg text-ink-deep bg-sun rounded-full px-4 py-2 hover:brightness-95 transition"
+            >
+              Espace de gestion
+            </Link>
+          ) : null}
           {nav.map((item) => (
             <Link
               key={item.href}
@@ -275,15 +285,6 @@ export function SiteHeader() {
               </button>
             </SignOutButton>
           </Show>
-          {admin ? (
-            <Link
-              href="/admin"
-              onClick={() => setOpen(false)}
-              className="font-bold text-lg text-ink-deep py-3"
-            >
-              Espace de gestion
-            </Link>
-          ) : null}
         </nav>
       </div>
     </header>
