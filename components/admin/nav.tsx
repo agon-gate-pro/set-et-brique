@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   Package,
   CalendarCheck,
-  Ticket,
+  BadgeEuro,
   MapPin,
   CalendarOff,
   Gift,
@@ -26,7 +26,8 @@ const icons: Record<string, LucideIcon> = {
   "/admin": LayoutDashboard,
   "/admin/sets": Package,
   "/admin/reservations": CalendarCheck,
-  "/admin/forfaits": Ticket,
+  // Pas Ticket : c'est le visuel des bons cadeaux sur le site public.
+  "/admin/forfaits": BadgeEuro,
   "/admin/lieux": MapPin,
   "/admin/fermetures": CalendarOff,
   "/admin/bons-cadeaux": Gift,
