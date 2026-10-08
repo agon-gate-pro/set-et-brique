@@ -107,8 +107,8 @@ export default function RentalTermsPage() {
               </ul>
               <p>
                 Contact :{" "}
-                <a href="tel:+33984371846" className={linkClass}>
-                  09 84 37 18 46
+                <a href="tel:+33783737020" className={linkClass}>
+                  07 83 73 70 20
                 </a>{" "}
                 ;{" "}
                 <a href="mailto:setetbrique@gmail.com" className={linkClass}>

@@ -9,8 +9,8 @@ export const site = {
   url: "https://set-et-brique.vercel.app",
   description:
     "Louez, construisez, rapportez. Set et Brique loue de grands sets de briques de construction aux familles, écoles et structures du pays de Lorient.",
-  phone: "09 84 37 18 46",
-  phoneHref: "tel:+33984371846",
+  phone: "07 83 73 70 20",
+  phoneHref: "tel:+33783737020",
   email: "setetbrique@gmail.com",
   address: "73 Boulevard René Laennec, 56100 Lorient",
   city: "Lorient, Bretagne",
