@@ -5,6 +5,7 @@ import { db, schema } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import type { ImageCrop } from "@/lib/image-crop";
 import { SetOrderList } from "./set-order-list";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Ordre du catalogue", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ export default async function SetOrderPage() {
       <Link href="/admin/sets" className="font-bold underline underline-offset-4">
         Retour aux sets
       </Link>
-      <h1 className="mt-3 text-3xl md:text-4xl font-bold">Ordre du catalogue</h1>
+      <AdminPageTitle section="/admin/sets" className="mt-3">Ordre du catalogue</AdminPageTitle>
       <p className="mt-2 text-sm text-slate-ink max-w-2xl">
         L&apos;ordre dans lequel les sets publiés apparaissent dans le catalogue. Glissez un set pour le
         déplacer, ou utilisez les flèches : c&apos;est enregistré tout de suite. Les coups de cœur restent

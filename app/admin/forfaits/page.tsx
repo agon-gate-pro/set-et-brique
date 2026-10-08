@@ -3,6 +3,7 @@ import { asc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { RatePlanCreateDialog, RatePlanRow } from "./forms";
 import { requireRole } from "@/lib/auth";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Forfaits", robots: { index: false } };
 
@@ -27,7 +28,7 @@ export default async function RatePlansPage() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-bold">Forfaits</h1>
+        <AdminPageTitle section="/admin/forfaits">Forfaits</AdminPageTitle>
         <RatePlanCreateDialog />
       </div>
       <p className="mt-3 text-sm text-slate-ink">

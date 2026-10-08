@@ -5,6 +5,7 @@ import { db, schema } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { BlackoutCreateDialog, BlackoutRow } from "./forms";
 import { requireRole } from "@/lib/auth";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Périodes fermées", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function BlackoutsPage() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-bold">Périodes fermées</h1>
+        <AdminPageTitle section="/admin/fermetures">Périodes fermées</AdminPageTitle>
         <BlackoutCreateDialog />
       </div>
       <p className="mt-3 text-sm text-slate-ink">

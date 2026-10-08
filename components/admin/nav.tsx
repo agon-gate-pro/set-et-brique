@@ -3,39 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  LayoutDashboard,
-  Package,
-  CalendarCheck,
-  BadgeEuro,
-  MapPin,
-  CalendarOff,
-  Gift,
-  BarChart3,
-  FileText,
-  SlidersHorizontal,
-  Wrench,
-  Ellipsis,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Ellipsis, X, type LucideIcon } from "lucide-react";
+import { SECTION_ICONS as icons } from "@/components/admin/sections";
 
 export type AdminLink = { href: string; label: string; separatorBefore?: boolean };
-
-const icons: Record<string, LucideIcon> = {
-  "/admin": LayoutDashboard,
-  "/admin/sets": Package,
-  "/admin/reservations": CalendarCheck,
-  // Pas Ticket : c'est le visuel des bons cadeaux sur le site public.
-  "/admin/forfaits": BadgeEuro,
-  "/admin/lieux": MapPin,
-  "/admin/fermetures": CalendarOff,
-  "/admin/bons-cadeaux": Gift,
-  "/admin/statistiques": BarChart3,
-  "/admin/contenus": FileText,
-  "/admin/reglages": SlidersHorizontal,
-  "/admin/maintenance": Wrench,
-};
 
 /** Rubriques en accès direct dans la barre du bas sur mobile, dans cet ordre ; les autres passent sous « Plus ». */
 const PRIMARY_HREFS = ["/admin", "/admin/reservations", "/admin/sets", "/admin/bons-cadeaux"];

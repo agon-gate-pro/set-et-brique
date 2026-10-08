@@ -5,6 +5,7 @@ import { db, schema } from "@/lib/db";
 import { addDays, monthStartIso, todayIso } from "@/lib/dates";
 import { formatCents } from "@/lib/format";
 import { requireRole } from "@/lib/auth";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Statistiques", robots: { index: false } };
 
@@ -68,7 +69,7 @@ export default async function StatistiquesPage() {
 
   return (
     <>
-      <h1 className="text-3xl md:text-4xl font-bold">Statistiques</h1>
+      <AdminPageTitle section="/admin/statistiques">Statistiques</AdminPageTitle>
 
       <section className="mt-8 brick-card p-5">
         <h2 className="text-xl font-semibold">Chiffre d&apos;affaires par mois</h2>

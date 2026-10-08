@@ -5,6 +5,7 @@ import { PickupPointCreateDialog, PickupPointRow } from "./forms";
 import { requireRole } from "@/lib/auth";
 import { HANDOVER_CHANGE_STATUSES } from "@/lib/handover";
 import { expireOverduePayments } from "@/lib/payment-expiry";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Lieux de remise", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function PickupPointsPage() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-bold">Lieux de remise</h1>
+        <AdminPageTitle section="/admin/lieux">Lieux de remise</AdminPageTitle>
         <PickupPointCreateDialog />
       </div>
       <p className="mt-3 text-sm text-slate-ink">

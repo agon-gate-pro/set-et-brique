@@ -4,6 +4,7 @@ import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { SetsTable } from "@/components/admin/sets-table";
 import { requireRole } from "@/lib/auth";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Sets", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ export default async function SetsPage() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-bold">Sets</h1>
+        <AdminPageTitle section="/admin/sets">Sets</AdminPageTitle>
         <div className="flex flex-wrap gap-3">
           <Link href="/admin/sets/ordre" className="btn btn-sea">
             Ordre du catalogue

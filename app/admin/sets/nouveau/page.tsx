@@ -6,6 +6,7 @@ import { getSetting } from "@/lib/settings";
 import { createSet } from "../actions";
 import { SetForm } from "../set-form";
 import { requireRole } from "@/lib/auth";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Nouveau set", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function NewSetPage() {
       <Link href="/admin/sets" className="font-bold underline underline-offset-4">
         Retour aux sets
       </Link>
-      <h1 className="mt-3 text-3xl md:text-4xl font-bold">Nouveau set</h1>
+      <AdminPageTitle section="/admin/sets" className="mt-3">Nouveau set</AdminPageTitle>
       <p className="mt-2 text-sm text-slate-ink max-w-xl">
         Renseignez la fiche ; photos et exemplaires s&apos;ajoutent à l&apos;étape suivante.
       </p>

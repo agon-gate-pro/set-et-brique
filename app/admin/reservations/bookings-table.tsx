@@ -63,7 +63,9 @@ export function BookingsTable({
   initialPickupPointId?: string;
   initialGroups?: string[];
 }) {
-  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => new Set(initialGroups));
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(
+    () => new Set(initialGroups.filter((k) => groups.some((g) => g.key === k))),
+  );
   const [pickupPointId, setPickupPointId] = useState(initialPickupPointId);
   const [statusOpen, setStatusOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -150,7 +152,9 @@ export function BookingsTable({
           setPickupPointId("");
         }}
         resultCount={sorted.length}
-        defaultOpen={initialGroups.length > 0 || Boolean(initialPickupPointId)}
+        // Depuis un lieu : bloc déplié pour montrer pourquoi la liste est réduite. Depuis une carte du
+        // tableau de bord (`?statut=`) : replié, le bouton jaune « Filtres (1) » suffit.
+        defaultOpen={Boolean(initialPickupPointId)}
       >
         <div className="relative block" ref={statusRef}>
           <span className="block font-bold text-ink-deep">Statut</span>

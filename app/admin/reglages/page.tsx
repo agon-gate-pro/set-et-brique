@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth";
 import { getSetting } from "@/lib/settings";
 import { SettingsForm } from "./settings-form";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Réglages", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <h1 className="text-3xl md:text-4xl font-bold">Réglages</h1>
+      <AdminPageTitle section="/admin/reglages">Réglages</AdminPageTitle>
       <p className="mt-3 text-sm text-slate-ink">Les règles de fonctionnement des réservations.</p>
       <SettingsForm values={{ paymentDelayHours, turnaroundDays, minRentalDays }} />
     </>

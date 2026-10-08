@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { GiftVoucherCreateDialog } from "./forms";
 import { VouchersList } from "./vouchers-list";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Bons cadeaux", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function GiftVouchersPage() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-bold">Bons cadeaux</h1>
+        <AdminPageTitle section="/admin/bons-cadeaux">Bons cadeaux</AdminPageTitle>
         <GiftVoucherCreateDialog />
       </div>
       <p className="mt-2 text-sm text-slate-ink max-w-xl">

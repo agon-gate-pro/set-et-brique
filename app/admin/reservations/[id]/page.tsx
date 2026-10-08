@@ -12,6 +12,7 @@ import { neutralBadge, statusTone } from "../status-tone";
 import { requireRole } from "@/lib/auth";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { expireOverduePayments } from "@/lib/payment-expiry";
+import { AdminPageTitle } from "@/components/admin/sections";
 
 export const metadata: Metadata = { title: "Réservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -61,7 +62,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
         Retour aux réservations
       </Link>
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        <h1 className="text-3xl md:text-4xl font-bold">{b.reference}</h1>
+        <AdminPageTitle section="/admin/reservations">{b.reference}</AdminPageTitle>
         <span className={`text-sm font-bold px-2 py-1 rounded-md border ${statusTone(b.status)?.badge ?? neutralBadge}`}>
           {bookingStatusLabels[b.status]}
         </span>
