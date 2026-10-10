@@ -18,6 +18,9 @@ const statusBadgeClass: Record<GiftVoucherDisplayStatus, string> = {
 
 const statusOrder: GiftVoucherDisplayStatus[] = ["valid", "used", "expired", "cancelled"];
 
+/** Origine en version courte pour la colonne du tableau, dont l'en-tête dit déjà « Origine ». */
+const originShortLabels: Record<GiftVoucher["origin"], string> = { purchase: "Achat en ligne", admin: "Set et Brique" };
+
 function countByStatus(items: GiftVoucher[]) {
   const counts = new Map<GiftVoucherDisplayStatus, number>();
   for (const v of items) {
@@ -223,24 +226,27 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
             );
           })}
         </ul>
+        {/* Grand écran : une seule ligne par lot et par bon (10 octobre 2026). Le texte d'un lot est tronqué
+            plutôt que renvoyé à la ligne, le libellé complet et la date de création restant en info-bulle ; les bons d'un lot ouvert
+            ont leur propre ligne en largeur pleine, libre des colonnes du lot. */}
         <div className="mt-6 brick-card overflow-x-auto hidden md:block">
           <table className="w-full min-w-[48rem] text-sm table-fixed">
             <colgroup>
-              <col className="w-[18%]" />
-              <col className="w-24" />
-              <col className="w-[18%]" />
-              <col className="w-[22%]" />
-              <col className="w-[18%]" />
-              <col className="w-56" />
+              <col />
+              <col className="w-[4.5rem]" />
+              <col className="w-[6.5rem]" />
+              <col className="w-28" />
+              <col className="w-[12.5rem]" />
+              <col className="w-[3.25rem]" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-ink/10 bg-sky text-left">
-                <th className="py-3 px-2 sm:px-3 font-bold text-ink-deep">Lot</th>
-                <th className="py-3 px-2 sm:px-3 font-bold text-ink-deep">Montant</th>
-                <th className="py-3 px-2 sm:px-3 font-bold text-ink-deep">Origine</th>
-                <th className="py-3 px-2 sm:px-3 font-bold text-ink-deep">Dates</th>
-                <th className="py-3 px-2 sm:px-3 font-bold text-ink-deep">État</th>
-                <th className="py-3 px-2 sm:px-3" aria-hidden="true" />
+                <th className="py-3 px-2 font-bold text-ink-deep">Lot</th>
+                <th className="py-3 px-2 font-bold text-ink-deep">Montant</th>
+                <th className="py-3 px-2 font-bold text-ink-deep">Origine</th>
+                <th className="py-3 px-2 font-bold text-ink-deep">Expiration</th>
+                <th className="py-3 px-2 font-bold text-ink-deep">État</th>
+                <th className="py-3 px-2" aria-hidden="true" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-ink/15">
@@ -248,14 +254,16 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
                 const open = openBatches.has(batchNumber);
                 const first = items[0];
                 const counts = countByStatus(items);
+                const countLabel = items.length > 1 ? `${items.length} bons` : "1 bon";
                 return (
                   <Fragment key={batchNumber}>
                     <tr className={open ? "bg-sea/8 hover:bg-sea/15" : "bg-sky/40 hover:bg-sky/60"}>
-                      <td className="py-3 px-2 sm:px-3">
+                      <td className="py-2 px-2">
                         <button
                           type="button"
                           onClick={() => toggleBatch(batchNumber)}
-                          className="focus-outline-none flex items-center gap-2 text-left cursor-pointer"
+                          title={`${batchNumber} · ${countLabel}${first.batchLabel ? ` · ${first.batchLabel}` : ""}`}
+                          className="focus-outline-none flex w-full min-w-0 items-center gap-2 text-left cursor-pointer"
                           aria-expanded={open}
                         >
                           {open ? (
@@ -263,29 +271,25 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
                           ) : (
                             <ChevronRight className="h-4 w-4 shrink-0 text-slate-ink" aria-hidden="true" />
                           )}
-                          <span>
-                            <span className="display font-semibold block break-words">{batchNumber}</span>
-                            {first.batchLabel ? (
-                              <span className="block text-slate-ink text-xs break-words">
-                                lot « {first.batchLabel} »
-                              </span>
-                            ) : null}
-                            <span className="block text-slate-ink text-xs">
-                              {items.length > 1 ? `${items.length} bons` : "1 bon"}
-                            </span>
-                          </span>
+                          <span className="display shrink-0 font-semibold whitespace-nowrap">{batchNumber}</span>
+                          {/* Le nom du lot s'il en a un, sinon le nombre de bons : les pastilles d'état donnent déjà le compte. */}
+                          <span className="min-w-0 truncate text-xs text-slate-ink">{first.batchLabel || countLabel}</span>
                         </button>
                       </td>
-                      <td className="py-3 px-2 sm:px-3">{formatCents(first.amountCents)}</td>
-                      <td className="py-3 px-2 sm:px-3 text-slate-ink break-words">{giftVoucherOriginLabels[first.origin]}</td>
-                      <td className="py-3 px-2 sm:px-3 text-slate-ink text-xs">
-                        <span className="block">Créé le {formatDateTime(first.createdAt)}</span>
-                        <span className="block">Expire le {formatDateTime(first.expiresAt)}</span>
+                      <td className="py-2 px-2 whitespace-nowrap">{formatCents(first.amountCents)}</td>
+                      <td className="py-2 px-2 text-slate-ink truncate" title={giftVoucherOriginLabels[first.origin]}>
+                        {originShortLabels[first.origin]}
                       </td>
-                      <td className="py-3 px-2 sm:px-3">
-                        <StatusCounts counts={counts} />
+                      <td
+                        className="py-2 px-2 text-slate-ink text-xs whitespace-nowrap"
+                        title={`Créé le ${formatDateTime(first.createdAt)}, expire le ${formatDateTime(first.expiresAt)}`}
+                      >
+                        {formatDateTime(first.expiresAt)}
                       </td>
-                      <td className="py-3 px-2 sm:px-3 text-right">
+                      <td className="py-2 px-2">
+                        <StatusCounts counts={counts} className="!flex-nowrap" />
+                      </td>
+                      <td className="py-2 px-2 text-right">
                         {counts.get("valid") ? (
                           <Link
                             href={`/admin/bons-cadeaux/lot/${batchNumber}/imprimer`}
@@ -304,42 +308,43 @@ export function VouchersList({ vouchers }: { vouchers: GiftVoucher[] }) {
                           const displayStatus = giftVoucherDisplayStatus(v);
                           return (
                             <tr key={v.id} className={i % 2 === 0 ? "bg-paper hover:bg-sky/40" : "bg-sky/20 hover:bg-sky/40"}>
-                              <td className="py-3 px-2 sm:px-3 pl-10">
-                                <span className="display font-semibold font-mono tracking-wide block break-words">
-                                  {v.code}
-                                </span>
-                                {displayStatus === "valid" ? (
-                                  <div className="mt-1.5">
-                                    <GiftVoucherCancelButton id={v.id} />
+                              <td colSpan={6} className="py-1.5 pr-2 pl-10">
+                                <div className="flex items-center gap-3">
+                                  <span className="display w-32 shrink-0 font-semibold font-mono tracking-wide whitespace-nowrap">
+                                    {v.code}
+                                  </span>
+                                  {/* Annulation à gauche, à l'écart des actions positives de droite. */}
+                                  <span className="min-w-0 flex-1">
+                                    {displayStatus === "valid" ? <GiftVoucherCancelButton id={v.id} /> : null}
+                                  </span>
+                                  {/* Largeur des colonnes « État » et impression du lot, marges déduites : la pastille du bon
+                                      tombe sous celles du lot, la date à sa droite, l'impression sous celle du lot. */}
+                                  <div className="flex w-[14.75rem] shrink-0 items-center gap-2">
+                                    <span
+                                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 whitespace-nowrap ${statusBadgeClass[displayStatus]}`}
+                                    >
+                                      {giftVoucherStatusLabels[displayStatus]}
+                                    </span>
+                                    {displayStatus === "valid" ? (
+                                      <span className="min-w-0 flex-1">
+                                        <GiftVoucherMarkUsedButton id={v.id} />
+                                      </span>
+                                    ) : (
+                                      <span className="min-w-0 flex-1 truncate text-xs text-slate-ink">
+                                        {v.usedAt ? `le ${formatDateTime(v.usedAt)}` : ""}
+                                        {v.cancelledAt ? `le ${formatDateTime(v.cancelledAt)}` : ""}
+                                      </span>
+                                    )}
+                                    <Link
+                                      href={`/admin/bons-cadeaux/${v.id}/imprimer`}
+                                      target="_blank"
+                                      title="Imprimer ce bon"
+                                      aria-label="Imprimer ce bon"
+                                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-ink/15 bg-paper text-ink-deep transition-colors hover:bg-sea/15"
+                                    >
+                                      <Printer className="h-4 w-4" aria-hidden="true" />
+                                    </Link>
                                   </div>
-                                ) : null}
-                              </td>
-                              <td className="py-3 px-2 sm:px-3" colSpan={2} />
-                              <td className="py-3 px-2 sm:px-3 text-slate-ink text-xs">
-                                {v.usedAt ? <span className="block">Utilisé le {formatDateTime(v.usedAt)}</span> : null}
-                                {v.cancelledAt ? (
-                                  <span className="block">Annulé le {formatDateTime(v.cancelledAt)}</span>
-                                ) : null}
-                              </td>
-                              <td className="py-3 px-2 sm:px-3">
-                                <span
-                                  className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 inline-block ${statusBadgeClass[displayStatus]}`}
-                                >
-                                  {giftVoucherStatusLabels[displayStatus]}
-                                </span>
-                              </td>
-                              <td className="py-3 px-2 sm:px-3">
-                                <div className="flex w-full items-center justify-end gap-2">
-                                  <Link
-                                    href={`/admin/bons-cadeaux/${v.id}/imprimer`}
-                                    target="_blank"
-                                    title="Imprimer ce bon"
-                                    aria-label="Imprimer ce bon"
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-ink/15 bg-paper text-ink-deep transition-colors hover:bg-sea/15"
-                                  >
-                                    <Printer className="h-4 w-4" aria-hidden="true" />
-                                  </Link>
-                                  {displayStatus === "valid" ? <GiftVoucherMarkUsedButton id={v.id} /> : null}
                                 </div>
                               </td>
                             </tr>

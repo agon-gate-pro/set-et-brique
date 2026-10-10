@@ -110,11 +110,12 @@ export function GiftVoucherMarkUsedButton({ id }: { id: string }) {
         <SubmitButton
           variant="leaf"
           title="Marquer ce bon utilisé"
-          className="!inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap !border !border-leaf/30 !bg-leaf/10 !px-3 !py-0 text-sm !text-leaf-deep !shadow-none hover:!bg-leaf/20"
+          // Plus petit sur grand écran (10 octobre 2026) : dans la ligne d'un bon, il dominait le code et l'état.
+          className="!inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap !border !border-leaf/30 !bg-leaf/10 !px-3 !py-0 text-sm !text-leaf-deep !shadow-none hover:!bg-leaf/20 md:h-7 md:gap-1 md:!px-2.5 md:!text-xs"
         >
           {/* Libellé visible (8 octobre 2026) : le ✓ seul n'était pas parlant, surtout sur téléphone ; « Marquer utilisé » plutôt
               « Utilisé », qui se confondait avec la pastille d'état d'un bon déjà utilisé. */}
-          <Check className="h-4 w-4" aria-hidden="true" />
+          <Check className="h-4 w-4 md:h-3.5 md:w-3.5" aria-hidden="true" />
           Marquer utilisé
         </SubmitButton>
       </form>
@@ -124,8 +125,8 @@ export function GiftVoucherMarkUsedButton({ id }: { id: string }) {
 }
 
 /**
- * Bouton à part, sous le code du bon, à gauche de la ligne — pas dans la colonne
- * Actions : même logique que « Supprimer cet exemplaire » sous le formulaire
+ * Bouton à part, à gauche de la ligne (à droite du code sur grand écran, dessous sur téléphone) —
+ * pas avec les actions de droite : même logique que « Supprimer cet exemplaire » sous le formulaire
  * d'édition (`app/admin/sets/[id]/sections.tsx`), séparé des actions positives.
  */
 export function GiftVoucherCancelButton({ id }: { id: string }) {
