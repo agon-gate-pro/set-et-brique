@@ -319,6 +319,8 @@ Les deux lectures laissées en suspens le matin du 18/09 (séquence mensuelle, p
 2. Tranche horaire précise sélectionnable dans le tunnel de réservation (module 2) — la cliente envisage de l'ajouter plus tard, "pas dans l'immédiat". En V1, l'heure se négocie hors tunnel (téléphone/email).
 3. Export comptable complet (modules 8, 11) — l'export des ventes sur une période et l'export des notes par lot en zip, eux, sont inclus en V1 (module 11).
 
+4. Newsletter (demande de Marion du 10 octobre 2026 : exporter les e-mails de ses clients pour leur écrire). Reportée en V2 par Alexis le jour même. Un export de tous les clients n'est pas possible tel quel : la prospection par e-mail demande l'accord du client, et le site annonce aujourd'hui que les données servent uniquement à gérer les locations (mentions légales, section 5 ; CGU, article 7). À construire : case à cocher non cochée par défaut à la réservation et dans le compte, accord daté en base, retrait depuis le compte, export (CSV ou Excel) des seuls clients qui ont accepté depuis l'espace de gestion, mise à jour des mentions légales et des CGU. Les clients déjà inscrits n'y figureront qu'après avoir coché la case. À préciser avec Marion : l'outil d'envoi (il doit gérer la désinscription).
+
 **Annulé par la révision du 18 septembre 2026 :** la facturation (module 8). Le site n'est pas un logiciel de facturation ; il émet des notes, document allégé destiné aux particuliers.
 
 **Résolu, ne figure plus en V2 :** la prolongation d'une location en cours ne nécessite finalement aucun développement dédié — elle se fait via une nouvelle réservation standard dans le tunnel après accord manuel avec la cliente (cf. module 2).
