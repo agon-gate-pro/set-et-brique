@@ -42,6 +42,14 @@ export function formatPhone(input: string) {
   return raw.replace(/\s+/g, " ");
 }
 
+/** Forme attendue d'un téléphone client une fois mis en forme : dix chiffres par groupes de deux. */
+export const PHONE_PATTERN = "0[1-9]( \\d{2}){4}";
+export const PHONE_HINT = "numéro à 10 chiffres attendu, par exemple 06 12 34 56 78";
+
+export function isValidPhone(formatted: string) {
+  return new RegExp(`^${PHONE_PATTERN}$`).test(formatted);
+}
+
 /**
  * Temps de montage saisi en texte libre, en heures : « 28 h » → 28, « 1 h 30 » → 1,5,
  * « 120 minutes » → 2, « 8 à 10 h » → 10 (la borne haute). `null` si illisible.
