@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowRight, CalendarClock, CalendarCheck, Gift, Package, PackageCheck, Users, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CalendarCheck, CreditCard, Gift, Package, PackageCheck, Users, type LucideIcon } from "lucide-react";
 import { formatCents } from "@/lib/format";
 import { TONE_BADGE, type Tone } from "@/components/admin/sections";
 
@@ -12,6 +12,7 @@ export type DashboardFigures = {
   pending: number;
   late: number;
   toHandOver: number;
+  pendingPayment: number;
   caDayCents: number;
   caWeekCents: number;
   caMonthCents: number;
@@ -91,7 +92,7 @@ export function DashboardView({ f }: { f: DashboardFigures }) {
         >
           <CalendarClock className="h-5 w-5 shrink-0" aria-hidden="true" />
           <span className="flex-1">
-            {f.pending} demande{f.pending > 1 ? "s" : ""} de réservation à traiter
+            {f.pending} demande{f.pending > 1 ? "s" : ""} à traiter
           </span>
           <ArrowRight className="h-5 w-5 shrink-0" aria-hidden="true" />
         </Link>
@@ -110,13 +111,20 @@ export function DashboardView({ f }: { f: DashboardFigures }) {
       ) : null}
 
       <GroupTitle tone="bg-sea">À faire</GroupTitle>
-      <ul className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <ul className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
           href="/admin/reservations?statut=pending_review"
           icon={CalendarClock}
           tone="sea"
           value={f.pending}
-          label="Réservations à traiter"
+          label="Demandes à traiter"
+        />
+        <StatCard
+          href="/admin/reservations?statut=pending_payment"
+          icon={CreditCard}
+          tone="sea"
+          value={f.pendingPayment}
+          label="Paiements en attente"
         />
         <StatCard
           href="/admin/reservations?statut=to_handover"

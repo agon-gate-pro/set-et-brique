@@ -4,9 +4,10 @@ import { notFound } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
-import { RESERVING_STATUSES, addDays, loadAvailability, todayIso, withLateReturn } from "@/lib/availability";
+import { RESERVING_STATUSES, addDays, loadAvailability, todayIso, withExtension, withLateReturn } from "@/lib/availability";
 import { coordinatesUrl, findCustomerByClerkId, isCustomerComplete } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
+import { activeExtensionEnd } from "@/lib/extensions";
 import { getSetting } from "@/lib/settings";
 import { BookingForm } from "./booking-form";
 import { expireOverduePayments } from "@/lib/payment-expiry";
@@ -35,6 +36,7 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
     with: { ratePlan: true },
   });
   if (!set) notFound();
+  const today = todayIso();
 
   const [user, customer, pickupPoints, defaultPlan, minDays, availability, copies, rawBookings, blackouts, globalTurnaround] =
     await Promise.all([
@@ -63,6 +65,7 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
           endDate: schema.bookings.endDate,
           proposedStartDate: schema.bookings.proposedStartDate,
           proposedEndDate: schema.bookings.proposedEndDate,
+          extendedEndDate: activeExtensionEnd(today),
         })
         .from(schema.bookings)
         .where(and(eq(schema.bookings.setId, set.id), inArray(schema.bookings.status, [...RESERVING_STATUSES]))),
@@ -71,10 +74,9 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
     ]);
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay ?? null;
   const a = availability.get(set.id);
-  const today = todayIso();
   // Le `customerId` réel n'a pas d'usage ici (l'aperçu compare toujours à `null`, jamais à un
   // client précis) : vidé plutôt que d'exposer inutilement l'identifiant d'autres clients.
-  const calendarBookings = rawBookings.map((b) => ({ ...withLateReturn(b, today), customerId: "" }));
+  const calendarBookings = rawBookings.map((b) => ({ ...withLateReturn(withExtension(b), today), customerId: "" }));
 
   return (
     <section className="mx-auto max-w-4xl px-5 md:px-8 py-10 md:py-14">

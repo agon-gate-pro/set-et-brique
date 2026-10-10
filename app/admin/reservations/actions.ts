@@ -7,7 +7,8 @@ import { daysLate, todayIso } from "@/lib/availability";
 import { paymentDeadline } from "@/lib/bookings";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { db, schema } from "@/lib/db";
-import { queueBookingEmails } from "@/lib/email/booking-emails";
+import { queueBookingEmails, queueExtensionEmails, type ExtensionEmailEvent } from "@/lib/email/booking-emails";
+import { ExtensionError, acceptExtension, markExtensionPaid, refuseExtension } from "@/lib/extensions";
 import {
   firstError,
   formToObject,
@@ -86,6 +87,7 @@ export async function markPaid(_: ActionState, formData: FormData): Promise<Acti
   await transition(id, r.booking.status, "confirmed", `Paiement reçu (${method})${note ? `. ${note}` : ""}`, {
     paymentDueAt: null,
   });
+  queueBookingEmails("paid", id);
   revalidate(id);
   return { ok: `Paiement enregistré (${method}). La réservation est confirmée.` };
 }
@@ -329,4 +331,71 @@ export async function toggleCustomerBlock(_: ActionState, formData: FormData): P
     .where(eq(schema.customers.id, customerId));
   revalidate(bookingId);
   return { ok: blocked ? "Client bloqué : il ne peut plus réserver." : "Client débloqué." };
+}
+
+/* ------------------------------------------------------------------ */
+/* Prolongation d'une location                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Exécute un traitement de prolongation, prévient le client par e-mail et traduit les refus
+ * (`ExtensionError`) en message pour le gérant.
+ */
+async function extensionAction(
+  extensionId: string,
+  event: ExtensionEmailEvent,
+  run: () => Promise<{ bookingId: string }>,
+  ok: string,
+): Promise<ActionState> {
+  try {
+    const { bookingId } = await run();
+    queueExtensionEmails(event, extensionId);
+    revalidate(bookingId);
+    return { ok };
+  } catch (e) {
+    if (e instanceof ExtensionError) return { error: e.message };
+    throw e;
+  }
+}
+
+/** Accepter une demande de prolongation : le supplément devient dû, la date de retour change au paiement. */
+export async function acceptBookingExtension(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("extensionId") ?? "");
+  return extensionAction(
+    id,
+    "extension_accepted",
+    () => acceptExtension(id),
+    "Prolongation acceptée. Elle sera appliquée une fois le supplément payé.",
+  );
+}
+
+/** Refuser une demande de prolongation : le set reste dû à la date de retour prévue. */
+export async function refuseBookingExtension(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("extensionId") ?? "");
+  const parsed = refuseBookingSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  return extensionAction(
+    id,
+    "extension_refused",
+    () => refuseExtension(id, parsed.data.reason ?? null),
+    "Prolongation refusée. Le retour reste à la date prévue.",
+  );
+}
+
+/** Supplément reçu hors ligne : la prolongation est reportée sur la location. Même geste que `markPaid`. */
+export async function markBookingExtensionPaid(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("extensionId") ?? "");
+  const parsed = markPaidSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Saisie invalide" };
+  const method = paymentMethods[parsed.data.method];
+  const note = parsed.data.note;
+  return extensionAction(
+    id,
+    "extension_paid",
+    () => markExtensionPaid(id, `${method}${note ? `. ${note}` : ""}`),
+    `Paiement enregistré (${method}). La date de retour est repoussée.`,
+  );
 }

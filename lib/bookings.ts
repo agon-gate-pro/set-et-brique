@@ -7,9 +7,11 @@ import {
   findFreeCopy,
   isInBlackout,
   todayIso,
+  withExtension,
   withLateReturn,
 } from "@/lib/availability";
 import { parisEndOfDay } from "@/lib/dates";
+import { activeExtensionEnd } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { db, schema } from "@/lib/db";
 import type { Booking, Customer } from "@/lib/db/schema";
@@ -228,11 +230,12 @@ export async function createBookingRequest(req: BookingRequest) {
         endDate: schema.bookings.endDate,
         proposedStartDate: schema.bookings.proposedStartDate,
         proposedEndDate: schema.bookings.proposedEndDate,
+        extendedEndDate: activeExtensionEnd(today),
       })
       .from(schema.bookings)
       .where(and(eq(schema.bookings.setId, set.id), inArray(schema.bookings.status, [...RESERVING_STATUSES])));
 
-    const copy = findFreeCopy(copies, bookings.map((b) => withLateReturn(b, today)), turnaround, req.startDate, endDate, req.customerId);
+    const copy = findFreeCopy(copies, bookings.map((b) => withLateReturn(withExtension(b), today)), turnaround, req.startDate, endDate, req.customerId);
     if (!copy) throw new BookingError("Ce set n'est pas disponible à ces dates, en comptant le délai de remise en état entre deux locations.");
 
     let booking: typeof schema.bookings.$inferSelect | undefined;

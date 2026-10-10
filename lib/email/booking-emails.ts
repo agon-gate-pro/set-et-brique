@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { db, schema } from "@/lib/db";
+import type { BookingExtension } from "@/lib/db/schema";
 import { formatCents, formatDay, formatPhone, formatWeekday } from "@/lib/format";
 import { site } from "@/lib/site";
 import { siteLink, type EmailBlock, type EmailContent } from "./layout";
@@ -23,7 +24,8 @@ export type BookingEmailEvent =
   | "handover_changed"
   | "picked_up"
   | "returned"
-  | "payment_expired";
+  | "payment_expired"
+  | "paid";
 
 export type ReminderKind = "reminder_eve" | "reminder_day" | "reminder_late";
 
@@ -197,6 +199,28 @@ function accepted(b: BookingWithDetails) {
   });
 }
 
+/**
+ * A3 bis. Paiement reçu, au client : la réservation est confirmée. Ajouté le 10 octobre 2026 pour
+ * le « Paiement reçu » des gérants ; le paiement en ligne (module 4) enverra le même.
+ */
+function paid(b: BookingWithDetails) {
+  const time = hour(b.pickupTime);
+  return customerMail("paid", b, {
+    subject: `Paiement reçu : ${b.set.name} vous est réservé du ${longDate(b.startDate)} au ${longDate(b.endDate)}`,
+    heading: "Dernière brique posée, votre réservation est confirmée !",
+    blocks: [
+      p(hello(b)),
+      p(`Nous avons bien reçu votre règlement de ${formatCents(total(b))}. Tout est prêt de notre côté !`),
+      recap(b),
+      p(
+        `Rendez-vous le ${longDate(b.startDate)}${time ? ` vers ${time}` : ""} : ${place(b)}. Le set vous est remis démonté, pièces triées en sachets, notice comprise.`,
+      ),
+      p(`Un empêchement ? Prévenez-nous le plus tôt possible : répondez à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Voir ma réservation", href: siteLink("/compte") },
+  });
+}
+
 /** Motif affiché au client, sauf le motif par défaut d'un refus sans précision. */
 function visibleReason(b: BookingWithDetails) {
   const reason = b.cancelReason?.trim();
@@ -291,7 +315,7 @@ function pickedUp(b: BookingWithDetails) {
           `Retour le ${longDate(b.endDate)}, au même endroit : ${place(b)}.`,
           returnInstructions(b),
           "Une pièce qui manque, une casse ? Dites-le-nous dès que vous vous en apercevez, c'est toujours plus simple que de le découvrir au retour.",
-          "Envie de le garder quelques jours de plus ? Appelez-nous avant la date de retour : si le set est libre, on prolonge.",
+          "Envie de le garder quelques jours de plus ? Demandez une prolongation depuis votre espace, au plus tard la veille du retour : si le set est libre, on prolonge.",
         ],
       },
       p(
@@ -349,8 +373,11 @@ function reminderEve(b: BookingWithDetails) {
       ),
       p(`Petit rappel : ${b.set.name} est à rendre demain, ${longDate(b.endDate)}, au même endroit : ${place(b)}.`),
       p(returnInstructions(b)),
-      p(`Besoin de quelques jours de plus ? Appelez-nous aujourd'hui au ${site.phone} : si le set est libre, on prolonge sans souci.`),
+      p(
+        "Besoin de quelques jours de plus ? Demandez une prolongation aujourd'hui depuis votre espace : si le set est libre, on prolonge sans souci.",
+      ),
     ],
+    button: { label: "Prolonger ma location", href: siteLink("/compte") },
   });
 }
 
@@ -387,6 +414,165 @@ function reminderLate(b: BookingWithDetails) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Prolongation d'une location (partie D du document)                         */
+/* -------------------------------------------------------------------------- */
+
+export type ExtensionEmailEvent =
+  | "extension_requested"
+  | "extension_accepted"
+  | "extension_refused"
+  | "extension_paid"
+  | "extension_payment_expired";
+
+type Extension = Pick<
+  BookingExtension,
+  "previousEndDate" | "newEndDate" | "extraDays" | "extraRentalCents" | "paymentDueAt" | "reason"
+>;
+
+/** Bloc de rappel de la prolongation : ancien et nouveau retour, supplément. */
+function extensionRecap(b: BookingWithDetails, e: Extension): EmailBlock {
+  return {
+    type: "box",
+    lines: [
+      `${b.set.name} · réservation ${b.reference}`,
+      `Retour prévu : ${longDate(e.previousEndDate)}`,
+      `Nouveau retour : ${longDate(e.newEndDate)} (${plural(e.extraDays, "jour")} de plus)`,
+      `Supplément : ${formatCents(e.extraRentalCents)}`,
+    ],
+  };
+}
+
+/** D1. Prolongation demandée, accusé au client. */
+function extensionReceived(b: BookingWithDetails, e: Extension) {
+  return customerMail("extension_received", b, {
+    subject: `Votre demande de prolongation pour ${b.set.name} est bien arrivée (${b.reference})`,
+    heading: "Message bien imbriqué !",
+    blocks: [
+      p(hello(b)),
+      p(
+        `Vous souhaitez garder ${b.set.name} un peu plus longtemps : c'est noté ! Nous vérifions que le set est libre et revenons vers vous très vite.`,
+      ),
+      extensionRecap(b, e),
+      p(
+        `Les jours demandés sont déjà bloqués pour vous. En attendant notre réponse, que vous recevrez par e-mail, le retour reste prévu le ${longDate(e.previousEndDate)}.`,
+      ),
+      p(`Une question, un empêchement ? Répondez simplement à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Suivre ma demande", href: siteLink("/compte") },
+  });
+}
+
+/** D2. Prolongation demandée, aux gérants. */
+function extensionNewAdmin(b: BookingWithDetails, e: Extension) {
+  const name = customerName(b);
+  const phone = b.customer.phone ? formatPhone(b.customer.phone) : "pas de téléphone";
+  return adminMail("extension_new_admin", {
+    subject: `Prolongation demandée : ${b.set.name} jusqu'au ${longDate(e.newEndDate)} (${name})`,
+    blocks: [
+      p("Bonjour,"),
+      p(`${name} a le set en main et souhaite le garder plus longtemps.`),
+      extensionRecap(b, e),
+      p(`Client : ${name} · ${phone} · ${b.customer.email}`),
+      p(
+        `À traiter dans l'espace de gestion avant la fin du ${longDate(e.previousEndDate)} : passé ce jour sans réponse, la demande expire et le set reste à rendre à la date prévue.`,
+      ),
+    ],
+    button: { label: "Voir la demande", href: siteLink(`/admin/reservations/${b.id}#prolongation`) },
+  });
+}
+
+/** D3. Prolongation acceptée, au client : le supplément reste à régler. */
+function extensionAccepted(b: BookingWithDetails, e: Extension) {
+  const due = e.paymentDueAt ? ` avant le ${deadline(e.paymentDueAt)}` : " dans les 24 heures";
+  return customerMail("extension_accepted", b, {
+    subject: `Prolongation acceptée : ${b.set.name} peut rester chez vous jusqu'au ${longDate(e.newEndDate)}`,
+    heading: "Feu vert pour la suite de la construction !",
+    blocks: [
+      p(hello(b)),
+      p(`Bonne nouvelle : vous pouvez garder ${b.set.name} plus longtemps. Le chantier continue !`),
+      extensionRecap(b, e),
+      p(
+        `Pour finaliser, il vous reste à régler ${formatCents(e.extraRentalCents)}${due} : passé ce délai, la prolongation est annulée et le set est à rendre le ${longDate(e.previousEndDate)}, comme prévu au départ.`,
+      ),
+    ],
+    button: { label: "Régler ma prolongation", href: siteLink("/compte") },
+  });
+}
+
+/** D4. Prolongation refusée, au client. */
+function extensionRefused(b: BookingWithDetails, e: Extension) {
+  const reason = e.reason?.trim();
+  return customerMail("extension_refused", b, {
+    subject: `Votre demande de prolongation n'a pas pu être retenue (${b.reference})`,
+    heading: "Aïe, il semblerait qu'une brique bloque l'assemblage…",
+    blocks: [
+      p(hello(b)),
+      p(
+        `Nous aurions aimé vous laisser ${b.set.name} plus longtemps, mais nous ne pouvons malheureusement pas prolonger votre location jusqu'au ${longDate(e.newEndDate)}.`,
+      ),
+      ...(reason ? [p(`Le motif : ${reason}`)] : []),
+      p(
+        `Le retour reste donc prévu le ${longDate(e.previousEndDate)}, au même endroit : ${place(b)}. Rien n'a été débité.`,
+      ),
+      p(`Une question ? Répondez à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Voir ma location", href: siteLink("/compte") },
+  });
+}
+
+/** D5. Supplément réglé : la prolongation est confirmée, au client. */
+function extensionPaid(b: BookingWithDetails, e: Extension) {
+  return customerMail("extension_paid", b, {
+    subject: `C'est prolongé : ${b.set.name} est à rendre le ${longDate(e.newEndDate)}`,
+    heading: "Chantier prolongé !",
+    blocks: [
+      p(hello(b)),
+      p("Votre règlement est bien reçu, la prolongation est confirmée. Bonne suite de construction !"),
+      {
+        type: "box",
+        lines: [
+          `${b.set.name} · réservation ${b.reference}`,
+          `Nouveau retour : ${longDate(e.newEndDate)}, au même endroit : ${place(b)}`,
+          `Prolongation : ${plural(e.extraDays, "jour")}, ${formatCents(e.extraRentalCents)}`,
+          `Location au total : ${plural(b.days, "jour")}, ${formatCents(b.rentalCents)}`,
+        ],
+      },
+      p(returnInstructions(b)),
+      p(
+        `Au-delà du ${longDate(e.newEndDate)}, un forfait de retard de 30 € s'applique le lendemain. Un imprévu ? Prévenez-nous, on préfère largement en parler !`,
+      ),
+    ],
+    button: { label: "Voir ma location", href: siteLink("/compte") },
+  });
+}
+
+/** D6. Supplément non réglé dans le délai : la prolongation est annulée, au client. */
+function extensionPaymentExpired(b: BookingWithDetails, e: Extension) {
+  return customerMail("extension_payment_expired", b, {
+    subject: `Votre prolongation est annulée faute de règlement (${b.reference})`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Nous n'avons pas reçu le règlement de la prolongation de ${b.set.name} dans le délai prévu : elle est annulée.`,
+      ),
+      p(
+        `Le set est donc à rendre le ${longDate(e.previousEndDate)}, au même endroit : ${place(b)}. Rien n'a été débité.`,
+      ),
+      p(`Un imprévu ? Répondez à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Voir ma location", href: siteLink("/compte") },
+  });
+}
+
+export const extensionMails: Record<ExtensionEmailEvent, (b: BookingWithDetails, e: Extension) => Mail[]> = {
+  extension_requested: (b, e) => [extensionReceived(b, e), extensionNewAdmin(b, e)],
+  extension_accepted: (b, e) => [extensionAccepted(b, e)],
+  extension_refused: (b, e) => [extensionRefused(b, e)],
+  extension_paid: (b, e) => [extensionPaid(b, e)],
+  extension_payment_expired: (b, e) => [extensionPaymentExpired(b, e)],
+};
+
 export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Mail[]> = {
   requested: (b) => [requestReceived(b), requestNewAdmin(b)],
   accepted: (b) => [accepted(b)],
@@ -396,6 +582,7 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   picked_up: (b) => [pickedUp(b)],
   returned: (b) => [returned(b)],
   payment_expired: (b) => [paymentExpired(b)],
+  paid: (b) => [paid(b)],
 };
 
 export const reminderMails: Record<ReminderKind, (b: BookingWithDetails) => Mail> = {
@@ -426,6 +613,28 @@ export function queueBookingEmails(event: BookingEmailEvent, bookingId: string) 
       await sendBookingEmails(event, bookingId);
     } catch (e) {
       console.error(`[email] ${event} pour la réservation ${bookingId}`, e);
+    }
+  });
+}
+
+/** E-mails d'une étape de prolongation, lus sur la demande elle-même (dates et supplément figés). */
+export async function sendExtensionEmails(event: ExtensionEmailEvent, extensionId: string) {
+  const extension = await db.query.bookingExtensions.findFirst({ where: eq(schema.bookingExtensions.id, extensionId) });
+  if (!extension) return;
+  const booking = await loadBooking(extension.bookingId);
+  if (!booking) return;
+  for (const mail of extensionMails[event](booking, extension)) {
+    await sendEmail({ ...mail, bookingId: booking.id });
+  }
+}
+
+/** Comme `queueBookingEmails`, pour une étape de prolongation. */
+export function queueExtensionEmails(event: ExtensionEmailEvent, extensionId: string) {
+  after(async () => {
+    try {
+      await sendExtensionEmails(event, extensionId);
+    } catch (e) {
+      console.error(`[email] ${event} pour la prolongation ${extensionId}`, e);
     }
   });
 }

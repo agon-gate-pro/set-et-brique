@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
-import { AdminNoteForm, CustomerBlockForm, HandoverActions, PaymentActions, ReviewActions } from "./forms";
+import { AdminNoteForm, CustomerBlockForm, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
+import { expireStaleExtensions } from "@/lib/extensions";
 import { getSetting } from "@/lib/settings";
 import { BookingTabs } from "./tabs";
 import { neutralBadge, statusTone } from "../status-tone";
@@ -30,6 +31,8 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
   await requireRole("admin");
   // Demande acceptée non payée dans le délai : annulée avant d'afficher la fiche.
   await expireOverduePayments();
+  // Prolongation restée sans réponse ou sans paiement à temps : expirée avant d'afficher la fiche.
+  await expireStaleExtensions();
   const { id } = await params;
   const booking = await db.query.bookings.findFirst({
     where: eq(schema.bookings.id, id),
@@ -39,6 +42,8 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       copy: { columns: { label: true, status: true } },
       pickupPoint: { columns: { name: true } },
       events: { orderBy: [asc(schema.bookingEvents.createdAt)] },
+      // La plus récente suffit : une seule demande peut être en cours à la fois.
+      extensions: { orderBy: [desc(schema.bookingExtensions.createdAt)], limit: 1 },
     },
   });
   if (!booking) notFound();
@@ -53,7 +58,10 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
     .from(schema.pickupPoints)
     .where(eq(schema.pickupPoints.active, true))
     .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt));
-  const { customer, set, copy, pickupPoint, events, ...b } = booking;
+  const { customer, set, copy, pickupPoint, events, extensions, ...b } = booking;
+  const extension = extensions[0] ?? null;
+  const extensionLabel =
+    extension?.status === "pending_review" ? "Prolongation demandée" : extension?.status === "pending_payment" ? "Prolongation à payer" : null;
   const late = b.status === "picked_up" ? daysLate(b.endDate, todayIso()) : 0;
 
   return (
@@ -66,6 +74,11 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
         <span className={`text-sm font-bold px-2 py-1 rounded-md border ${statusTone(b.status)?.badge ?? neutralBadge}`}>
           {bookingStatusLabels[b.status]}
         </span>
+        {extensionLabel ? (
+          <span className={`text-sm font-bold px-2 py-1 rounded-md border ${statusTone(extension!.status === "pending_review" ? "pending_review" : "pending_payment")?.badge ?? neutralBadge}`}>
+            {extensionLabel}
+          </span>
+        ) : null}
         {late > 0 ? (
           <span className="text-sm font-bold px-2 py-1 rounded-md border border-brick bg-brick text-paper">
             Retard de {late} jour{late > 1 ? "s" : ""}
@@ -82,6 +95,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       {/* Décision d'abord, c'est ce qu'on vient faire ; le détail est dans les onglets en dessous. */}
       <ReviewActions booking={b} pickupPoints={pickupPoints} />
       <PaymentActions booking={b} delayHours={paymentDelayHours} />
+      <ExtensionActions extension={extension} endDate={b.endDate} />
       <HandoverActions booking={b} />
 
       <BookingTabs

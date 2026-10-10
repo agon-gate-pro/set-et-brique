@@ -5,7 +5,8 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { findCustomerByClerkId, paymentDeadline } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
-import { queueBookingEmails } from "@/lib/email/booking-emails";
+import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
+import { ExtensionError, cancelExtensionRequest, createExtensionRequest } from "@/lib/extensions";
 import { giftVoucherDisplayStatus } from "@/lib/gift-vouchers-core";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import type { ActionState } from "@/components/admin/form";
@@ -37,6 +38,24 @@ export async function checkGiftVoucher(bookingId: string, rawCode: string): Prom
   if (!booking || booking.status !== "pending_payment") {
     return { error: "Cette réservation n'est pas en attente de paiement." };
   }
+  return verifyGiftVoucher(rawCode);
+}
+
+/** Même vérification pour le supplément d'une prolongation acceptée, que le client s'apprête à régler. */
+export async function checkExtensionGiftVoucher(extensionId: string, rawCode: string): Promise<GiftVoucherCheck> {
+  const customer = await currentCustomer();
+  const [extension] = customer
+    ? await db
+        .select({ status: schema.bookingExtensions.status })
+        .from(schema.bookingExtensions)
+        .innerJoin(schema.bookings, eq(schema.bookings.id, schema.bookingExtensions.bookingId))
+        .where(and(eq(schema.bookingExtensions.id, extensionId), eq(schema.bookings.customerId, customer.id)))
+    : [];
+  if (extension?.status !== "pending_payment") return { error: "Cette prolongation n'est pas en attente de paiement." };
+  return verifyGiftVoucher(rawCode);
+}
+
+async function verifyGiftVoucher(rawCode: string): Promise<GiftVoucherCheck> {
   const code = rawCode.replace(/\s+/g, "").toUpperCase();
   if (!code) return { error: "Saisissez le code de votre bon cadeau." };
 
@@ -136,4 +155,43 @@ export async function acknowledgeHandoverChange(_: ActionState, formData: FormDa
   });
   revalidate();
   return { ok: "C'est noté." };
+}
+
+/** Client connecté, ou null : les demandes de prolongation revérifient elles-mêmes que la location est la sienne. */
+async function currentCustomer() {
+  const { userId } = await auth();
+  return userId ? ((await findCustomerByClerkId(userId)) ?? null) : null;
+}
+
+/** Le client demande à garder son set plus longtemps (bouton « Prolonger ma location »). */
+export async function requestExtension(_: ActionState, formData: FormData): Promise<ActionState> {
+  const customer = await currentCustomer();
+  if (!customer) return { error: "Connectez-vous pour prolonger votre location." };
+  try {
+    const extension = await createExtensionRequest(
+      String(formData.get("id") ?? ""),
+      customer.id,
+      String(formData.get("newEndDate") ?? ""),
+    );
+    queueExtensionEmails("extension_requested", extension.id);
+  } catch (e) {
+    if (e instanceof ExtensionError) return { error: e.message };
+    throw e;
+  }
+  revalidate();
+  return { ok: "Demande de prolongation envoyée. Nous revenons vers vous rapidement." };
+}
+
+/** Le client retire sa demande de prolongation avant la réponse des gérants. */
+export async function cancelExtension(_: ActionState, formData: FormData): Promise<ActionState> {
+  const customer = await currentCustomer();
+  if (!customer) return { error: "Connectez-vous pour gérer votre location." };
+  try {
+    await cancelExtensionRequest(String(formData.get("extensionId") ?? ""), customer.id);
+  } catch (e) {
+    if (e instanceof ExtensionError) return { error: e.message };
+    throw e;
+  }
+  revalidate();
+  return { ok: "Demande de prolongation annulée." };
 }

@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { addDays, endOfMonthIso, startOfMonthIso, startOfWeekIso, todayIso } from "@/lib/dates";
 import { requireRole } from "@/lib/auth";
+import { expireStaleExtensions } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { AdminPageTitle } from "@/components/admin/sections";
 
@@ -13,6 +14,7 @@ export default async function AdminHome() {
   await requireRole("admin");
   // Demandes acceptées non payées dans le délai : annulées avant de compter les réservations.
   await expireOverduePayments();
+  await expireStaleExtensions();
   const today = todayIso();
   const weekStart = startOfWeekIso(today);
   const weekEnd = addDays(weekStart, 6);
@@ -27,6 +29,7 @@ export default async function AdminHome() {
     [pending],
     [late],
     [toHandOver],
+    [pendingPayment],
     [caDay],
     [caWeek],
     [caMonth],
@@ -44,7 +47,13 @@ export default async function AdminHome() {
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
-      .where(sql`${schema.bookings.status} = 'pending_review'`),
+      // Demandes de réservation, plus les locations dont une prolongation attend une réponse :
+      // même périmètre que le filtre « À traiter » de la page Réservations.
+      .where(
+        sql`${schema.bookings.status} = 'pending_review' or exists (
+          select 1 from booking_extensions e where e.booking_id = "bookings"."id" and e.status = 'pending_review'
+        )`,
+      ),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
@@ -52,7 +61,13 @@ export default async function AdminHome() {
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.bookings)
-      .where(sql`${schema.bookings.status} in ('pending_payment', 'confirmed')`),
+      // Payées et pas encore remises. Une demande acceptée mais non payée n'est pas « à remettre » :
+      // elle a sa propre carte, « Paiements en attente ».
+      .where(sql`${schema.bookings.status} = 'confirmed'`),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.bookings)
+      .where(sql`${schema.bookings.status} = 'pending_payment'`),
     db
       .select({ n: sql<number>`coalesce(sum(${schema.bookings.rentalCents}), 0)::int` })
       .from(schema.bookings)
@@ -85,6 +100,7 @@ export default async function AdminHome() {
           pending: pending.n,
           late: late.n,
           toHandOver: toHandOver.n,
+          pendingPayment: pendingPayment.n,
           caDayCents: caDay.n,
           caWeekCents: caWeek.n,
           caMonthCents: caMonth.n,

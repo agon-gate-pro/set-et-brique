@@ -56,6 +56,21 @@ export const bookingStatus = pgEnum("booking_status", [
   "cancelled",
 ]);
 
+/**
+ * Cycle de vie d'une demande de prolongation (10 octobre 2026). Comme une réservation, elle est
+ * validée à la main : `pending_review` → `pending_payment` (acceptée) → `paid` (appliquée à la
+ * location). `refused` par les gérants, `cancelled` par le client, `expired` sans réponse ou sans
+ * paiement à temps : dans ces trois cas la date de retour d'origine reste valable.
+ */
+export const bookingExtensionStatus = pgEnum("booking_extension_status", [
+  "pending_review",
+  "pending_payment",
+  "paid",
+  "refused",
+  "cancelled",
+  "expired",
+]);
+
 export const bookingActor = pgEnum("booking_actor", ["customer", "admin", "system"]);
 
 export const giftVoucherOrigin = pgEnum("gift_voucher_origin", ["purchase", "admin"]);
@@ -352,6 +367,44 @@ export const bookingEvents = pgTable(
   (t) => [index("booking_events_booking_id_idx").on(t.bookingId)],
 );
 
+/**
+ * Demande de prolongation d'une location dont le set est déjà chez le client : même exemplaire,
+ * pas de nouvelle remise, seule la date de retour recule. Rattachée à la réservation plutôt que
+ * créée comme une seconde réservation (une seule caution, un seul retour, des rappels cohérents).
+ * Tant qu'elle est en attente ou à payer, elle réserve déjà les jours demandés (voir
+ * `activeExtensionEnd`, `lib/extensions.ts`) ; payée, elle est reportée sur `bookings.end_date`.
+ */
+export const bookingExtensions = pgTable(
+  "booking_extensions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    /** Date de retour de la location au moment de la demande, qui reste due si la demande n'aboutit pas. */
+    previousEndDate: date("previous_end_date").notNull(),
+    newEndDate: date("new_end_date").notNull(),
+    extraDays: integer("extra_days").notNull(),
+    /** Supplément figé à la demande : jours ajoutés × tarif journalier de la location. */
+    extraRentalCents: integer("extra_rental_cents").notNull(),
+    status: bookingExtensionStatus("status").notNull().default("pending_review"),
+    /** Posée à l'acceptation : délai de paiement habituel, plafonné à la fin du jour de retour d'origine. */
+    paymentDueAt: timestamp("payment_due_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** Motif communiqué au client en cas de refus. */
+    reason: text("reason"),
+    ...timestamps,
+  },
+  (t) => [
+    index("booking_extensions_booking_id_idx").on(t.bookingId),
+    // Une seule demande en cours par location.
+    uniqueIndex("booking_extensions_active_idx")
+      .on(t.bookingId)
+      .where(sql`${t.status} in ('pending_review', 'pending_payment')`),
+  ],
+);
+
 /* ------------------------------------------------------------------ */
 /* Bons cadeaux                                                        */
 /* ------------------------------------------------------------------ */
@@ -478,6 +531,11 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
     references: [pickupPoints.id],
   }),
   events: many(bookingEvents),
+  extensions: many(bookingExtensions),
+}));
+
+export const bookingExtensionsRelations = relations(bookingExtensions, ({ one }) => ({
+  booking: one(bookings, { fields: [bookingExtensions.bookingId], references: [bookings.id] }),
 }));
 
 /**
@@ -531,3 +589,5 @@ export type GiftVoucher = typeof giftVouchers.$inferSelect;
 export type GiftVoucherOrigin = (typeof giftVoucherOrigin.enumValues)[number];
 export type GiftVoucherStatus = (typeof giftVoucherStatus.enumValues)[number];
 export type InstructionType = (typeof instructionType.enumValues)[number];
+export type BookingExtension = typeof bookingExtensions.$inferSelect;
+export type BookingExtensionStatus = (typeof bookingExtensionStatus.enumValues)[number];

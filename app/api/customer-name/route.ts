@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, count, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db, schema } from "@/lib/db";
 import { CUSTOMER_ACTION_STATUSES } from "@/lib/bookings";
@@ -37,6 +37,12 @@ export async function GET() {
             isNotNull(schema.bookings.handoverChangedAt),
             or(isNull(schema.bookings.handoverSeenAt), gt(schema.bookings.handoverChangedAt, schema.bookings.handoverSeenAt)),
           ),
+          // Prolongation acceptée dont le supplément reste à régler (échéance pas encore passée).
+          sql`exists (
+            select 1 from booking_extensions e
+            where e.booking_id = "bookings"."id" and e.status = 'pending_payment'
+              and (e.payment_due_at is null or e.payment_due_at > now())
+          )`,
         ),
       ),
     );

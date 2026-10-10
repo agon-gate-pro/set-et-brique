@@ -5,6 +5,7 @@ import { desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
 import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
+import { expireStaleExtensions, loadCustomerExtensions } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { BookingCard } from "./booking-card";
 
@@ -18,6 +19,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
   const { userId } = await auth.protect();
   // Demande acceptée non payée dans le délai : affichée annulée, plus « à payer ».
   await expireOverduePayments();
+  // Prolongations restées sans réponse ou sans paiement à temps : la date de retour d'origine reste due.
+  await expireStaleExtensions();
   const [user, admin, customer] = await Promise.all([
     currentUser(),
     isAdmin(),
@@ -40,6 +43,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
     : [];
   const current = bookings.filter((b) => b.status !== "returned" && b.status !== "cancelled");
   const past = bookings.filter((b) => b.status === "returned" || b.status === "cancelled");
+
+  // Prolongation : bouton visible sur toute location en cours, dates calculées seulement quand la
+  // demande est ouverte (set chez le client, jusqu'à la veille du retour).
+  const extensions = await loadCustomerExtensions(current);
   const firstName = customer?.firstName ?? user?.firstName ?? null;
 
   return (
@@ -67,6 +74,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
               pickupPoint={b.pickupPoint?.name ?? null}
               previousPickupPoint={b.previousPickupPoint?.name ?? null}
               openPayment={payer === b.reference}
+              extension={extensions.get(b.id) ?? null}
             />
           ))}
         </ul>

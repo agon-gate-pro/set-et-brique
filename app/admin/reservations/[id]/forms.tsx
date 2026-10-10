@@ -3,18 +3,21 @@
 import { useActionState, useState } from "react";
 import { useFormDirty } from "@/lib/use-form-dirty";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
-import type { Booking, Customer } from "@/lib/db/schema";
+import type { Booking, BookingExtension, Customer } from "@/lib/db/schema";
 import { daysLate, todayIso } from "@/lib/dates";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatCents, formatDate, formatTime } from "@/lib/format";
 import { paymentMethods } from "@/lib/validation";
 import {
   acceptBooking,
+  acceptBookingExtension,
   cancelAcceptedBooking,
   extendPaymentDeadline,
+  markBookingExtensionPaid,
   markPaid,
   markPickedUp,
   markReturned,
   refuseBooking,
+  refuseBookingExtension,
   saveAdminNote,
   toggleCustomerBlock,
   toggleReminders,
@@ -160,6 +163,15 @@ export function ReviewActions({
   // l'engagement est pris, on n'y « refuse » plus rien — seule une annulation exceptionnelle reste.
   const pending = booking.status === "pending_review";
   const accepted = booking.status === "pending_payment";
+  // « Modifier » reste grisé tant que le lieu et l'heure sont ceux déjà enregistrés. Un lieu qui
+  // n'est plus proposé laisse la liste sur son premier choix : c'est déjà une modification.
+  const savedPointId = booking.pickupPointId ?? "";
+  const savedTime = formatTime(booking.pickupTime) ?? "";
+  const [pointId, setPointId] = useState(
+    pickupPoints.some((p) => p.id === savedPointId) ? savedPointId : (pickupPoints[0]?.id ?? ""),
+  );
+  const [time, setTime] = useState(savedTime);
+  const handoverChanged = pointId !== savedPointId || time !== savedTime;
   if (!pending && !accepted) return null;
 
   return (
@@ -175,7 +187,7 @@ export function ReviewActions({
         <input type="hidden" name="id" value={booking.id} />
         <h3 className="sm:col-span-3 font-bold">Modifier la remise</h3>
         <Field label="Lieu de remise">
-          <select name="pickupPointId" required defaultValue={booking.pickupPointId ?? ""} className={inputClass}>
+          <select name="pickupPointId" required value={pointId} onChange={(e) => setPointId(e.target.value)} className={inputClass}>
             {pickupPoints.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -184,9 +196,11 @@ export function ReviewActions({
           </select>
         </Field>
         <Field label="Heure de remise">
-          <input name="pickupTime" type="time" required step={900} defaultValue={formatTime(booking.pickupTime) ?? ""} className={inputClass} />
+          <input name="pickupTime" type="time" required step={900} value={time} onChange={(e) => setTime(e.target.value)} className={inputClass} />
         </Field>
-        <SubmitButton variant="sun">Modifier</SubmitButton>
+        <SubmitButton variant="sun" disabled={!handoverChanged}>
+          Modifier
+        </SubmitButton>
         <div className="sm:col-span-3">
           <FormMessage state={handoverState} />
         </div>
@@ -330,5 +344,92 @@ export function CustomerBlockForm({ customer, bookingId }: { customer: Customer;
       )}
       <FormMessage state={state} />
     </form>
+  );
+}
+
+/**
+ * Demande de prolongation en cours sur une location dont le set est chez le client : à accepter ou
+ * refuser, puis paiement du supplément à enregistrer. La date de retour ne change qu'au paiement.
+ */
+export function ExtensionActions({ extension, endDate }: { extension: BookingExtension | null; endDate: string }) {
+  const [acceptState, acceptAction] = useActionState(acceptBookingExtension, null);
+  const [refuseState, refuseAction] = useActionState(refuseBookingExtension, null);
+  const [paidState, paidAction] = useActionState(markBookingExtensionPaid, null);
+  if (!extension || (extension.status !== "pending_review" && extension.status !== "pending_payment")) return null;
+  const summary = `${extension.extraDays} jour${extension.extraDays > 1 ? "s" : ""} de plus, ${formatCents(extension.extraRentalCents)}`;
+
+  if (extension.status === "pending_review") {
+    return (
+      <section id="prolongation" className="mt-8 brick-card p-6 bg-sun/30 scroll-mt-24">
+        <h2 className="text-2xl font-semibold">Prolongation demandée</h2>
+        <p className="mt-2 text-slate-ink">
+          Le client souhaite garder le set jusqu&apos;au <strong className="text-ink-deep">{formatDate(extension.newEndDate)}</strong>{" "}
+          au lieu du {formatDate(endDate)} ({summary}). Le set est libre sur ces jours, battement compris. Sans réponse
+          avant la fin du {formatDate(endDate)}, la demande expire et le retour reste à cette date.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-slate-ink/15 pt-6">
+          <form action={refuseAction}>
+            <input type="hidden" name="extensionId" value={extension.id} />
+            <ConfirmButton
+              asDialog
+              state={refuseState}
+              confirmLabel="Oui, refuser"
+              pendingLabel="Envoi…"
+              className="btn btn-brick text-paper no-underline"
+              details={
+                <Field label="Motif du refus, visible du client" hint="Facultatif">
+                  <input name="reason" className={inputClass} placeholder="Le set est attendu pour un autre client" />
+                </Field>
+              }
+            >
+              Refuser la prolongation
+            </ConfirmButton>
+          </form>
+          <form action={acceptAction}>
+            <input type="hidden" name="extensionId" value={extension.id} />
+            <SubmitButton variant="leaf">Accepter la prolongation</SubmitButton>
+          </form>
+        </div>
+        <FormMessage state={acceptState?.error ? acceptState : null} />
+      </section>
+    );
+  }
+
+  return (
+    <section id="prolongation" className="mt-8 brick-card p-6 bg-sky scroll-mt-24">
+      <h2 className="text-2xl font-semibold">Prolongation à payer</h2>
+      <p className="mt-2 text-slate-ink">
+        Prolongation acceptée jusqu&apos;au <strong className="text-ink-deep">{formatDate(extension.newEndDate)}</strong> ({summary}).
+        {extension.paymentDueAt ? (
+          <>
+            {" "}
+            À régler avant le <strong className="text-ink-deep">{dueFormatter.format(extension.paymentDueAt)}</strong> : sans
+            paiement d&apos;ici là, elle expire et le retour reste au {formatDate(endDate)}.
+          </>
+        ) : null}
+      </p>
+      <form action={paidAction} className="mt-4 grid gap-4 sm:grid-cols-[12rem_1fr_auto] items-end">
+        <input type="hidden" name="extensionId" value={extension.id} />
+        <Field label="Moyen de paiement">
+          <select name="method" required defaultValue="" className={inputClass}>
+            <option value="" disabled>
+              Choisir…
+            </option>
+            {Object.entries(paymentMethods).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label.charAt(0).toUpperCase() + label.slice(1)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Précision" hint="Facultatif, pour l'historique">
+          <input name="note" className={inputClass} placeholder="Virement reçu le 12 octobre" />
+        </Field>
+        <SubmitButton variant="leaf">Paiement reçu</SubmitButton>
+        <div className="sm:col-span-3">
+          <FormMessage state={paidState} />
+        </div>
+      </form>
+    </section>
   );
 }

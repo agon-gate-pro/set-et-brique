@@ -1,11 +1,13 @@
 import { and, eq, gte, inArray, or } from "drizzle-orm";
 import { addDays, monthStartIso, todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { activeExtensionEnd } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { getSetting } from "@/lib/settings";
 import {
   computeDayAvailability,
   computeSetAvailability,
+  withExtension,
   withLateReturn,
   RESERVING_STATUSES,
   type SetAvailabilityResult,
@@ -44,6 +46,7 @@ export async function loadAvailability(
         endDate: schema.bookings.endDate,
         proposedStartDate: schema.bookings.proposedStartDate,
         proposedEndDate: schema.bookings.proposedEndDate,
+        extendedEndDate: activeExtensionEnd(today),
       })
       .from(schema.bookings)
       .where(
@@ -67,7 +70,7 @@ export async function loadAvailability(
       set.id,
       computeSetAvailability(
         copies.filter((c) => c.setId === set.id),
-        bookings.filter((b) => b.setId === set.id).map((b) => withLateReturn(b, today)),
+        bookings.filter((b) => b.setId === set.id).map((b) => withLateReturn(withExtension(b), today)),
         set.turnaroundDays ?? globalTurnaround,
         today,
       ),
@@ -104,6 +107,7 @@ export async function loadDayAvailability(
         endDate: schema.bookings.endDate,
         proposedStartDate: schema.bookings.proposedStartDate,
         proposedEndDate: schema.bookings.proposedEndDate,
+        extendedEndDate: activeExtensionEnd(today),
       })
       .from(schema.bookings)
       .where(and(eq(schema.bookings.setId, set.id), inArray(schema.bookings.status, [...RESERVING_STATUSES]))),
@@ -112,7 +116,7 @@ export async function loadDayAvailability(
   ]);
   const days = computeDayAvailability(
     copies,
-    bookings.map((b) => withLateReturn(b, today)),
+    bookings.map((b) => withLateReturn(withExtension(b), today)),
     blackouts,
     set.turnaroundDays ?? globalTurnaround,
     from,

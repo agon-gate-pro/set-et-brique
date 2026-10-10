@@ -141,6 +141,13 @@
       "when": 1791406690604,
       "tag": "0019_email_log",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791646989556,
+      "tag": "0020_booking_extensions",
+      "breakpoints": true
     }
   ]
 }

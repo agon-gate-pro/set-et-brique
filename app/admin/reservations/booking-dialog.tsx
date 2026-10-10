@@ -42,6 +42,11 @@ export function BookingDialog({ row, today, onClose }: { row: BookingRow; today:
               >
                 {late > 0 ? `Retard de ${late} jour${late > 1 ? "s" : ""}` : bookingStatusLabels[row.status]}
               </span>
+              {row.extension ? (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${statusTone(row.extension)?.badge ?? neutralBadge}`}>
+                  {row.extension === "pending_review" ? "Prolongation demandée" : "Prolongation à payer"}
+                </span>
+              ) : null}
             </div>
             <h2 id="booking-dialog-title" className="display mt-1 text-xl font-semibold break-words">
               {row.setName}

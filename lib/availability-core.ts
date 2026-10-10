@@ -48,6 +48,19 @@ export function withLateReturn<T extends { status: string; endDate: string }>(b:
 }
 
 /**
+ * Une prolongation demandée et encore en cours (en attente de réponse ou de paiement) réserve déjà
+ * ses jours : la location compte jusqu'à la nouvelle date de retour. `extendedEndDate` vient de
+ * `activeExtensionEnd` (`lib/extensions.ts`) et n'est pas gardé dans le résultat. À appliquer avant
+ * `withLateReturn`.
+ */
+export function withExtension<T extends { endDate: string; extendedEndDate: string | null }>(
+  b: T,
+): Omit<T, "extendedEndDate"> {
+  const { extendedEndDate, ...rest } = b;
+  return extendedEndDate && extendedEndDate > rest.endDate ? { ...rest, endDate: extendedEndDate } : rest;
+}
+
+/**
  * Calcul pur, sans base : exemplaires du set, réservations bloquantes, battement en jours.
  * Un exemplaire est « loué » si une réservation le couvre aujourd'hui, « en battement »
  * pendant `turnaroundDays` jours après la fin d'une location. Les réservations sans
@@ -193,6 +206,63 @@ export function findFreeCopy(
 
 export function isInBlackout(date: string, blackouts: { startDate: string; endDate: string }[]) {
   return blackouts.some((b) => b.startDate <= date && date <= b.endDate);
+}
+
+/* ------------------------------------------------------------------ */
+/* Prolongation d'une location en cours                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Où en est la possibilité de prolonger, pour le bouton de l'espace client (décisions du
+ * 10 octobre 2026) :
+ * - `not_yet` : la location existe mais le set n'est pas encore remis, bouton visible et grisé ;
+ * - `open` : set chez le client, jusqu'à la veille du retour incluse ;
+ * - `closed` : jour du retour, retard, ou location terminée.
+ */
+export type ExtensionWindow = "not_yet" | "open" | "closed";
+
+export function extensionWindow(status: string, endDate: string, today: string = todayIso()): ExtensionWindow {
+  if (status === "picked_up") return today < endDate ? "open" : "closed";
+  return status === "returned" || status === "cancelled" ? "closed" : "not_yet";
+}
+
+/**
+ * Dernière date de retour possible pour prolonger `booking`, ou null si aucun jour ne peut être
+ * ajouté. La prolongation reste sur l'exemplaire que le client a chez lui : on s'arrête avant la
+ * réservation suivante sur cet exemplaire, battement compris (sauf si c'est la sienne), et jamais
+ * sur un jour de fermeture, où le retour est impossible. `bookings` : les réservations du set qui
+ * réservent des dates, prolongations en cours déjà appliquées (`withExtension`). `horizon` borne
+ * la recherche, la règle elle-même n'ayant pas de durée maximale.
+ */
+export function latestExtensionEnd(
+  booking: { id: string; copyId: string | null; customerId: string; endDate: string },
+  bookings: RangeBooking[],
+  blackouts: { startDate: string; endDate: string }[],
+  turnaroundDays: number,
+  horizon: string,
+): string | null {
+  if (!booking.copyId) return null;
+  // Le set est chez le client : son exemplaire compte comme disponible quel que soit son statut
+  // saisi. Une réservation sans exemplaire attribué peut retomber sur celui-ci : elle bloque aussi.
+  const copy: CopyInput = { id: booking.copyId, status: "available" };
+  const others = bookings.filter((b) => b.copyId === booking.copyId || b.copyId === null);
+  const firstDay = addDays(booking.endDate, 1);
+  let latest: string | null = null;
+  for (let day = firstDay; day <= horizon; day = addDays(day, 1)) {
+    if (!findFreeCopy([copy], others, turnaroundDays, firstDay, day, booking.customerId, booking.id)) break;
+    if (!isInBlackout(day, blackouts)) latest = day;
+  }
+  return latest;
+}
+
+/** `newEndDate` est une date de retour acceptable pour une prolongation, `latest` venant de `latestExtensionEnd`. */
+export function isExtensionEndAllowed(
+  newEndDate: string,
+  currentEndDate: string,
+  latest: string | null,
+  blackouts: { startDate: string; endDate: string }[],
+) {
+  return latest !== null && newEndDate > currentEndDate && newEndDate <= latest && !isInBlackout(newEndDate, blackouts);
 }
 
 /** Un set se réserve seulement s'il a un exemplaire libre aujourd'hui. */

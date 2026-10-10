@@ -27,26 +27,52 @@ export type BookingRow = {
   customerLastName: string | null;
   customerPhone: string | null;
   customerBlocked: boolean;
+  /** Demande de prolongation en cours sur cette location : à traiter, ou acceptée et à payer. */
+  extension: "pending_review" | "pending_payment" | null;
 };
 
 type Group = { key: string; title: string; statuses: BookingStatus[] };
 
-/** Même découpage que l'ancien écran en sections, repris ici comme filtres rapides et ordre de tri. */
+/** Même découpage que l'ancien écran en sections, repris ici comme filtres rapides. */
 const groups: Group[] = [
   { key: "pending_review", title: "À traiter", statuses: ["pending_review"] },
   { key: "date_proposed", title: "En attente du client", statuses: ["date_proposed"] },
-  { key: "to_handover", title: "À remettre", statuses: ["pending_payment", "confirmed"] },
+  // Paiement en attente et « à remettre » séparés (10 octobre 2026) : un set non payé n'est pas encore à remettre.
+  { key: "pending_payment", title: "Paiement en attente", statuses: ["pending_payment"] },
+  { key: "to_handover", title: "À remettre", statuses: ["confirmed"] },
   { key: "ongoing", title: "En cours de location", statuses: ["picked_up"] },
   { key: "done", title: "Terminées et annulées", statuses: ["returned", "cancelled"] },
 ];
 
-function groupIndexFor(status: BookingStatus): number {
-  const i = groups.findIndex((g) => g.statuses.includes(status));
-  return i === -1 ? groups.length : i;
+/**
+ * Groupes d'une ligne : celui de son statut, plus « À traiter » quand une prolongation attend une
+ * réponse (la location est en cours, mais les gérants ont une décision à prendre).
+ */
+function groupKeysOf(r: BookingRow): string[] {
+  const keys = groups.filter((g) => g.statuses.includes(r.status)).map((g) => g.key);
+  if (r.extension === "pending_review" && !keys.includes("pending_review")) keys.push("pending_review");
+  return keys;
+}
+
+/**
+ * Couleur et libellé d'une ligne : une prolongation en cours prime sur « En location » (jaune à
+ * traiter, orange à payer), le retard prime sur tout pour la pastille.
+ */
+function displayOf(r: BookingRow, late: number) {
+  const tone = statusTone(r.extension ?? r.status);
+  const label =
+    late > 0
+      ? `Retard ${late} j`
+      : r.extension === "pending_review"
+        ? "Prolongation demandée"
+        : r.extension === "pending_payment"
+          ? "Prolongation à payer"
+          : bookingStatusLabels[r.status];
+  return { row: tone?.row, badge: late > 0 ? "border-brick bg-brick text-paper" : (tone?.badge ?? neutralBadge), label };
 }
 
 /** Statuts « à venir » (remise pas encore faite), présélectionnés par le lien d'un lieu de remise. */
-export const UPCOMING_GROUP_KEYS = ["pending_review", "date_proposed", "to_handover"];
+export const UPCOMING_GROUP_KEYS = ["pending_review", "date_proposed", "pending_payment", "to_handover"];
 
 export function BookingsTable({
   rows,
@@ -88,7 +114,7 @@ export function BookingsTable({
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const g of groups) m.set(g.key, placeRows.filter((r) => g.statuses.includes(r.status)).length);
+    for (const g of groups) m.set(g.key, placeRows.filter((r) => groupKeysOf(r).includes(g.key)).length);
     return m;
   }, [placeRows]);
 
@@ -105,8 +131,7 @@ export function BookingsTable({
     const q = query.trim().toLowerCase();
     return placeRows.filter((r) => {
       if (selectedGroups.size > 0) {
-        const g = groups.find((g) => g.statuses.includes(r.status));
-        if (!g || !selectedGroups.has(g.key)) return false;
+        if (!groupKeysOf(r).some((key) => selectedGroups.has(key))) return false;
       }
       if (!q) return true;
       const name = `${r.customerFirstName ?? ""} ${r.customerLastName ?? ""}`.toLowerCase();
@@ -120,13 +145,10 @@ export function BookingsTable({
   }, [placeRows, selectedGroups, query]);
 
   const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const ga = groupIndexFor(a.status);
-      const gb = groupIndexFor(b.status);
-      if (ga !== gb) return ga - gb;
-      if (groups[ga]?.key === "ongoing") return a.endDate.localeCompare(b.endDate);
-      return a.startDate.localeCompare(b.startDate);
-    });
+    // Par date de remise, la plus récente en haut, tous statuts confondus ; à date égale, l'heure la plus tardive d'abord.
+    return [...filtered].sort(
+      (a, b) => b.startDate.localeCompare(a.startDate) || (b.pickupTime ?? "").localeCompare(a.pickupTime ?? ""),
+    );
   }, [filtered]);
 
   const hasFilters = Boolean(selectedGroups.size > 0 || query || pickupPointId);
@@ -230,23 +252,22 @@ export function BookingsTable({
         <ul className="mt-6 space-y-3 md:hidden">
           {sorted.map((r) => {
             const late = r.status === "picked_up" ? daysLate(r.endDate, today) : 0;
-            const tone = statusTone(r.status);
+            const display = displayOf(r, late);
+            const urgent = r.status === "pending_review" || r.extension === "pending_review";
             return (
               <li key={r.id}>
                 <button
                   type="button"
                   onClick={() => setOpenId(r.id)}
-                  aria-label={`Voir la réservation ${r.reference}${r.status === "pending_review" ? ", à traiter" : ""}`}
-                  className={`brick-card w-full text-left p-4 border-l-4 cursor-pointer ${tone?.row ?? "border-l-slate-ink/15 hover:bg-sky/60"}`}
+                  aria-label={`Voir la réservation ${r.reference}${urgent ? ", à traiter" : ""}`}
+                  className={`brick-card w-full text-left p-4 border-l-4 cursor-pointer ${display.row ?? "border-l-slate-ink/15 hover:bg-sky/60"}`}
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="text-xs font-bold text-slate-ink">{r.reference}</span>
                     <span
-                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md border whitespace-nowrap ${
-                        late > 0 ? "border-brick bg-brick text-paper" : (tone?.badge ?? neutralBadge)
-                      }`}
+                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md border whitespace-nowrap ${display.badge}`}
                     >
-                      {late > 0 ? `Retard ${late} j` : bookingStatusLabels[r.status]}
+                      {display.label}
                     </span>
                   </span>
                   <span className="mt-1 display font-semibold text-lg leading-snug block break-words text-ink-deep">{r.setName}</span>
@@ -287,8 +308,8 @@ export function BookingsTable({
             <tbody className="divide-y divide-slate-ink/10">
               {sorted.map((r) => {
                 const late = r.status === "picked_up" ? daysLate(r.endDate, today) : 0;
-                const urgent = r.status === "pending_review";
-                const tone = statusTone(r.status);
+                const urgent = r.status === "pending_review" || r.extension === "pending_review";
+                const display = displayOf(r, late);
                 return (
                   <tr
                     key={r.id}
@@ -303,7 +324,7 @@ export function BookingsTable({
                     role="button"
                     aria-label={`Voir la réservation ${r.reference}${urgent ? ", à traiter" : ""}`}
                     className={`cursor-pointer border-l-4 ${
-                      tone?.row ?? "border-transparent hover:bg-sky/60 focus:bg-sky/60"
+                      display.row ?? "border-transparent hover:bg-sky/60 focus:bg-sky/60"
                     }`}
                   >
                     <td className="p-2 sm:p-3">
@@ -329,13 +350,9 @@ export function BookingsTable({
                     </td>
                     <td className="p-2 sm:p-3">
                       <span
-                        className={`text-xs font-bold px-2 py-1 rounded-md border inline-block whitespace-nowrap ${
-                          late > 0
-                            ? "border-brick bg-brick text-paper"
-                            : (tone?.badge ?? neutralBadge)
-                        }`}
+                        className={`text-xs font-bold px-2 py-1 rounded-md border inline-block whitespace-nowrap ${display.badge}`}
                       >
-                        {late > 0 ? `Retard ${late} j` : bookingStatusLabels[r.status]}
+                        {display.label}
                       </span>
                     </td>
                   </tr>

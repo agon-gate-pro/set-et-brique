@@ -1,4 +1,4 @@
-# Récap de la semaine 41 (5 au 8 octobre 2026)
+# Récap de la semaine 41 (5 au 10 octobre 2026)
 
 Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le détail technique est dans `FONCTIONNEMENT.md`, le journal complet dans `AVANCEMENT.md`.
 
@@ -17,6 +17,8 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Bons cadeaux** : « Commander ce bon » mène au récapitulatif de la commande après connexion (paiement en ligne à venir).
 - **Orthographe « Mega Bloks »** (nom officiel) sur l'accueil et sur les bons cadeaux.
 - **Photos recadrées plus nettes.** Le site envoyait une photo à la taille du cadre puis l'agrandissait pour n'en montrer que la zone choisie, d'où la pixelisation signalée par Set et Brique. Il envoie maintenant une photo assez grande pour la zone affichée. Les photos des sets sont aussi moins compressées (qualité 90 au lieu de 75), un peu plus lourdes à charger.
+
+- **Téléphone au bon format** (10 octobre) : dans les coordonnées du compte et dans la réservation, le champ n'accepte plus que dix chiffres (« 06 12 34 56 78 »). Les numéros étrangers sont refusés, à confirmer avec Marion.
 
 ### Pour les gérants (espace de gestion)
 
@@ -37,6 +39,14 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Aperçu d'une réservation** (au clic dans le tableau) plus lisible : état en couleur, puis client, montant, remise et retour en blocs séparés.
 - **Fiche d'une réservation** : onglet Location plus lisible (set, montant, remise, retour en blocs ; message du client et motif d'annulation mis en évidence ; bouton « Enregistrer la note » en vert).
 - **Un compte gérant peut aussi louer** comme un client et suivre ses locations dans « Mon compte ».
+
+- **Bouton « Modifier » de la remise grisé** tant que le lieu ou l'heure n'a pas changé (10 octobre).
+- **Tableau de bord** (10 octobre) : « Sets à remettre » ne compte plus que les réservations payées ; nouvelle carte « Paiements en attente », et le même découpage dans le filtre de la liste des réservations.
+- **Liste des réservations triée par date de remise**, la plus récente en haut, tous statuts confondus (10 octobre).
+
+### En préparation : prolonger une location
+
+Demande de Marion, hors spécification d'origine : plus de la moitié des clients veulent garder leur set plus longtemps. Le client demandera depuis « Mes locations », Set et Brique acceptera ou refusera, puis le client paiera la différence. Le 10 octobre, le socle est posé (base de données, calcul de la date maximale en tenant compte de la réservation suivante et du battement, jours bloqués pour les autres clients) et le côté client est construit : bouton « Prolonger ma location » sur la carte de la location, grisé tant que le set n'est pas remis, puis fenêtre avec calendrier et supplément. Le côté gérants l'est aussi : la demande apparaît dans « À traiter », la fiche de la réservation permet de l'accepter ou de la refuser, puis d'enregistrer le paiement du supplément, ce qui repousse la date de retour. Testé à l'écran par Alexis le 10 octobre, avec un bouton « Payer la prolongation » ajouté côté client. Les e-mails sont écrits (demande reçue, acceptée, refusée, payée, annulée faute de règlement), sur le modèle des e-mails existants et sans attendre la relecture de Marion. Pas encore en production : reste le paragraphe des conditions générales, et le paiement en ligne du supplément viendra avec Stripe.
 
 ## 2. Décisions prises cette semaine (Alexis)
 
@@ -61,6 +71,8 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 
 **Fait le 8 octobre 2026 au soir par Alexis :** mise en production des photos (plus nettes, qualité 90, envoi direct jusqu'à 20 Mo) : `main` avancée sur `semaine-41` (commit `2b703e2`), déploiement réussi. Envoi d'une photo depuis un téléphone testé en réel : fonctionne bien.
 
+**Fait le 10 octobre 2026 :** migration **`0020_booking_extensions`** appliquée à la base (nouvelle table vide et son type, rien de modifié dans l'existant). Le code correspondant n'est pas encore en production.
+
 **Reste à faire :**
 
 - **Redéployer la production une fois** (Vercel → Deployments → dernier déploiement de production → Redeploy), ou attendre le prochain déploiement : `CRON_SECRET` n'est prise en compte qu'au déploiement suivant son ajout. D'ici là, la tâche planifiée est refusée ; l'annulation au fil des visites fonctionne quand même.
@@ -76,6 +88,10 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-41`. Le d
 - **Rappel avant l'échéance** par e-mail : souhaité ? (nécessite le fournisseur d'e-mail.)
 - **Usage des noms de marques** (Lego, Pantasy, Mega Bloks) sur le site et les bons : à confirmer.
 - **Taille des photos d'origine** : toutes les photos des sets font 1414 × 2000 px. Sont-elles réduites ou exportées (Canva ?) avant d'être mises sur le site, et existe-t-il des originaux en meilleure résolution ? Ce sont elles qui limitent la netteté en plein écran.
+
+- **E-mails de prolongation** (10 octobre) : six textes à relire, partie D de `EMAILS.md`.
+- **Prolongation** (10 octobre) : demande possible jusqu'à la veille du retour ; nouvelle empreinte de caution au paiement de la prolongation ; paragraphe à ajouter aux conditions générales.
+- **Inscription en erreur signalée par un client** (10 octobre) : le compte a bien été créé et le serveur n'a renvoyé aucune erreur ; il faudrait le texte affiché et l'appareil utilisé pour aller plus loin.
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 

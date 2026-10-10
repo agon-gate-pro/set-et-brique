@@ -122,6 +122,28 @@ Si quelque chose change d'ici là, prévenez-nous le plus tôt possible, un autr
 « Pour finaliser, il vous reste à régler {{total}} en ligne dans les 24 heures : passé ce délai, la réservation est annulée et les dates redeviennent libres pour d'autres familles. La caution de {{caution}} est une simple empreinte bancaire, débitée uniquement en cas de casse ou de perte. »
 [Bouton : Régler ma réservation → {{lien_paiement}}]
 
+### A3 bis. Paiement reçu, au client
+
+Ajouté le 10 octobre 2026, rédigé par AGON-GATE, non relu par Marion. Déclencheur : les gérants enregistrent « Paiement reçu » (`pending_payment` → `confirmed`) ; le paiement en ligne enverra le même.
+
+**Objet** : Paiement reçu : {{set}} vous est réservé du {{date_debut}} au {{date_fin}}
+
+**Accroche** : Dernière brique posée, votre réservation est confirmée !
+
+Bonjour {{prenom}},
+
+Nous avons bien reçu votre règlement de {{montant}}. Tout est prêt de notre côté !
+
+[bloc de rappel de la réservation]
+
+Rendez-vous le {{date_debut}} vers {{heure}} : {{lieu}}. Le set vous est remis démonté, pièces triées en sachets, notice comprise.
+
+Un empêchement ? Prévenez-nous le plus tôt possible : répondez à cet e-mail ou appelez-nous au 07 83 73 70 20.
+
+[Bouton : Voir ma réservation → {{lien_compte}}]
+
+[signature]
+
 ### A4. Demande refusée ou annulée par les gérants, au client
 
 Déclencheur : les gérants refusent la demande ou annulent une réservation acceptée non payée (→ `cancelled`, avec motif).
@@ -251,7 +273,9 @@ Petit rappel : {{set}} est à rendre **demain, {{date_fin}}**, à l'heure qui vo
 
 Pensez à remettre les pièces dans leurs sachets avec la notice. {{option_monte_phrase}}
 
-Besoin de quelques jours de plus ? Appelez-nous aujourd'hui au 07 83 73 70 20 : si le set est libre, on prolonge sans souci.
+Besoin de quelques jours de plus ? Demandez une prolongation aujourd'hui depuis votre espace : si le set est libre, on prolonge sans souci. *(modifié le 10 octobre 2026 : la prolongation se demande en ligne)*
+
+[Bouton : Prolonger ma location → {{lien_compte}}]
 
 [signature]
 
@@ -339,7 +363,149 @@ Bon à savoir : le bon est valable sur tout le catalogue et peut être utilisé 
 
 ---
 
+## D. Prolongation d'une location
+
+Ajoutés le 10 octobre 2026 avec la prolongation en ligne. Textes rédigés par AGON-GATE sur le modèle des e-mails A et B, en reprenant les accroches déjà choisies par Marion quand elles s'y prêtent ; **non relus par elle**. Variables en plus : `{{retour_prevu}}`, `{{nouveau_retour}}`, `{{jours_en_plus}}`, `{{supplement}}`, `{{echeance}}`.
+
+Bloc de rappel commun (« [rappel prolongation] ») :
+
+> {{set}} · réservation {{reference}}
+> Retour prévu : {{retour_prevu}}
+> Nouveau retour : {{nouveau_retour}} ({{jours_en_plus}} de plus)
+> Supplément : {{supplement}}
+
+### D1. Prolongation demandée, au client
+
+Déclencheur : le client envoie une demande depuis « Mes locations ».
+
+**Objet** : Votre demande de prolongation pour {{set}} est bien arrivée ({{reference}})
+
+**Accroche** : Message bien imbriqué !
+
+Bonjour {{prenom}},
+
+Vous souhaitez garder {{set}} un peu plus longtemps : c'est noté ! Nous vérifions que le set est libre et revenons vers vous très vite.
+
+[rappel prolongation]
+
+Les jours demandés sont déjà bloqués pour vous. En attendant notre réponse, que vous recevrez par e-mail, le retour reste prévu le {{retour_prevu}}.
+
+Une question, un empêchement ? Répondez simplement à cet e-mail ou appelez-nous au 07 83 73 70 20.
+
+[Bouton : Suivre ma demande → {{lien_compte}}]
+
+[signature]
+
+### D2. Prolongation demandée, aux gérants
+
+Même déclencheur.
+
+**Objet** : Prolongation demandée : {{set}} jusqu'au {{nouveau_retour}} ({{client}})
+
+Bonjour,
+
+{{client}} a le set en main et souhaite le garder plus longtemps.
+
+[rappel prolongation]
+
+Client : {{client}} · {{telephone}} · {{email}}
+
+À traiter dans l'espace de gestion avant la fin du {{retour_prevu}} : passé ce jour sans réponse, la demande expire et le set reste à rendre à la date prévue.
+
+[Bouton : Voir la demande → {{lien_admin}}]
+
+### D3. Prolongation acceptée, au client
+
+Déclencheur : les gérants acceptent la demande.
+
+**Objet** : Prolongation acceptée : {{set}} peut rester chez vous jusqu'au {{nouveau_retour}}
+
+**Accroche** : Feu vert pour la suite de la construction !
+
+Bonjour {{prenom}},
+
+Bonne nouvelle : vous pouvez garder {{set}} plus longtemps. Le chantier continue !
+
+[rappel prolongation]
+
+Pour finaliser, il vous reste à régler {{supplement}} avant le {{echeance}} : passé ce délai, la prolongation est annulée et le set est à rendre le {{retour_prevu}}, comme prévu au départ.
+
+[Bouton : Régler ma prolongation → {{lien_compte}}]
+
+[signature]
+
+### D4. Prolongation refusée, au client
+
+Déclencheur : les gérants refusent la demande.
+
+**Objet** : Votre demande de prolongation n'a pas pu être retenue ({{reference}})
+
+**Accroche** : Aïe, il semblerait qu'une brique bloque l'assemblage…
+
+Bonjour {{prenom}},
+
+Nous aurions aimé vous laisser {{set}} plus longtemps, mais nous ne pouvons malheureusement pas prolonger votre location jusqu'au {{nouveau_retour}}.
+
+Le motif : {{motif}} *(seulement si un motif a été saisi)*
+
+Le retour reste donc prévu le {{retour_prevu}}, au même endroit : {{lieu}}. Rien n'a été débité.
+
+Une question ? Répondez à cet e-mail ou appelez-nous au 07 83 73 70 20.
+
+[Bouton : Voir ma location → {{lien_compte}}]
+
+[signature]
+
+### D5. Prolongation payée, au client
+
+Déclencheur : le supplément est réglé (« Paiement reçu » des gérants aujourd'hui, paiement en ligne plus tard).
+
+**Objet** : C'est prolongé : {{set}} est à rendre le {{nouveau_retour}}
+
+**Accroche** : Chantier prolongé !
+
+Bonjour {{prenom}},
+
+Votre règlement est bien reçu, la prolongation est confirmée. Bonne suite de construction !
+
+> {{set}} · réservation {{reference}}
+> Nouveau retour : {{nouveau_retour}}, au même endroit : {{lieu}}
+> Prolongation : {{jours_en_plus}}, {{supplement}}
+> Location au total : {{jours}}, {{montant}}
+
+{{consigne_retour}}
+
+Au-delà du {{nouveau_retour}}, un forfait de retard de 30 € s'applique le lendemain. Un imprévu ? Prévenez-nous, on préfère largement en parler !
+
+[Bouton : Voir ma location → {{lien_compte}}]
+
+[signature]
+
+### D6. Prolongation annulée faute de règlement, au client
+
+Déclencheur : l'échéance de paiement du supplément est dépassée (acteur système).
+
+**Objet** : Votre prolongation est annulée faute de règlement ({{reference}})
+
+Bonjour {{prenom}},
+
+Nous n'avons pas reçu le règlement de la prolongation de {{set}} dans le délai prévu : elle est annulée.
+
+Le set est donc à rendre le {{retour_prevu}}, au même endroit : {{lieu}}. Rien n'a été débité.
+
+Un imprévu ? Répondez à cet e-mail ou appelez-nous au 07 83 73 70 20.
+
+[Bouton : Voir ma location → {{lien_compte}}]
+
+[signature]
+
+**Sans e-mail** : une demande retirée par le client, et une demande restée sans réponse des gérants (elle expire le lendemain du retour prévu, quand les rappels B ont déjà été envoyés).
+
+---
+
 ## Points à faire valider par Marion
+
+- Les six e-mails de prolongation (partie D), rédigés sans elle le 10 octobre 2026 : textes et accroches à relire.
 
 - La mention « pièce d'identité » à la remise (A3) : la demande-t-elle réellement ?
 - « Carte ou espèces » à la remise (A3) : moyens de paiement acceptés au TPE.

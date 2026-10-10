@@ -7,8 +7,10 @@ import { daysLate, todayIso } from "@/lib/dates";
 import { bookingStatusLabels, formatCents, formatDate, formatTime } from "@/lib/format";
 import type { Booking } from "@/lib/db/schema";
 import type { CustomerBooking } from "@/lib/bookings";
+import type { CustomerExtensionView } from "@/lib/extensions";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { acknowledgeHandoverChange, acceptProposedDate, cancelRequest } from "./actions";
+import { ExtensionRequest } from "./extension-request";
 import { PaymentSummary } from "./payment-summary";
 
 const badge: Record<Booking["status"], string> = {
@@ -28,6 +30,7 @@ export function BookingCard({
   pickupPoint,
   previousPickupPoint = null,
   openPayment = false,
+  extension = null,
 }: {
   booking: CustomerBooking;
   setName: string;
@@ -37,6 +40,8 @@ export function BookingCard({
   previousPickupPoint?: string | null;
   /** Ouvre d'office le récapitulatif de paiement (lien de l'e-mail d'acceptation). */
   openPayment?: boolean;
+  /** Prolongation : état du bouton, dates possibles et demande en cours. Absent dans l'historique. */
+  extension?: CustomerExtensionView | null;
 }) {
   const [acceptState, acceptAction] = useActionState(acceptProposedDate, null);
   const [cancelState, cancelAction] = useActionState(cancelRequest, null);
@@ -52,6 +57,16 @@ export function BookingCard({
   const placeChanged = previousPickupPoint !== pickupPoint;
   const cancellable = booking.status === "pending_review" || booking.status === "date_proposed";
   const late = booking.status === "picked_up" ? daysLate(booking.endDate, todayIso()) : 0;
+  // Une prolongation en cours prime sur « En cours de location » : c'est elle qui attend quelque chose.
+  const extensionStatus = extension?.current?.status ?? null;
+  const statusBadge =
+    late > 0
+      ? { label: "Retour en retard", className: "bg-brick text-paper" }
+      : extensionStatus === "pending_review"
+        ? { label: "Prolongation demandée", className: "bg-sun" }
+        : extensionStatus === "pending_payment"
+          ? { label: "Prolongation à payer", className: "badge-gold" }
+          : { label: bookingStatusLabels[booking.status], className: badge[booking.status] };
 
   return (
     <li className="brick-card p-5">
@@ -62,8 +77,8 @@ export function BookingCard({
             {setName}
           </a>
         </div>
-        <span className={`text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${late > 0 ? "bg-brick text-paper" : badge[booking.status]}`}>
-          {late > 0 ? "Retour en retard" : bookingStatusLabels[booking.status]}
+        <span className={`text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${statusBadge.className}`}>
+          {statusBadge.label}
         </span>
       </div>
 
@@ -152,6 +167,19 @@ export function BookingCard({
             {formatDate(booking.endDate)}, à l&apos;heure qui vous arrange.
           </p>
         )
+      ) : null}
+
+      {extension ? (
+        <ExtensionRequest
+          bookingId={booking.id}
+          setName={setName}
+          reference={booking.reference}
+          endDate={booking.endDate}
+          window={extension.window}
+          options={extension.options}
+          extension={extension.current}
+          last={extension.last}
+        />
       ) : null}
 
       {booking.status === "returned" ? (

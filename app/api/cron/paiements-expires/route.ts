@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { expireStaleExtensions } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 
 /**
@@ -14,5 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
   const cancelled = await expireOverduePayments();
-  return NextResponse.json({ cancelled });
+  // Même filet pour les prolongations restées sans réponse ou sans paiement à temps.
+  const expiredExtensions = await expireStaleExtensions();
+  return NextResponse.json({ cancelled, expiredExtensions });
 }
