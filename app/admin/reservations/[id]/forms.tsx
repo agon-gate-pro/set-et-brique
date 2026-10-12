@@ -48,6 +48,10 @@ export function PaymentActions({ booking, delayHours }: { booking: Booking; dela
           "Demande acceptée avant la mise en place du délai de paiement : sans paiement, elle est annulée automatiquement une fois le jour de remise passé."
         )}
       </p>
+      <p className="mt-2 text-sm text-slate-ink">
+        Le client peut régler par carte depuis son espace (paiement en ligne) : la réservation passe alors toute seule en
+        « Confirmée », avec un e-mail de confirmation. Le bouton ci-dessous sert au paiement reçu hors ligne.
+      </p>
       <form action={paidAction} className="mt-4 grid gap-4 sm:grid-cols-[12rem_1fr_auto] items-end">
         <input type="hidden" name="id" value={booking.id} />
         <Field label="Moyen de paiement">

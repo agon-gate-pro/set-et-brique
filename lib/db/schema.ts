@@ -445,12 +445,20 @@ export const giftVouchers = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /**
+     * Achat en ligne (`origin = "purchase"`) : session Stripe Checkout qui a créé le bon, unique
+     * pour qu'un même paiement ne produise jamais deux bons (webhook et page de retour peuvent
+     * arriver en même temps, voir `lib/payments.ts`), et e-mail de l'acheteur, à qui le code est envoyé.
+     */
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    purchaserEmail: text("purchaser_email"),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("gift_vouchers_code_idx").on(t.code),
     index("gift_vouchers_status_idx").on(t.status),
     index("gift_vouchers_batch_number_idx").on(t.batchNumber),
+    uniqueIndex("gift_vouchers_stripe_session_idx").on(t.stripeCheckoutSessionId),
   ],
 );
 

@@ -25,7 +25,9 @@ export type BookingEmailEvent =
   | "picked_up"
   | "returned"
   | "payment_expired"
-  | "paid";
+  | "paid"
+  /** Paiement en ligne (module 4) : même e-mail client que `paid`, plus une copie aux gérants. */
+  | "paid_online";
 
 export type ReminderKind = "reminder_eve" | "reminder_day" | "reminder_late";
 
@@ -573,6 +575,19 @@ export const extensionMails: Record<ExtensionEmailEvent, (b: BookingWithDetails,
   extension_payment_expired: (b, e) => [extensionPaymentExpired(b, e)],
 };
 
+/** Paiement en ligne reçu, aux gérants. */
+function paidAdmin(b: BookingWithDetails) {
+  return adminMail("paid_admin", {
+    subject: `Paiement reçu : ${b.set.name} du ${longDate(b.startDate)} (${customerName(b)}, ${b.reference})`,
+    blocks: [
+      p("Bonjour,"),
+      p(`${customerName(b)} vient de régler ${formatCents(total(b))} en ligne. La réservation est confirmée.`),
+      recap(b),
+    ],
+    button: { label: "Voir la réservation", href: siteLink(`/admin/reservations/${b.id}`) },
+  });
+}
+
 export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Mail[]> = {
   requested: (b) => [requestReceived(b), requestNewAdmin(b)],
   accepted: (b) => [accepted(b)],
@@ -583,6 +598,7 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   returned: (b) => [returned(b)],
   payment_expired: (b) => [paymentExpired(b)],
   paid: (b) => [paid(b)],
+  paid_online: (b) => [paid(b), paidAdmin(b)],
 };
 
 export const reminderMails: Record<ReminderKind, (b: BookingWithDetails) => Mail> = {
