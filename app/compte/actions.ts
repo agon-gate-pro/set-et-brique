@@ -3,12 +3,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { findCustomerByClerkId, paymentDeadline } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
 import { ExtensionError, cancelExtensionRequest, createExtensionRequest } from "@/lib/extensions";
-import { giftVoucherDisplayStatus } from "@/lib/gift-vouchers-core";
 import { hasUnseenHandoverChange } from "@/lib/handover";
+import { createBookingCheckout, lookupGiftVoucher, type BookingCheckoutResult } from "@/lib/payments";
+import { site } from "@/lib/site";
 import type { ActionState } from "@/components/admin/form";
 
 function revalidate() {
@@ -31,7 +33,7 @@ export type GiftVoucherCheck = { error: string } | { code: string; amountCents: 
 
 /**
  * Vérifie un code de bon cadeau saisi dans le récapitulatif de paiement, sans le consommer : le
- * bon ne passe à « utilisé » qu'au paiement, qui devra revérifier le code côté serveur.
+ * bon ne passe à « utilisé » qu'au paiement, qui le revérifie côté serveur (`createBookingCheckout`).
  */
 export async function checkGiftVoucher(bookingId: string, rawCode: string): Promise<GiftVoucherCheck> {
   const booking = await ownBooking(bookingId);
@@ -56,21 +58,34 @@ export async function checkExtensionGiftVoucher(extensionId: string, rawCode: st
 }
 
 async function verifyGiftVoucher(rawCode: string): Promise<GiftVoucherCheck> {
-  const code = rawCode.replace(/\s+/g, "").toUpperCase();
-  if (!code) return { error: "Saisissez le code de votre bon cadeau." };
+  const found = await lookupGiftVoucher(rawCode);
+  if ("error" in found) return found;
+  return { code: found.voucher.code, amountCents: found.voucher.amountCents };
+}
 
-  const voucher = await db.query.giftVouchers.findFirst({ where: eq(schema.giftVouchers.code, code) });
-  if (!voucher) return { error: "Ce code n'est pas reconnu. Vérifiez sa saisie." };
-  switch (giftVoucherDisplayStatus(voucher)) {
-    case "used":
-      return { error: "Ce bon cadeau a déjà été utilisé." };
-    case "expired":
-      return { error: "Ce bon cadeau a expiré." };
-    case "cancelled":
-      return { error: "Ce bon cadeau n'est plus valable." };
-    default:
-      return { code: voucher.code, amountCents: voucher.amountCents };
-  }
+/** Adresse du site vue par le navigateur, pour les retours de Stripe (localhost en développement). */
+async function requestOrigin() {
+  const h = await headers();
+  const origin = h.get("origin");
+  if (origin) return origin;
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return site.url;
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+/**
+ * « Payer » du récapitulatif : prépare la page de paiement Stripe et renvoie son adresse, ou
+ * confirme directement si le bon cadeau couvre tout (`confirmed`).
+ */
+export async function startBookingPayment(bookingId: string, voucherCode: string | null): Promise<BookingCheckoutResult> {
+  const { userId } = await auth();
+  if (!userId) return { error: "Connectez-vous pour payer." };
+  const customer = await findCustomerByClerkId(userId);
+  if (!customer) return { error: "Compte client introuvable." };
+  const result = await createBookingCheckout({ bookingId, customerId: customer.id, voucherCode, origin: await requestOrigin() });
+  if ("confirmed" in result) revalidate();
+  return result;
 }
 
 /** Le client accepte la date proposée par les gérants : elle remplace la sienne. */

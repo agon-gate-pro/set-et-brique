@@ -7,6 +7,7 @@ import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { expireStaleExtensions, loadCustomerExtensions } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
+import { fulfillCheckoutSession, retrieveCheckoutSession } from "@/lib/payments";
 import { BookingCard } from "./booking-card";
 
 export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
@@ -14,9 +15,22 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage({ searchParams }: PageProps<"/compte">) {
   // `payer` : référence d'une réservation acceptée, dont le récapitulatif de paiement s'ouvre d'office.
-  const { demande, payer } = await searchParams;
+  // `paye` + `session_id` : retour de la page de paiement Stripe.
+  const { demande, payer, paye, session_id } = await searchParams;
   // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
   const { userId } = await auth.protect();
+
+  // Retour de Stripe : on livre nous-mêmes (le webhook l'a peut-être déjà fait, la livraison est
+  // idempotente) pour que le client voie sa réservation confirmée sans attendre.
+  let paymentPending = false;
+  if (typeof session_id === "string" && session_id.startsWith("cs_")) {
+    try {
+      const result = await fulfillCheckoutSession(await retrieveCheckoutSession(session_id));
+      paymentPending = result.status === "unpaid";
+    } catch (e) {
+      console.error("[stripe] retour paiement", e);
+    }
+  }
   // Demande acceptée non payée dans le délai : affichée annulée, plus « à payer ».
   await expireOverduePayments();
   // Prolongations restées sans réponse ou sans paiement à temps : la date de retour d'origine reste due.
@@ -48,6 +62,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
   // demande est ouverte (set chez le client, jusqu'à la veille du retour).
   const extensions = await loadCustomerExtensions(current);
   const firstName = customer?.firstName ?? user?.firstName ?? null;
+  const paid = typeof paye === "string" ? bookings.find((b) => b.reference === paye) : undefined;
 
   return (
     <section className="mx-auto max-w-4xl px-5 md:px-8 py-14 md:py-20">
@@ -58,6 +73,23 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
           Votre demande {demande} est bien envoyée. Nous l&apos;examinons et revenons vers vous
           rapidement pour convenir de l&apos;heure de remise. Rien n&apos;est à payer pour l&apos;instant.
         </p>
+      ) : null}
+
+      {paid ? (
+        paid.status === "confirmed" || paid.status === "picked_up" ? (
+          <p role="status" className="mt-6 brick-card bg-leaf/20 p-5 font-semibold text-ink-deep">
+            Paiement reçu, merci ! Votre réservation {paid.reference} est confirmée. Vous recevez un e-mail de confirmation.
+          </p>
+        ) : paymentPending ? (
+          <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
+            Votre banque n&apos;a pas encore confirmé le paiement de la réservation {paid.reference}. Nous vous écrivons dès que
+            c&apos;est fait.
+          </p>
+        ) : (
+          <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
+            Nous n&apos;avons pas encore reçu le paiement de la réservation {paid.reference}. Si vous avez été débité, contactez-nous.
+          </p>
+        )
       ) : null}
 
       <h2 className="mt-10 text-2xl font-semibold">Mes locations</h2>

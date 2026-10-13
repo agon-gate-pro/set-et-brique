@@ -20,7 +20,7 @@ Set et Brique loue de grands sets de briques de construction autour de Lorient. 
 | Base de données | Postgres sur Neon (via Vercel Marketplace) | Serverless, branches de base pour tester les migrations |
 | ORM | Drizzle | Schéma en TypeScript, migrations SQL versionnées |
 | Comptes | Clerk | Inscription, connexion, rôles admin |
-| Paiement | Stripe | Paiement de la location et empreinte pour la caution |
+| Paiement | Stripe (intégration Vercel Marketplace, Checkout hébergé) | Paiement de la location et des bons cadeaux (§9 bis) ; empreinte pour la caution à venir |
 | Fichiers | Vercel Blob | Photos des sets |
 | E-mails | Resend (compte direct, clé posée dans Vercel) | E-mails transactionnels de la réservation et rappels de fin de location (§10 bis) |
 | Hébergement | Vercel, projet `set-et-brique` | Déploiement automatique à chaque push sur `main` |
@@ -147,10 +147,11 @@ demande ──▶ pending_review ──accepter───────────
   - **Prolonger le délai** (`extendPaymentDeadline`, même encart) : ajoute la durée du réglage `payment_delay_hours` à l'échéance actuelle, ou à maintenant si elle est passée ; sans plafond du jour de remise (geste volontaire des gérants). Inscrit dans l'historique.
   - **Annulation automatique** (`expireOverduePayments`, `lib/payment-expiry.ts`) : toute réservation `pending_payment` dont `payment_due_at` est passé passe en `cancelled`, avec `cancel_reason` « Délai de paiement dépassé : la réservation a été annulée et le set remis en location. » (affiché au client sur sa carte) et un événement d'historique d'acteur `system`. La fonction est appelée **avant chaque lecture du planning ou des réservations** : `loadAvailability` et `loadDayAvailability` (catalogue, fiche d'un set), tunnel de réservation (page et `createBookingRequest`), tableau de bord, liste et fiche des réservations de l'admin, `/compte`, et `/api/customer-name` (pastille du header). Les dates sont donc libérées dès la première visite après l'échéance, sans tâche planifiée fréquente. Appels concurrents sans risque : l'`UPDATE … WHERE status = 'pending_payment'` verrouille la ligne, un second appel la relit annulée et ne la renvoie pas (un seul événement). **Filet de sécurité** : tâche planifiée Vercel une fois par jour à 5 h UTC (`vercel.json`, limite du plan gratuit) sur `/api/cron/paiements-expires`, qui exige l'en-tête `Authorization: Bearer <CRON_SECRET>` envoyé par Vercel — **la variable `CRON_SECRET` doit être définie dans le projet Vercel**, sans elle la route répond 401 à tout appel.
   - **Annuler la réservation** (`cancelAcceptedBooking`, 7 octobre 2026) : annulation à l'initiative de Set et Brique (spécification, politique d'annulation ; CGL, article 13). Ce n'est plus un « refus » : l'encart de la fiche s'appelle « Remise » (et non « Décision ») une fois la demande acceptée, et le bouton rouge « Refuser la demande » y est remplacé par un lien discret « Annuler la réservation ». **Motif obligatoire**, visible du client ; la fenêtre de confirmation rappelle de le prévenir et de lui proposer une autre date, un autre set ou un avoir. Historique « Annulée par Set et Brique : <motif> ». `refuseBooking` n'accepte plus que `pending_review` et `date_proposed`. L'annulation d'une réservation déjà payée (`confirmed`, remboursement) viendra avec le paiement (module 4).
+  - **Paiement en ligne** (12 octobre 2026, §9 bis) : « Payer ma location » dans l'espace client ouvre la page de paiement Stripe ; au retour (ou par le webhook), `confirmBookingPayment` (`lib/payments.ts`) passe la réservation en `confirmed`, consomme le bon cadeau annoncé, inscrit « Paiement en ligne reçu (carte bancaire, Stripe) » dans l'historique (acteur `system`) et envoie l'e-mail `paid_online`. Si un bon cadeau couvre tout le prix, la confirmation se fait sans Stripe (acteur `customer`).
   - Toujours possible : **« Set remis »** directement (loyer réglé par TPE à la remise).
 
   Aucun e-mail n'est envoyé (ni annulation, ni rappel) : pas de fournisseur d'e-mail à ce jour.
-- `confirmed` : paiement reçu (bouton « Paiement reçu » des gérants, plus tard paiement en ligne). Plus d'échéance.
+- `confirmed` : paiement reçu (paiement en ligne, ou bouton « Paiement reçu » des gérants pour un règlement hors ligne). Plus d'échéance. `stripe_checkout_session_id` et `stripe_payment_intent_id` sont renseignés pour un paiement en ligne.
 - `picked_up` : remise en main propre faite, enregistrée par les gérants (`picked_up_at`). Possible depuis `pending_payment` (loyer réglé par TPE à la remise) ou `confirmed`. L'empreinte de caution viendra avec le module 4.
 - `returned` : set rendu, enregistré par les gérants avec la date et un état des lieux en commentaire libre (`returned_at`, `return_note`). L'exemplaire redevient libre après le battement. La libération ou la capture de la caution viendra avec le module 4.
 - `cancelled` : refus des gérants, annulation par le client (possible tant que la demande n'est pas acceptée) ou par les gérants. `cancel_reason` est montré au client.
@@ -294,7 +295,7 @@ La fiche client en base (`customers`) n'est pas créée à l'inscription : elle 
 | Lieu de remise préféré, blocage du compte et sa raison, note interne des gérants | Postgres, table `customers` | mêmes lignes |
 | Réservations : set, exemplaire, dates, lieu, montants, statut, message du client, horodatage de l'acceptation des CG | Postgres, table `bookings` | une ligne par demande, rattachée à `customers.id` |
 | Historique des changements de statut | Postgres, table `booking_events` | une ligne par transition |
-| Paiements et caution (à venir, module 4) | Stripe, et les identifiants Stripe dans `bookings` | rien en base au-delà des identifiants |
+| Paiements (module 4) et caution (à venir) | Stripe, et les identifiants Stripe dans `bookings` et `gift_vouchers` (plus l'e-mail de l'acheteur d'un bon) | rien en base au-delà des identifiants : pas de numéro de carte, Stripe Checkout hébergé |
 
 L'e-mail est copié de Clerk dans `customers.email` à chaque enregistrement, pour que les gérants le voient sans appel à Clerk. Rien n'est stocké sur le disque du serveur ni dans le navigateur au-delà du cookie de session Clerk.
 
@@ -423,6 +424,28 @@ Côté serveur (`lib/bookings.ts`), la demande est refusée avec un message clai
 
 Hypothèses prises faute de règle dans la spécification : la remise ne peut pas être demandée pour le jour même, et le planning par lieu (une seule remise à la fois) n'est pas contrôlé automatiquement, c'est la validation manuelle qui s'en charge.
 
+## 9 bis. Paiement en ligne (module 4, 12 octobre 2026)
+
+**Compte Stripe.** Depuis le 12 octobre 2026 au soir, le site tourne sur le **compte Stripe de Set et Brique** (`acct_1UD0HV…`, entreprise individuelle, compte activé pour encaisser), en **mode test** : `STRIPE_SECRET_KEY` et `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (clés `sk_test_` / `pk_test_` du mode test de ce compte) sont posées à la main dans Vercel (Production, Preview, Development) et dans `.env.local`. La ressource Marketplace `set-et-brique-stripe` (bac à sable Vercel sans propriétaire, premier essai) a été retirée le même jour. Agon-Gate est membre de l'équipe Stripe de Set et Brique (`guillaume@agon-gate.com`, Administrateur le temps du paramétrage, à passer en Développeur après la mise en production) ; le CLI Stripe local est autorisé sur ce compte, live et mode test, dans le profil `--project-name set-et-brique`. **Passage en live** : remplacer les deux clés par celles du mode live (clé restreinte `rk_live_` de préférence, modèle « Paiements ponctuels »), recréer le webhook en live sur le domaine final et remplacer `STRIPE_WEBHOOK_SECRET`.
+
+**Parcours.** Stripe Checkout **hébergé** : le client quitte le site pour la page de paiement Stripe (en français, carte et autres moyens activés dans le Dashboard, jamais `payment_method_types` en dur) puis revient. Pas de formulaire de carte sur le site, donc rien de sensible à protéger côté front. La page expire au bout de 30 minutes (minimum Stripe) : plus rien ne bloque côté site, la réservation est déjà en `pending_payment` avec son échéance de 24 h.
+
+- **Location** : `startBookingPayment` (`app/compte/actions.ts`) → `createBookingCheckout` (`lib/payments.ts`). La réservation doit appartenir au client, être `pending_payment` et dans son délai. Le bon cadeau saisi dans le récapitulatif est **revérifié côté serveur** ; s'il couvre tout, la réservation est confirmée tout de suite sans Stripe (Stripe refuse un paiement à 0 €), sinon la session porte une seule ligne au montant net (« Location X, N jours, bon cadeau SB-… déduit ») ou deux lignes (location, option set rendu monté). Métadonnées `kind=booking`, `booking_id`, `voucher_code`. L'identifiant de session est écrit sur la réservation dès sa création. Retour : `/compte?paye=<référence>&session_id=…` ; abandon : `/compte?payer=<référence>` (le récapitulatif se rouvre).
+- **Bon cadeau** : `startGiftVoucherPayment` (`app/bons-cadeaux/actions.ts`) → `createGiftVoucherCheckout`. Montant parmi `giftVoucherAmounts` (`lib/site.ts`), e-mail du compte Clerk pré-rempli, métadonnées `kind=gift_voucher`, `amount_cents`, `clerk_user_id`. Retour : `/bons-cadeaux/merci?session_id=…`, qui montre le code (réservé au compte qui a payé) ; abandon : `/bons-cadeaux`.
+
+**Livraison.** `fulfillCheckoutSession(session)` fait foi, et elle est **idempotente** :
+
+- réservation : `update … where status = 'pending_payment'` ; si aucune ligne, c'est déjà fait (ou annulé entre-temps), on ne touche à rien. Le bon cadeau est consommé dans la même transaction, seulement s'il est encore valable ; sinon l'historique le dit (« annoncé au paiement mais plus valable à ce moment-là : à vérifier ») et la réservation est quand même confirmée, le client ayant payé le montant net ;
+- bon cadeau : création d'un bon `origin = "purchase"`, lot tiré de la séquence comme en admin, note « Achat en ligne », `stripe_checkout_session_id` (index unique, migration 0020) et `purchaser_email`. Un conflit sur cet index renvoie le bon déjà créé.
+
+Elle est appelée **deux fois** : par le **webhook** `POST /api/stripe/webhook` (`checkout.session.completed`, `checkout.session.async_payment_succeeded` ; `async_payment_failed` ne fait qu'inscrire « Paiement en ligne refusé par la banque du client » dans l'historique), et par la **page de retour**, pour que le client voie tout de suite sa réservation confirmée, même en local sans webhook. Rien n'est livré tant que `payment_status` vaut `unpaid` (moyens à notification différée : la page affiche « paiement en cours », le webhook finira le travail).
+
+**Webhook.** Point de terminaison `we_1UPow6DBYWQMwdq8D8i7NbFU` créé le 12 octobre 2026 en mode test du compte Set et Brique pour `https://set-et-brique.vercel.app/api/stripe/webhook`, trois événements ci-dessus ; son secret est `STRIPE_WEBHOOK_SECRET` dans Vercel (Production seulement) et dans `.env.local`. Signature vérifiée avec `stripe.webhooks.constructEvent` sur le corps brut ; sans secret, la route répond 500. À refaire en live sur le domaine final (`site.url`). En local : `stripe listen --project-name set-et-brique --forward-to localhost:3000/api/stripe/webhook`, et remplacer temporairement `STRIPE_WEBHOOK_SECRET` dans `.env.local` par le secret `whsec_` affiché ; sinon, la page de retour suffit pour tester.
+
+**Ce que l'admin voit.** Rien de nouveau dans l'encart « Paiement » de la fiche, hormis une phrase qui rappelle que le client peut payer en ligne ; le bouton « Paiement reçu » reste pour les règlements hors ligne. L'historique porte la ligne du paiement en ligne. Les bons achetés apparaissent dans `/admin/bons-cadeaux` avec l'origine « achat ».
+
+**Pas encore fait** : l'empreinte bancaire de la caution à la remise (pré-autorisation 7 jours, capture en cas de litige, libération 48 h après le retour), les délais de 1 h et 15 min de la spécification (sans objet tant que la demande reste `pending_payment` avec son échéance de 24 h), les notes (module 8) à l'émission du paiement, le remboursement d'une réservation payée puis annulée par Set et Brique (à faire à la main dans le Dashboard Stripe pour l'instant).
+
 ## 10. Documents émis au client (à construire)
 
 Rien n'est encore développé ici ; la décision de cadrage, elle, est prise et vaut d'être écrite avant d'y toucher.
@@ -466,8 +489,11 @@ Envoi par **Resend**, compte direct (équipe « agon-gate » sur resend.com, dom
 | `handover_changed` | `updateHandover`, seulement si le lieu ou l'heure change (en plus de l'encart dans l'espace client) | A6 |
 | `picked_up` | `markPickedUp` | A7 |
 | `returned` | `markReturned` | A8 |
+| `paid` | `markPaid` (paiement reçu hors ligne, 10 octobre 2026) | A3 bis « Paiement reçu » au client |
+| `paid_online` | `confirmBookingPayment` (`lib/payments.ts`), après un paiement en ligne ou un règlement intégral par bon cadeau | A3 bis au client, plus une copie aux gérants |
 | `payment_expired` | `expireOverduePayments` (`lib/payment-expiry.ts`), une fois l'annulation écrite ; envoi attendu sur place, pas après la réponse, car la fonction tourne aussi pendant le rendu des pages | B5 |
 
+- `gift-voucher-emails.ts` : bon cadeau acheté en ligne (§9 bis) : code, valeur et date de validité à l'acheteur (`purchaser_email`), copie aux gérants avec le lien vers le bon dans l'espace de gestion. Envoi après la réponse, comme les e-mails de réservation.
 - `reminders.ts` : rappels de fin de location, envoyés par la tâche planifiée `GET /api/cron/rappels` (`vercel.json`, tous les jours à 7 h UTC, soit 8 h ou 9 h à Paris ; Vercel envoie `Authorization: Bearer <CRON_SECRET>`, la route refuse sans ; même secret que `/api/cron/paiements-expires`). Pour chaque set remis (`picked_up`) : B1 si le retour est demain, B2 s'il est aujourd'hui, B3 (retard, forfait de 30 €) s'il était hier, sauf si les gérants ont suspendu ce rappel (bouton « Suspendre le rappel de retard » sous le retour du set, inscrit à l'historique). La ligne de `email_log` est réservée avant l'envoi et l'index unique écarte un doublon ; une étape manquée n'est pas rattrapée. B4 (caution prélevée à J+2) attend le paiement Stripe ; C1 (bon cadeau) attend l'achat en ligne.
 
 La fiche d'une réservation (onglet Historique) liste les e-mails envoyés pour elle, avec leur état.

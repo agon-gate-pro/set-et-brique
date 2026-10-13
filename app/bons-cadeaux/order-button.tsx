@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { X } from "lucide-react";
+import { startGiftVoucherPayment } from "./actions";
 
 type Props = {
   /** Montant du bon, en euros. */
@@ -46,7 +47,8 @@ export function OrderButton({ amount, days }: Props) {
   const { isSignedIn } = useAuth();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(searchParams.get(ORDER_PARAM) === String(amount));
-  const [notice, setNotice] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [paying, startPaying] = useTransition();
 
   function handleOrder() {
     if (!isSignedIn) {
@@ -58,15 +60,24 @@ export function OrderButton({ amount, days }: Props) {
   }
 
   function handleClose() {
+    if (paying) return;
     setOpen(false);
-    setNotice(false);
+    setPayError(null);
     // Sans ça, recharger la page rouvrirait le récapitulatif.
     window.history.replaceState(null, "", window.location.pathname);
   }
 
   function handlePay() {
-    // Paiement en ligne (module 4) : c'est ici que partira la redirection vers la fenêtre de paiement.
-    setNotice(true);
+    // Paiement en ligne (module 4) : page de paiement Stripe, puis retour sur /bons-cadeaux/merci.
+    setPayError(null);
+    startPaying(async () => {
+      const result = await startGiftVoucherPayment(amount);
+      if ("error" in result) {
+        setPayError(result.error);
+        return;
+      }
+      window.location.assign(result.url);
+    });
   }
 
   return (
@@ -112,20 +123,21 @@ export function OrderButton({ amount, days }: Props) {
               <p className="display text-2xl font-bold text-leaf-deep">{amount} €</p>
             </div>
 
-            {notice ? (
-              <p className="mt-3 text-sm text-slate-ink" role="status">
-                Le paiement en ligne arrive très bientôt.
+            {payError ? (
+              <p className="mt-3 text-sm font-semibold text-brick-deep" role="alert">
+                {payError}
               </p>
             ) : null}
 
             <div className="mt-4 flex items-center justify-end gap-4">
-              <button type="button" onClick={handleClose} className="font-bold underline underline-offset-4 cursor-pointer">
+              <button type="button" onClick={handleClose} disabled={paying} className="font-bold underline underline-offset-4 cursor-pointer disabled:opacity-50">
                 Annuler
               </button>
-              <button type="button" onClick={handlePay} className="btn btn-brick">
-                Payer
+              <button type="button" onClick={handlePay} disabled={paying} className="btn btn-brick disabled:opacity-60 disabled:cursor-wait">
+                {paying ? "Un instant…" : "Payer par carte"}
               </button>
             </div>
+            <p className="mt-3 text-xs text-slate-ink">Paiement sécurisé par Stripe. Le code du bon arrive par e-mail juste après.</p>
           </div>
         </div>
       ) : null}

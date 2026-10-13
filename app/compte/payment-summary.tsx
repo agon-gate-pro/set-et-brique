@@ -1,11 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { X } from "lucide-react";
 import { inputClass } from "@/components/admin/form";
 import { formatCents, formatDate, formatTime } from "@/lib/format";
 import type { CustomerBooking } from "@/lib/bookings";
-import { checkGiftVoucher } from "./actions";
+import { checkGiftVoucher, startBookingPayment } from "./actions";
 import { PaymentCountdown } from "./payment-countdown";
 
 type Props = {
@@ -21,8 +22,10 @@ type Props = {
  * récapitulatif, dernière étape avant la fenêtre de paiement.
  */
 export function PaymentSummary({ booking, setName, pickupPoint, initiallyOpen }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(initiallyOpen);
-  const [notice, setNotice] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [paying, startPaying] = useTransition();
   const total = booking.rentalCents + (booking.disassemblyCents ?? 0);
   // Bon vérifié mais pas consommé : il ne passe à « utilisé » qu'au paiement (voir `checkGiftVoucher`).
   const [voucher, setVoucher] = useState<{ code: string; amountCents: number } | null>(null);
@@ -47,17 +50,32 @@ export function PaymentSummary({ booking, setName, pickupPoint, initiallyOpen }:
   }
 
   function handleClose() {
+    if (paying) return;
     setOpen(false);
-    setNotice(false);
+    setPayError(null);
     setVoucherError(null);
     // Sans ça, recharger la page rouvrirait le récapitulatif.
     window.history.replaceState(null, "", window.location.pathname);
   }
 
   function handlePay() {
-    // Paiement en ligne (module 4) : c'est ici que partira la redirection vers la fenêtre de paiement,
-    // avec `voucher?.code` à revérifier et à consommer côté serveur.
-    setNotice(true);
+    // Paiement en ligne (module 4) : page de paiement Stripe, bon cadeau revérifié et consommé côté
+    // serveur. Si le bon couvre tout, la réservation est confirmée sans passer par Stripe.
+    setPayError(null);
+    startPaying(async () => {
+      const result = await startBookingPayment(booking.id, voucher?.code ?? null);
+      if ("error" in result) {
+        setPayError(result.error);
+        return;
+      }
+      if ("url" in result) {
+        window.location.assign(result.url);
+        return;
+      }
+      setOpen(false);
+      router.replace(`/compte?paye=${encodeURIComponent(booking.reference)}`);
+      router.refresh();
+    });
   }
 
   return (
@@ -188,20 +206,21 @@ export function PaymentSummary({ booking, setName, pickupPoint, initiallyOpen }:
               Caution {formatCents(booking.depositCents)}, bloquée à la remise, jamais débitée sauf casse ou perte.
             </p>
 
-            {notice ? (
-              <p className="mt-3 text-sm text-slate-ink" role="status">
-                Le paiement en ligne arrive très bientôt.
+            {payError ? (
+              <p className="mt-3 text-sm font-semibold text-brick-deep" role="alert">
+                {payError}
               </p>
             ) : null}
 
             <div className="mt-4 flex items-center justify-end gap-4">
-              <button type="button" onClick={handleClose} className="font-bold underline underline-offset-4 cursor-pointer">
+              <button type="button" onClick={handleClose} disabled={paying} className="font-bold underline underline-offset-4 cursor-pointer disabled:opacity-50">
                 Annuler
               </button>
-              <button type="button" onClick={handlePay} className="btn btn-brick">
-                Payer
+              <button type="button" onClick={handlePay} disabled={paying} className="btn btn-brick disabled:opacity-60 disabled:cursor-wait">
+                {paying ? "Un instant…" : total - deducted === 0 ? "Valider" : "Payer par carte"}
               </button>
             </div>
+            <p className="mt-3 text-xs text-slate-ink">Paiement sécurisé par Stripe. Vous serez redirigé vers la page de paiement.</p>
           </div>
         </div>
       ) : null}
