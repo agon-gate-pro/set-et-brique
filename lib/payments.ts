@@ -199,7 +199,7 @@ export async function confirmBookingPayment(opts: {
       .returning({ id: schema.bookings.id });
     if (!row) return false;
 
-    let message = opts.stripe ? "Paiement en ligne reçu (carte bancaire, Stripe)" : "Réservation réglée intégralement par bon cadeau";
+    let message = opts.stripe ? "Paiement en ligne reçu (carte bancaire, Stripe)" : "Réservation réglée par bon cadeau";
     if (opts.voucherCode) {
       const [used] = await tx
         .update(schema.giftVouchers)

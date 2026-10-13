@@ -202,25 +202,53 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
             id: "historique",
             label: "Historique",
             content: (
-              <ol className="space-y-2 text-slate-ink">
-                {events.map((e) => (
-                  <li key={e.id}>
-                    <span className="text-sm">{dateTime.format(e.createdAt)}</span> · {e.message ?? ""}
-                    {e.toStatus ? ` → ${adminBookingStatusLabels[e.toStatus]}` : ""} <span className="text-sm">({actorLabels[e.actor]})</span>
-                  </li>
-                ))}
+              // Une ligne par événement, séparée par un filet. Sur grand écran tout tient sur une seule
+              // ligne : date, texte (coupé par « … » s'il est trop long, entier au survol), puis à droite
+              // le nouvel état en pastille de sa couleur et l'auteur, ou le destinataire de l'e-mail.
+              // Les lignes des événements partagent une même grille (`subgrid`) : la colonne des pastilles
+              // prend la largeur de la plus longue et toutes commencent au même endroit, à gauche.
+              // Sur téléphone, les éléments s'empilent et le texte passe à la ligne.
+              <>
+                <ol className="divide-y divide-slate-ink/10 text-sm sm:grid sm:grid-cols-[7.5rem_minmax(0,1fr)_auto_auto] sm:gap-x-4">
+                  {events.map((e) => (
+                    <li key={e.id} className="grid items-center gap-y-1 py-2 first:pt-0 sm:col-span-4 sm:grid-cols-subgrid">
+                      <span className="text-slate-ink tabular-nums whitespace-nowrap">{dateTime.format(e.createdAt)}</span>
+                      <span className="font-semibold text-ink-deep break-words sm:truncate" title={e.message ?? undefined}>
+                        {e.message ?? ""}
+                      </span>
+                      <span className="justify-self-start">
+                        {e.toStatus ? (
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${statusTone(e.toStatus)?.badge ?? neutralBadge}`}>
+                            {adminBookingStatusLabels[e.toStatus]}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-slate-ink whitespace-nowrap">{actorLabels[e.actor]}</span>
+                    </li>
+                  ))}
+                </ol>
                 {emails.length > 0 ? (
-                  <li className="pt-3 mt-3 border-t border-slate-ink/10 font-semibold text-ink-deep">E-mails</li>
+                  <>
+                    <h3 className="mt-4 border-t border-slate-ink/10 pt-5 font-bold text-ink-deep">E-mails</h3>
+                    <ol className="mt-3 divide-y divide-slate-ink/10 text-sm">
+                      {emails.map((m) => (
+                        <li key={m.id} className="grid items-center gap-x-4 gap-y-1 py-2 first:pt-0 sm:grid-cols-[7.5rem_minmax(0,1fr)_auto]">
+                          <span className="text-slate-ink tabular-nums whitespace-nowrap">{dateTime.format(m.createdAt)}</span>
+                          <span className="font-semibold text-ink-deep break-words sm:truncate" title={m.subject}>
+                            {m.subject}
+                          </span>
+                          <span className="text-slate-ink break-words sm:whitespace-nowrap">
+                            {m.recipient} ·{" "}
+                            <span className={m.status === "failed" ? "font-bold text-brick-deep" : ""}>
+                              {emailStatusLabels[m.status] ?? m.status}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </>
                 ) : null}
-                {emails.map((m) => (
-                  <li key={m.id}>
-                    <span className="text-sm">{dateTime.format(m.createdAt)}</span> · {m.subject}{" "}
-                    <span className="text-sm">
-                      ({m.recipient}, {emailStatusLabels[m.status] ?? m.status})
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              </>
             ),
           },
         ]}
