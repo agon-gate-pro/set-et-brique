@@ -24,7 +24,10 @@ function purchased(v: Voucher): EmailContent {
     heading: "Un cadeau en briques, c'est dans la boîte !",
     blocks: [
       { type: "p", text: "Bonjour," },
-      { type: "p", text: "Merci pour votre achat. Voici le bon cadeau à offrir : il suffit de transmettre ce code." },
+      {
+        type: "p",
+        text: "Merci pour votre achat. Voici le bon cadeau à offrir : transmettez ce code, ou imprimez le bon depuis votre compte.",
+      },
       {
         type: "box",
         lines: [`Code : ${v.code}`, `Valeur : ${formatCents(v.amountCents)}`, `Valable jusqu'au ${formatDateLong(v.expiresAt)}`],
@@ -40,7 +43,10 @@ function purchased(v: Voucher): EmailContent {
       },
       { type: "p", text: `Une question ? Répondez simplement à cet e-mail ou appelez-nous au ${site.phone}.` },
     ],
-    button: { label: "Voir le catalogue", href: siteLink("/catalogue") },
+    // Le bon imprimable se retrouve dans le compte de l'acheteur ; sans compte rattaché, le catalogue.
+    button: v.purchaserClerkUserId
+      ? { label: "Voir et imprimer mon bon", href: siteLink(`/compte/bons-cadeaux/${v.id}`) }
+      : { label: "Voir le catalogue", href: siteLink("/catalogue") },
   };
 }
 

@@ -12,6 +12,8 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 - **Création de compte : « regardez dans vos spams »** (13 octobre). À l'étape où le site demande le code reçu par e-mail, un encart rappelle au client de vérifier ses courriers indésirables s'il ne voit pas l'e-mail.
 
+- **Bon cadeau acheté en ligne : imprimable** (13 octobre). Après le paiement, un bouton « Imprimer le bon cadeau » ouvre le bon dessiné par Marion, prêt à imprimer. L'acheteur le retrouve ensuite dans son compte, rubrique « Mes bons cadeaux », pour le revoir ou le réimprimer ; le bouton de l'e-mail d'achat y mène aussi. Pas de PDF joint à l'e-mail.
+
 ### Pour les gérants (espace de gestion)
 
 - **Réservation payée : « Payée, à remettre »** (13 octobre). Une fois le set payé, la réservation s'affichait « Confirmée », dans le même vert qu'une location rendue : on aurait dit qu'il n'y avait plus rien à faire. Elle s'affiche maintenant « Payée, à remettre », dans la liste, l'aperçu, la fiche et l'historique. Le client, lui, voit toujours « Confirmée » dans son compte.
@@ -30,6 +32,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 - **13 octobre** : `semaine-41` fusionnée avec le paiement Stripe de `main`, puis `main` avancée dessus (commit `56872b6`) ; branche `semaine-41` supprimée, `semaine-42` ouverte.
 - **13 octobre** : migration **`0022_extension_stripe`** appliquée à la base (deux colonnes vides ajoutées à `booking_extensions`, pour garder l'identifiant du paiement Stripe d'une prolongation). Les paiements de prolongation passent par le même webhook Stripe que les locations, rien à configurer de plus.
+- **13 octobre** : migration **`0023_gift_voucher_purchaser`** appliquée à la base (une colonne vide et son index sur `gift_vouchers`, pour rattacher un bon acheté au compte de son acheteur).
 
 ## 4. À voir avec Marion
 
@@ -37,6 +40,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 
+- L'achat d'un bon cadeau : bouton « Imprimer le bon cadeau », rendu à l'impression, puis le bon dans « Mes bons cadeaux ».
 - L'encart « regardez dans vos spams » en créant un compte de test : il doit apparaître à l'étape du code, pas avant.
 - Le paiement d'une prolongation de bout en bout, en mode test : par carte, avec un bon cadeau partiel, avec un bon qui couvre tout.
 - La liste des réservations à l'écran : pastille « Payée, à remettre » en vert, ligne « Rendue » sans couleur, sur ordinateur et sur téléphone.

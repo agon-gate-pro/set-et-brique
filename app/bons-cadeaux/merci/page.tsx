@@ -39,10 +39,11 @@ export default async function GiftVoucherThanksPage({ searchParams }: PageProps<
     <section className="mx-auto max-w-2xl px-5 md:px-8 py-14 md:py-20">
       {state === "ok" && voucher ? (
         <>
-          <h1 className="text-3xl md:text-5xl font-bold">Merci, c&apos;est dans la boîte !</h1>
+          {/* Une seule ligne sur grand écran ; l'espace insécable garde le « ! » collé au dernier mot sur téléphone. */}
+          <h1 className="text-3xl md:text-4xl font-bold md:whitespace-nowrap">Merci, c&apos;est dans la boîte{" "}!</h1>
           <p className="mt-4 text-slate-ink">
-            Votre bon cadeau de {formatCents(voucher.amountCents)} est prêt. Il suffit de transmettre ce code à la personne à qui vous
-            l&apos;offrez.
+            Votre bon cadeau de {formatCents(voucher.amountCents)} est prêt. Imprimez-le, ou transmettez simplement ce code à la
+            personne à qui vous l&apos;offrez.
           </p>
           <div className="mt-6 brick-card bg-sky p-6 text-center">
             <p className="text-sm text-slate-ink">Code du bon cadeau</p>
@@ -50,8 +51,8 @@ export default async function GiftVoucherThanksPage({ searchParams }: PageProps<
             <p className="mt-3 text-sm text-slate-ink">Valable jusqu&apos;au {formatDateLong(voucher.expiresAt)}, sur tout le catalogue.</p>
           </div>
           <p className="mt-4 text-sm text-slate-ink">
-            Nous vous l&apos;envoyons aussi par e-mail{voucher.purchaserEmail ? ` à ${voucher.purchaserEmail}` : ""}, pour le retrouver
-            facilement.
+            Nous vous envoyons aussi le code par e-mail{voucher.purchaserEmail ? ` à ${voucher.purchaserEmail}` : ""}. Vous
+            retrouvez ce bon à tout moment dans votre compte, pour le revoir ou le réimprimer.
           </p>
         </>
       ) : state === "pending" ? (
@@ -70,7 +71,12 @@ export default async function GiftVoucherThanksPage({ searchParams }: PageProps<
         </>
       )}
       <div className="mt-8 flex flex-wrap gap-4">
-        <Link href="/catalogue" className="btn btn-brick">
+        {state === "ok" && voucher ? (
+          <Link href={`/compte/bons-cadeaux/${voucher.id}?imprimer=1`} className="btn btn-brick">
+            Imprimer le bon cadeau
+          </Link>
+        ) : null}
+        <Link href="/catalogue" className={`btn ${state === "ok" && voucher ? "btn-paper" : "btn-brick"}`}>
           Voir le catalogue
         </Link>
         <Link href="/bons-cadeaux" className="btn btn-paper">

@@ -449,7 +449,12 @@ async function findPurchasedVoucher(sessionId: string) {
  * Crée le bon acheté, une seule fois par session. Sur conflit (webhook et page de retour en même
  * temps), le bon déjà créé est renvoyé ; sur collision de code, un autre code est tiré.
  */
-async function createPurchasedVoucher(session: Stripe.Checkout.Session, amountCents: number, email: string | null): Promise<PurchasedVoucher> {
+async function createPurchasedVoucher(
+  session: Stripe.Checkout.Session,
+  amountCents: number,
+  email: string | null,
+  clerkUserId: string | null,
+): Promise<PurchasedVoucher> {
   const existing = await findPurchasedVoucher(session.id);
   if (existing) return existing;
 
@@ -468,6 +473,7 @@ async function createPurchasedVoucher(session: Stripe.Checkout.Session, amountCe
             expiresAt: giftVoucherExpiresAt(),
             stripeCheckoutSessionId: session.id,
             purchaserEmail: email,
+            purchaserClerkUserId: clerkUserId,
           })
           .returning({
             id: schema.giftVouchers.id,
@@ -541,7 +547,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
   if (meta.kind === "gift_voucher" && meta.amount_cents) {
     const amountCents = Number(meta.amount_cents);
     const email = session.customer_details?.email ?? session.customer_email ?? null;
-    const voucher = await createPurchasedVoucher(session, amountCents, email);
+    const voucher = await createPurchasedVoucher(session, amountCents, email, meta.clerk_user_id ?? null);
     return { status: "gift_voucher", voucher };
   }
 

@@ -6,7 +6,8 @@ import { isAdmin } from "@/lib/auth";
 import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { expireStaleExtensions, loadCustomerExtensions } from "@/lib/extensions";
-import { formatDate } from "@/lib/format";
+import { formatCents, formatDate, formatDateLong, giftVoucherStatusLabels } from "@/lib/format";
+import { giftVoucherDisplayStatus } from "@/lib/gift-vouchers";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { fulfillCheckoutSession, retrieveCheckoutSession } from "@/lib/payments";
 import { BookingCard } from "./booking-card";
@@ -57,6 +58,12 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         orderBy: [desc(schema.bookings.createdAt)],
       })
     : [];
+  // Bons cadeaux achetés en ligne avec ce compte, à revoir ou réimprimer.
+  const vouchers = await db.query.giftVouchers.findMany({
+    columns: { id: true, code: true, amountCents: true, status: true, expiresAt: true },
+    where: eq(schema.giftVouchers.purchaserClerkUserId, userId),
+    orderBy: [desc(schema.giftVouchers.createdAt)],
+  });
   const current = bookings.filter((b) => b.status !== "returned" && b.status !== "cancelled");
   const past = bookings.filter((b) => b.status === "returned" || b.status === "cancelled");
 
@@ -135,6 +142,38 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
           ))}
         </ul>
       )}
+
+      {vouchers.length > 0 ? (
+        <>
+          <h2 className="mt-10 text-2xl font-semibold">Mes bons cadeaux</h2>
+          <ul className="mt-4 space-y-3">
+            {vouchers.map((v) => {
+              const status = giftVoucherDisplayStatus(v);
+              return (
+                <li key={v.id} className="brick-card p-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                  <div>
+                    <p className="display text-xl font-semibold tracking-wide text-ink-deep">{v.code}</p>
+                    <p className="text-sm text-slate-ink">
+                      {formatCents(v.amountCents)} ·{" "}
+                      {status === "valid" ? `valable jusqu'au ${formatDateLong(v.expiresAt)}` : giftVoucherStatusLabels[status].toLowerCase()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${status === "valid" ? "badge-gold" : "bg-slate-200"}`}
+                    >
+                      {giftVoucherStatusLabels[status]}
+                    </span>
+                    <Link href={`/compte/bons-cadeaux/${v.id}`} className="btn btn-paper text-sm py-2 px-4">
+                      Voir et imprimer
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
 
       {past.length > 0 ? (
         <>

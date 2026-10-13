@@ -162,6 +162,13 @@
       "when": 1791880225264,
       "tag": "0022_extension_stripe",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791881385117,
+      "tag": "0023_gift_voucher_purchaser",
+      "breakpoints": true
     }
   ]
 }

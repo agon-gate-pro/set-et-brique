@@ -455,12 +455,15 @@ export const giftVouchers = pgTable(
      */
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     purchaserEmail: text("purchaser_email"),
+    /** Compte Clerk de l'acheteur : c'est lui qui retrouve le bon dans son espace et peut le réimprimer. */
+    purchaserClerkUserId: text("purchaser_clerk_user_id"),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("gift_vouchers_code_idx").on(t.code),
     index("gift_vouchers_status_idx").on(t.status),
     index("gift_vouchers_batch_number_idx").on(t.batchNumber),
+    index("gift_vouchers_purchaser_idx").on(t.purchaserClerkUserId),
     uniqueIndex("gift_vouchers_stripe_session_idx").on(t.stripeCheckoutSessionId),
   ],
 );
