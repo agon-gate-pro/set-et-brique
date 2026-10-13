@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
 import { coordinatesUrl, safeReturnPath } from "@/lib/bookings";
+import { SpamNotice } from "./spam-notice";
 
 export const metadata: Metadata = { title: "Créer un compte", robots: { index: false } };
 
@@ -20,6 +21,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/inscripti
             Un compte sert à réserver un set et à suivre vos locations.
           </p>
         </div>
+        <SpamNotice />
         <SignUp forceRedirectUrl={afterSignUp} />
       </div>
     </section>

@@ -422,6 +422,10 @@ export function ExtensionActions({ extension, endDate }: { extension: BookingExt
           </>
         ) : null}
       </p>
+      <p className="mt-2 text-sm text-slate-ink">
+        Le client peut régler par carte depuis son espace (paiement en ligne) : la date de retour est alors repoussée
+        toute seule, avec un e-mail de confirmation. Le bouton ci-dessous sert au paiement reçu hors ligne.
+      </p>
       <form action={paidAction} className="mt-4 grid gap-4 sm:grid-cols-[12rem_1fr_auto] items-end">
         <input type="hidden" name="extensionId" value={extension.id} />
         <Field label="Moyen de paiement">

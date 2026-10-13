@@ -458,7 +458,7 @@ Une question ? Répondez à cet e-mail ou appelez-nous au 07 83 73 70 20.
 
 ### D5. Prolongation payée, au client
 
-Déclencheur : le supplément est réglé (« Paiement reçu » des gérants aujourd'hui, paiement en ligne plus tard).
+Déclencheur : le supplément est réglé (« Paiement reçu » des gérants, ou paiement en ligne par le client depuis le 13 octobre 2026). Après un paiement en ligne, les gérants reçoivent aussi un e-mail court, D7 : objet « Prolongation payée : [set] à rendre le [nouvelle date] ([client], [référence]) », le rappel de l'ancien et du nouveau retour avec le supplément, et un bouton vers la réservation.
 
 **Objet** : C'est prolongé : {{set}} est à rendre le {{nouveau_retour}}
 

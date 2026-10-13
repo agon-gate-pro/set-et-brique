@@ -1,11 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { X } from "lucide-react";
 import { inputClass } from "@/components/admin/form";
 import type { CustomerExtension } from "@/lib/extensions";
 import { formatCents, formatDate } from "@/lib/format";
-import { checkExtensionGiftVoucher } from "./actions";
+import { checkExtensionGiftVoucher, startExtensionPayment } from "./actions";
 
 type Props = {
   extension: CustomerExtension;
@@ -20,11 +21,13 @@ type Props = {
 /**
  * Prolongation acceptée, supplément à régler : bouton « Payer la prolongation » et fenêtre de
  * récapitulatif, sur le modèle de `PaymentSummary` pour une location. Dernière étape avant la
- * fenêtre de paiement en ligne (module 4).
+ * page de paiement Stripe (module 4).
  */
 export function ExtensionPayment({ extension, setName, reference, endDate, dueLabel }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notice, setNotice] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [paying, startPaying] = useTransition();
   const total = extension.extraRentalCents;
   // Bon vérifié mais pas consommé : il ne passe à « utilisé » qu'au paiement (voir `checkExtensionGiftVoucher`).
   const [voucher, setVoucher] = useState<{ code: string; amountCents: number } | null>(null);
@@ -48,15 +51,30 @@ export function ExtensionPayment({ extension, setName, reference, endDate, dueLa
   }
 
   function handleClose() {
+    if (paying) return;
     setOpen(false);
-    setNotice(false);
+    setPayError(null);
     setVoucherError(null);
   }
 
   function handlePay() {
-    // Paiement en ligne (module 4) : c'est ici que partira la redirection vers la fenêtre de paiement,
-    // avec `voucher?.code` à revérifier et à consommer côté serveur, et la nouvelle empreinte de caution.
-    setNotice(true);
+    // Paiement en ligne (module 4) : page de paiement Stripe, bon cadeau revérifié et consommé côté
+    // serveur. Si le bon couvre tout, la prolongation est appliquée sans passer par Stripe.
+    setPayError(null);
+    startPaying(async () => {
+      const result = await startExtensionPayment(extension.id, voucher?.code ?? null);
+      if ("error" in result) {
+        setPayError(result.error);
+        return;
+      }
+      if ("url" in result) {
+        window.location.assign(result.url);
+        return;
+      }
+      setOpen(false);
+      router.replace(`/compte?prolongation=${encodeURIComponent(reference)}`);
+      router.refresh();
+    });
   }
 
   return (
@@ -167,20 +185,21 @@ export function ExtensionPayment({ extension, setName, reference, endDate, dueLa
 
             <p className="mt-3 text-sm text-slate-ink">La caution de votre location reste la même.</p>
 
-            {notice ? (
-              <p className="mt-3 text-sm text-slate-ink" role="status">
-                Le paiement en ligne arrive très bientôt.
+            {payError ? (
+              <p className="mt-3 text-sm font-semibold text-brick-deep" role="alert">
+                {payError}
               </p>
             ) : null}
 
             <div className="mt-4 flex items-center justify-end gap-4">
-              <button type="button" onClick={handleClose} className="font-bold underline underline-offset-4 cursor-pointer">
+              <button type="button" onClick={handleClose} disabled={paying} className="font-bold underline underline-offset-4 cursor-pointer disabled:opacity-50">
                 Annuler
               </button>
-              <button type="button" onClick={handlePay} className="btn btn-brick">
-                Payer
+              <button type="button" onClick={handlePay} disabled={paying} className="btn btn-brick disabled:opacity-60 disabled:cursor-wait">
+                {paying ? "Un instant…" : total - deducted === 0 ? "Valider" : "Payer par carte"}
               </button>
             </div>
+            <p className="mt-3 text-xs text-slate-ink">Paiement sécurisé par Stripe. Vous serez redirigé vers la page de paiement.</p>
           </div>
         </div>
       ) : null}

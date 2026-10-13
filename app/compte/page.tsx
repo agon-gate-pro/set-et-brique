@@ -6,6 +6,7 @@ import { isAdmin } from "@/lib/auth";
 import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { expireStaleExtensions, loadCustomerExtensions } from "@/lib/extensions";
+import { formatDate } from "@/lib/format";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { fulfillCheckoutSession, retrieveCheckoutSession } from "@/lib/payments";
 import { BookingCard } from "./booking-card";
@@ -15,8 +16,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage({ searchParams }: PageProps<"/compte">) {
   // `payer` : référence d'une réservation acceptée, dont le récapitulatif de paiement s'ouvre d'office.
-  // `paye` + `session_id` : retour de la page de paiement Stripe.
-  const { demande, payer, paye, session_id } = await searchParams;
+  // `paye` + `session_id` : retour de la page de paiement Stripe pour une location ;
+  // `prolongation` + `session_id` : le même retour pour le supplément d'une prolongation.
+  const { demande, payer, paye, prolongation, session_id } = await searchParams;
   // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
   const { userId } = await auth.protect();
 
@@ -63,6 +65,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
   const extensions = await loadCustomerExtensions(current);
   const firstName = customer?.firstName ?? user?.firstName ?? null;
   const paid = typeof paye === "string" ? bookings.find((b) => b.reference === paye) : undefined;
+  // Prolongation réglée : plus aucune demande à payer sur la location, dont la date de retour a changé.
+  const extended = typeof prolongation === "string" ? bookings.find((b) => b.reference === prolongation) : undefined;
+  const extensionStillDue = extended ? extensions.get(extended.id)?.current?.status === "pending_payment" : false;
 
   return (
     <section className="mx-auto max-w-4xl px-5 md:px-8 py-14 md:py-20">
@@ -88,6 +93,25 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         ) : (
           <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
             Nous n&apos;avons pas encore reçu le paiement de la réservation {paid.reference}. Si vous avez été débité, contactez-nous.
+          </p>
+        )
+      ) : null}
+
+      {extended ? (
+        !extensionStillDue ? (
+          <p role="status" className="mt-6 brick-card bg-leaf/20 p-5 font-semibold text-ink-deep">
+            Paiement reçu, merci ! Votre location {extended.reference} est prolongée : le set est à rendre le{" "}
+            {formatDate(extended.endDate)}. Vous recevez un e-mail de confirmation.
+          </p>
+        ) : paymentPending ? (
+          <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
+            Votre banque n&apos;a pas encore confirmé le paiement de la prolongation de {extended.reference}. Nous vous
+            écrivons dès que c&apos;est fait.
+          </p>
+        ) : (
+          <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
+            Nous n&apos;avons pas encore reçu le paiement de la prolongation de {extended.reference}. Si vous avez été
+            débité, contactez-nous.
           </p>
         )
       ) : null}

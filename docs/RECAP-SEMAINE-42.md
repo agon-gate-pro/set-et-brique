@@ -8,6 +8,10 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 - **Date de remise plus lisible dans « Mes locations »** (13 octobre) : « Remise prévue le mer. 14 octobre 2026 à 10:00 » a sa propre ligne, date en gras ; la phrase « Si nous devons modifier le lieu ou l'heure, vous le verrez ici » passe en dessous, en plus petit. Pareil pour une location en cours : « À rendre le jeu. 15 octobre 2026 » en premier, date en gras, puis « Set récupéré le … » en plus petit.
 
+- **Payer sa prolongation en ligne** (13 octobre) : une fois la prolongation acceptée, le client la règle par carte depuis « Mes locations », bon cadeau accepté. La date de retour est repoussée aussitôt, et il reçoit l'e-mail de confirmation. Les gérants reçoivent eux aussi un e-mail, puisque la date de retour change sans leur intervention.
+
+- **Création de compte : « regardez dans vos spams »** (13 octobre). À l'étape où le site demande le code reçu par e-mail, un encart rappelle au client de vérifier ses courriers indésirables s'il ne voit pas l'e-mail.
+
 ### Pour les gérants (espace de gestion)
 
 - **Réservation payée : « Payée, à remettre »** (13 octobre). Une fois le set payé, la réservation s'affichait « Confirmée », dans le même vert qu'une location rendue : on aurait dit qu'il n'y avait plus rien à faire. Elle s'affiche maintenant « Payée, à remettre », dans la liste, l'aperçu, la fiche et l'historique. Le client, lui, voit toujours « Confirmée » dans son compte.
@@ -25,6 +29,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 ## 3. Mise en production et infrastructure (pour Madus)
 
 - **13 octobre** : `semaine-41` fusionnée avec le paiement Stripe de `main`, puis `main` avancée dessus (commit `56872b6`) ; branche `semaine-41` supprimée, `semaine-42` ouverte.
+- **13 octobre** : migration **`0022_extension_stripe`** appliquée à la base (deux colonnes vides ajoutées à `booking_extensions`, pour garder l'identifiant du paiement Stripe d'une prolongation). Les paiements de prolongation passent par le même webhook Stripe que les locations, rien à configurer de plus.
 
 ## 4. À voir avec Marion
 
@@ -32,4 +37,6 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 
+- L'encart « regardez dans vos spams » en créant un compte de test : il doit apparaître à l'étape du code, pas avant.
+- Le paiement d'une prolongation de bout en bout, en mode test : par carte, avec un bon cadeau partiel, avec un bon qui couvre tout.
 - La liste des réservations à l'écran : pastille « Payée, à remettre » en vert, ligne « Rendue » sans couleur, sur ordinateur et sur téléphone.

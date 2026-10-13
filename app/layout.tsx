@@ -49,9 +49,19 @@ const clerkAppearance = {
  * l'onglet Compte (« Mettre à jour le profil » de Clerk devient « Enregistrer »,
  * comme partout ailleurs sur le site). Sa position reste celle décidée par Clerk :
  * l'onglet Compte est son écran natif, pas un des nôtres.
+ *
+ * À l'inscription, l'écran du code de vérification rappelle de regarder dans les spams (13 octobre
+ * 2026) : le sous-titre d'origine, « pour continuer vers Set et Brique », n'apprenait rien.
  */
 const clerkLocalization = {
   ...frFR,
+  signUp: {
+    ...frFR.signUp,
+    emailCode: {
+      ...frFR.signUp!.emailCode,
+      subtitle: "Code envoyé par e-mail. Rien reçu ? Regardez dans vos spams.",
+    },
+  },
   userProfile: {
     ...frFR.userProfile,
     start: {

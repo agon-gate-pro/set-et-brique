@@ -155,6 +155,13 @@
       "when": 1791831310319,
       "tag": "0021_gift_voucher_purchase",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791880225264,
+      "tag": "0022_extension_stripe",
+      "breakpoints": true
     }
   ]
 }

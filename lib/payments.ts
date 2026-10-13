@@ -1,9 +1,10 @@
 import "server-only";
 
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { db, schema } from "@/lib/db";
-import { queueBookingEmails } from "@/lib/email/booking-emails";
+import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
+import { ExtensionError, markExtensionPaid } from "@/lib/extensions";
 import { queueGiftVoucherEmail } from "@/lib/email/gift-voucher-emails";
 import { formatBatchNumber, generateGiftVoucherCode, giftVoucherDisplayStatus, giftVoucherExpiresAt } from "@/lib/gift-vouchers";
 import { giftVoucherAmounts } from "@/lib/site";
@@ -11,9 +12,10 @@ import { stripe } from "@/lib/stripe";
 
 /**
  * Paiement en ligne (module 4), par Stripe Checkout hébergé : le client est envoyé sur la page de
- * paiement Stripe, puis revient sur le site. Deux achats passent par ici :
+ * paiement Stripe, puis revient sur le site. Trois achats passent par ici :
  *
  * - le loyer d'une réservation acceptée (`pending_payment` → `confirmed`), bon cadeau déduit ;
+ * - le supplément d'une prolongation acceptée (date de retour repoussée), bon cadeau déduit ;
  * - un bon cadeau (création d'un bon `origin = "purchase"`, code envoyé par e-mail).
  *
  * La livraison (`fulfillCheckoutSession`) est faite par le webhook Stripe (`/api/stripe/webhook`),
@@ -29,11 +31,16 @@ import { stripe } from "@/lib/stripe";
 const CHECKOUT_LIFETIME_SECONDS = 30 * 60;
 
 /** Clé de suivi des parcours dans le Dashboard Stripe (suffixe aléatoire figé, demandé par Stripe). */
-const INTEGRATION_IDS = { booking: "set-et-brique-location-QKZPMWTR", gift_voucher: "set-et-brique-bon-cadeau-HJVXNDLB" };
+const INTEGRATION_IDS = {
+  booking: "set-et-brique-location-QKZPMWTR",
+  gift_voucher: "set-et-brique-bon-cadeau-HJVXNDLB",
+  extension: "set-et-brique-prolongation-TBWFRKSC",
+};
 
 type CheckoutMetadata = {
-  kind: "booking" | "gift_voucher";
+  kind: "booking" | "gift_voucher" | "extension";
   booking_id?: string;
+  extension_id?: string;
   voucher_code?: string;
   amount_cents?: string;
   clerk_user_id?: string;
@@ -230,9 +237,148 @@ export async function confirmBookingPayment(opts: {
   return "confirmed";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Prolongation : paiement du supplément                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Prépare le paiement du supplément d'une prolongation acceptée, sur le modèle du loyer : page de
+ * paiement Stripe, ou validation immédiate si un bon cadeau couvre tout. La caution ne change pas.
+ */
+export async function createExtensionCheckout(opts: {
+  extensionId: string;
+  customerId: string;
+  voucherCode: string | null;
+  origin: string;
+}): Promise<BookingCheckoutResult> {
+  const extension = await db.query.bookingExtensions.findFirst({ where: eq(schema.bookingExtensions.id, opts.extensionId) });
+  const booking = extension
+    ? await db.query.bookings.findFirst({
+        where: and(eq(schema.bookings.id, extension.bookingId), eq(schema.bookings.customerId, opts.customerId)),
+        with: { set: { columns: { name: true } }, customer: { columns: { email: true } } },
+      })
+    : null;
+  if (!extension || !booking || extension.status !== "pending_payment") {
+    return { error: "Cette prolongation n'est pas en attente de paiement." };
+  }
+  if (extension.paymentDueAt && extension.paymentDueAt.getTime() < Date.now()) {
+    return { error: "Le délai de paiement est dépassé : le retour reste prévu à la date d'origine. Contactez-nous." };
+  }
+
+  const total = extension.extraRentalCents;
+  let voucherCode: string | null = null;
+  let deducted = 0;
+  if (opts.voucherCode) {
+    const found = await lookupGiftVoucher(opts.voucherCode);
+    if ("error" in found) return { error: found.error };
+    voucherCode = found.voucher.code;
+    deducted = Math.min(found.voucher.amountCents, total);
+  }
+  const net = total - deducted;
+
+  if (net === 0 && voucherCode) {
+    const result = await confirmExtensionPayment({ extensionId: extension.id, voucherCode });
+    if (result === "skipped") return { error: "Cette prolongation n'est plus en attente de paiement." };
+    return { confirmed: true };
+  }
+
+  const name = `Prolongation ${booking.set.name}, ${extension.extraDays} jour${extension.extraDays > 1 ? "s" : ""} de plus`;
+  const metadata: CheckoutMetadata = { kind: "extension", extension_id: extension.id, booking_id: booking.id };
+  if (voucherCode) metadata.voucher_code = voucherCode;
+
+  const session = await stripe().checkout.sessions.create({
+    mode: "payment",
+    locale: "fr",
+    customer_email: booking.customer.email,
+    client_reference_id: extension.id,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "eur",
+          unit_amount: net,
+          product_data: {
+            name,
+            description: `Réservation ${booking.reference}${voucherCode ? `, bon cadeau ${voucherCode} déduit` : ""}`,
+          },
+        },
+      },
+    ],
+    metadata,
+    payment_intent_data: { description: `${name} (${booking.reference})`, metadata },
+    success_url: `${opts.origin}/compte?prolongation=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${opts.origin}/compte`,
+    expires_at: expiresAt(),
+    integration_identifier: INTEGRATION_IDS.extension,
+  });
+  if (!session.url) return { error: "Stripe n'a pas renvoyé de page de paiement. Réessayez." };
+
+  await db
+    .update(schema.bookingExtensions)
+    .set({ stripeCheckoutSessionId: session.id })
+    .where(eq(schema.bookingExtensions.id, extension.id));
+  return { url: session.url };
+}
+
+/**
+ * Applique une prolongation payée par le client (date de retour repoussée, bon cadeau consommé).
+ * `skipped` si elle n'est plus en attente de paiement : déjà payée (webhook et page de retour se
+ * suivent), ou expirée entre-temps. Dans ce dernier cas, un paiement Stripe est quand même encaissé :
+ * l'historique de la réservation le signale une fois aux gérants, qui remboursent ou régularisent.
+ */
+export async function confirmExtensionPayment(opts: {
+  extensionId: string;
+  voucherCode: string | null;
+  stripe?: { sessionId: string; paymentIntentId: string | null };
+}): Promise<"confirmed" | "skipped"> {
+  try {
+    await markExtensionPaid(
+      opts.extensionId,
+      opts.stripe ? "carte bancaire, paiement en ligne Stripe" : "bon cadeau",
+      { voucherCode: opts.voucherCode, stripe: opts.stripe },
+    );
+  } catch (e) {
+    if (!(e instanceof ExtensionError)) throw e;
+    const paymentIntentId = opts.stripe?.paymentIntentId;
+    if (paymentIntentId) {
+      // Le paiement Stripe sert de marqueur : l'alerte n'est écrite qu'au premier passage.
+      const [orphan] = await db
+        .update(schema.bookingExtensions)
+        .set({ stripeCheckoutSessionId: opts.stripe!.sessionId, stripePaymentIntentId: paymentIntentId })
+        .where(
+          and(
+            eq(schema.bookingExtensions.id, opts.extensionId),
+            ne(schema.bookingExtensions.status, "paid"),
+            or(isNull(schema.bookingExtensions.stripePaymentIntentId), ne(schema.bookingExtensions.stripePaymentIntentId, paymentIntentId)),
+          ),
+        )
+        .returning({ bookingId: schema.bookingExtensions.bookingId });
+      if (orphan) {
+        console.error("[stripe] prolongation payée mais non applicable", opts.extensionId, e.message);
+        await db.insert(schema.bookingEvents).values({
+          bookingId: orphan.bookingId,
+          actor: "system",
+          message: `Paiement en ligne reçu pour une prolongation qui n'a pas pu être appliquée (${e.message}) : à rembourser dans Stripe ou à régulariser avec le client`,
+        });
+      }
+    }
+    return "skipped";
+  }
+  queueExtensionEmails("extension_paid_online", opts.extensionId);
+  return "confirmed";
+}
+
 /** Paiement en ligne refusé après coup (moyens à notification différée) : trace dans l'historique, rien d'autre. */
 export async function recordBookingPaymentFailure(session: Stripe.Checkout.Session) {
   const meta = (session.metadata ?? {}) as Partial<CheckoutMetadata>;
+  if (meta.kind === "extension" && meta.booking_id) {
+    await db.insert(schema.bookingEvents).values({
+      bookingId: meta.booking_id,
+      actor: "system",
+      message: "Paiement en ligne de la prolongation refusé par la banque du client",
+    });
+    return;
+  }
   if (meta.kind !== "booking" || !meta.booking_id) return;
   const booking = await db.query.bookings.findFirst({ where: eq(schema.bookings.id, meta.booking_id), columns: { status: true } });
   if (!booking) return;
@@ -354,6 +500,7 @@ export type FulfillmentResult =
   | { status: "unpaid" }
   | { status: "unknown" }
   | { status: "booking"; bookingId: string; outcome: "confirmed" | "skipped" }
+  | { status: "extension"; extensionId: string; outcome: "confirmed" | "skipped" }
   | { status: "gift_voucher"; voucher: PurchasedVoucher };
 
 export async function retrieveCheckoutSession(sessionId: string) {
@@ -370,8 +517,19 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
   if (session.payment_status === "unpaid") return { status: "unpaid" };
   const meta = (session.metadata ?? {}) as Partial<CheckoutMetadata>;
 
+  const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
+
+  // Avant la location : une prolongation porte aussi `booking_id`, pour retrouver sa réservation.
+  if (meta.kind === "extension" && meta.extension_id) {
+    const outcome = await confirmExtensionPayment({
+      extensionId: meta.extension_id,
+      voucherCode: meta.voucher_code ?? null,
+      stripe: { sessionId: session.id, paymentIntentId },
+    });
+    return { status: "extension", extensionId: meta.extension_id, outcome };
+  }
+
   if (meta.kind === "booking" && meta.booking_id) {
-    const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
     const outcome = await confirmBookingPayment({
       bookingId: meta.booking_id,
       voucherCode: meta.voucher_code ?? null,

@@ -9,7 +9,7 @@ import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
 import { ExtensionError, cancelExtensionRequest, createExtensionRequest } from "@/lib/extensions";
 import { hasUnseenHandoverChange } from "@/lib/handover";
-import { createBookingCheckout, lookupGiftVoucher, type BookingCheckoutResult } from "@/lib/payments";
+import { createBookingCheckout, createExtensionCheckout, lookupGiftVoucher, type BookingCheckoutResult } from "@/lib/payments";
 import { site } from "@/lib/site";
 import type { ActionState } from "@/components/admin/form";
 
@@ -84,6 +84,15 @@ export async function startBookingPayment(bookingId: string, voucherCode: string
   const customer = await findCustomerByClerkId(userId);
   if (!customer) return { error: "Compte client introuvable." };
   const result = await createBookingCheckout({ bookingId, customerId: customer.id, voucherCode, origin: await requestOrigin() });
+  if ("confirmed" in result) revalidate();
+  return result;
+}
+
+/** « Payer » du récapitulatif d'une prolongation acceptée : même parcours que pour une location. */
+export async function startExtensionPayment(extensionId: string, voucherCode: string | null): Promise<BookingCheckoutResult> {
+  const customer = await currentCustomer();
+  if (!customer) return { error: "Connectez-vous pour payer." };
+  const result = await createExtensionCheckout({ extensionId, customerId: customer.id, voucherCode, origin: await requestOrigin() });
   if ("confirmed" in result) revalidate();
   return result;
 }

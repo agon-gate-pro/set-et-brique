@@ -392,6 +392,9 @@ export const bookingExtensions = pgTable(
     paymentDueAt: timestamp("payment_due_at", { withTimezone: true }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** Paiement en ligne du supplément : dernière page de paiement ouverte, puis le paiement Stripe reçu. */
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
     /** Motif communiqué au client en cas de refus. */
     reason: text("reason"),
     ...timestamps,

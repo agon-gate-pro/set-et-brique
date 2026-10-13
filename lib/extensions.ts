@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, like, lt, or, sql } from "drizzle-orm";
 import {
   RESERVING_STATUSES,
   extensionWindow,
@@ -334,15 +334,48 @@ export async function refuseExtension(extensionId: string, reason: string | null
  * Supplément réglé : la prolongation est reportée sur la location (date de retour, jours, loyer).
  * Les rappels de fin de location déjà envoyés pour l'ancienne date sont renommés dans le journal
  * des e-mails, sinon l'index « un rappel par étape » empêcherait ceux de la nouvelle date de partir.
+ *
+ * `online` : paiement fait par le client lui-même (`lib/payments.ts`), par carte sur Stripe ou par
+ * un bon cadeau qui couvre tout. Le bon annoncé est consommé dans la même transaction. Pour un
+ * paiement Stripe, on ne repasse pas les demandes périmées en `expired` avant : le client a déjà
+ * payé, une échéance franchie pendant qu'il était sur la page de paiement ne doit pas la lui faire perdre.
  */
-export async function markExtensionPaid(extensionId: string, paymentLabel: string) {
-  await expireStaleExtensions();
+export async function markExtensionPaid(
+  extensionId: string,
+  paymentLabel: string,
+  online?: { voucherCode: string | null; stripe?: { sessionId: string; paymentIntentId: string | null } },
+) {
+  if (!online?.stripe) await expireStaleExtensions();
   return db.transaction(async (tx) => {
     const { extension, booking } = await lockExtension(tx, extensionId, "pending_payment");
+    const now = new Date();
     await tx
       .update(schema.bookingExtensions)
-      .set({ status: "paid", paidAt: new Date() })
+      .set({
+        status: "paid",
+        paidAt: now,
+        ...(online?.stripe
+          ? { stripeCheckoutSessionId: online.stripe.sessionId, stripePaymentIntentId: online.stripe.paymentIntentId }
+          : {}),
+      })
       .where(eq(schema.bookingExtensions.id, extension.id));
+    let voucherNote = "";
+    if (online?.voucherCode) {
+      const [used] = await tx
+        .update(schema.giftVouchers)
+        .set({ status: "used", usedAt: now })
+        .where(
+          and(
+            eq(schema.giftVouchers.code, online.voucherCode),
+            eq(schema.giftVouchers.status, "valid"),
+            gt(schema.giftVouchers.expiresAt, now),
+          ),
+        )
+        .returning({ code: schema.giftVouchers.code });
+      voucherNote = used
+        ? `. Bon cadeau ${online.voucherCode} utilisé`
+        : `. Bon cadeau ${online.voucherCode} annoncé au paiement mais plus valable à ce moment-là : à vérifier`;
+    }
     await tx
       .update(schema.bookings)
       .set({
@@ -357,8 +390,8 @@ export async function markExtensionPaid(extensionId: string, paymentLabel: strin
       .where(and(eq(schema.emailLog.bookingId, booking.id), like(schema.emailLog.kind, "reminder_%")));
     await tx.insert(schema.bookingEvents).values({
       bookingId: booking.id,
-      actor: "admin",
-      message: `Prolongation payée (${paymentLabel}) : retour repoussé du ${formatDate(extension.previousEndDate)} au ${formatDate(extension.newEndDate)}`,
+      actor: online ? (online.stripe ? "system" : "customer") : "admin",
+      message: `Prolongation payée (${paymentLabel}) : retour repoussé du ${formatDate(extension.previousEndDate)} au ${formatDate(extension.newEndDate)}${voucherNote}`,
     });
     return { bookingId: booking.id, newEndDate: extension.newEndDate };
   });

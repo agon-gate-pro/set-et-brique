@@ -425,6 +425,7 @@ export type ExtensionEmailEvent =
   | "extension_accepted"
   | "extension_refused"
   | "extension_paid"
+  | "extension_paid_online"
   | "extension_payment_expired";
 
 type Extension = Pick<
@@ -567,11 +568,26 @@ function extensionPaymentExpired(b: BookingWithDetails, e: Extension) {
   });
 }
 
+/** D7. Supplément réglé en ligne par le client, aux gérants : la date de retour a changé sans eux. */
+function extensionPaidAdmin(b: BookingWithDetails, e: Extension) {
+  const name = customerName(b);
+  return adminMail("extension_paid_admin", {
+    subject: `Prolongation payée : ${b.set.name} à rendre le ${longDate(e.newEndDate)} (${name}, ${b.reference})`,
+    blocks: [
+      p("Bonjour,"),
+      p(`${name} vient de régler sa prolongation en ligne. La date de retour est repoussée.`),
+      extensionRecap(b, e),
+    ],
+    button: { label: "Voir la réservation", href: siteLink(`/admin/reservations/${b.id}`) },
+  });
+}
+
 export const extensionMails: Record<ExtensionEmailEvent, (b: BookingWithDetails, e: Extension) => Mail[]> = {
   extension_requested: (b, e) => [extensionReceived(b, e), extensionNewAdmin(b, e)],
   extension_accepted: (b, e) => [extensionAccepted(b, e)],
   extension_refused: (b, e) => [extensionRefused(b, e)],
   extension_paid: (b, e) => [extensionPaid(b, e)],
+  extension_paid_online: (b, e) => [extensionPaid(b, e), extensionPaidAdmin(b, e)],
   extension_payment_expired: (b, e) => [extensionPaymentExpired(b, e)],
 };
 
