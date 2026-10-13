@@ -117,6 +117,12 @@ export const customers = pgTable(
     /** Compte bloqué à la main par les gérants : plus aucune réservation possible. */
     blocked: boolean("blocked").notNull().default(false),
     blockedReason: text("blocked_reason"),
+    /**
+     * Client Stripe, créé au premier paiement en ligne : c'est à lui que Stripe rattache la carte
+     * enregistrée pour la caution. Propre au compte Stripe et à son mode (test ou réel) : un
+     * identifiant inconnu de Stripe est recréé au paiement suivant (`lib/payments.ts`).
+     */
+    stripeCustomerId: text("stripe_customer_id"),
     ...timestamps,
   },
   (t) => [uniqueIndex("customers_clerk_user_id_idx").on(t.clerkUserId)],
@@ -307,6 +313,12 @@ export const bookings = pgTable(
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     /** Empreinte bancaire pour la caution, capturée seulement en cas de casse ou perte. */
     stripeDepositPaymentIntentId: text("stripe_deposit_payment_intent_id"),
+    /**
+     * Carte enregistrée chez Stripe au paiement en ligne (loyer ou prolongation), sur laquelle le
+     * site posera l'empreinte de caution sans le client. Seul l'identifiant Stripe est gardé, jamais
+     * le numéro de carte. Vide si rien n'a été payé par carte (bon cadeau, paiement hors ligne).
+     */
+    stripePaymentMethodId: text("stripe_payment_method_id"),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
     /** Motif communiqué au client en cas de refus ou d'annulation. */

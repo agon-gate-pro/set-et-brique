@@ -130,7 +130,11 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                     <span className="block text-sm text-slate-ink">
                       {b.disassemblyCents != null ? `+ ${formatCents(b.disassemblyCents)} rendu monté` : "Rendu monté : non"}
                     </span>
-                    <span className="block text-sm text-slate-ink">Caution {formatCents(b.depositCents)}</span>
+                    <span className="block text-sm text-slate-ink">
+                      Caution {formatCents(b.depositCents)}
+                      {/* Carte gardée chez Stripe au paiement en ligne : l'empreinte de caution se posera dessus. */}
+                      {b.stripePaymentMethodId ? " · carte enregistrée" : ""}
+                    </span>
                   </Block>
                   <Block label="Remise">
                     <span className="block font-semibold text-ink-deep">

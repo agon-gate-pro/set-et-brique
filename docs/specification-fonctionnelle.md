@@ -100,13 +100,14 @@ Champs confirmés (document client du 11/09, exemple détaillé "Faucon Milléni
 
 ### Modes de paiement du loyer
 
-- **CONFIRMÉ** Deux modes possibles : paiement en ligne (Stripe, prélevé à la réservation), ou paiement sur place par **TPE** au moment de la remise en main propre.
+- **CONFIRMÉ** (révision du 13/10/2026, confirmée par Alexis) **Un seul mode : le paiement en ligne par Stripe.** Le paiement sur place par **TPE**, prévu à l'origine comme second mode, est abandonné ; les mentions du TPE qui subsistent plus bas dans ce document (tunnel, bons cadeaux, notes) sont à lire sans lui. Les gérants gardent la possibilité d'enregistrer à la main un règlement reçu hors ligne (virement, espèces).
 
 ### Caution — sujet résolu (document client du 11/09)
 
 - **CONFIRMÉ** Toujours en **pré-autorisation standard Stripe (7 jours)**, jamais débitée sauf litige.
 - **CONFIRMÉ** Pas de solution technique de prolongation nécessaire (ni Swikly, ni autorisation étendue Stripe, ni PayPal) : la cliente a tranché elle-même. Un hold bancaire au-delà de 7 jours est techniquement impossible, elle en est consciente et prend une **assurance professionnelle** de son côté pour couvrir le risque sur les locations de plus de 7 jours (15 jours, 1 mois). Aucun développement supplémentaire à prévoir sur ce point — ce qui clôt toute la réflexion Swikly/PayPal/autorisation étendue menée précédemment.
-- **EN ATTENTE** Si le loyer est payé par TPE sur place, comment se fait la pré-autorisation de la caution (carte enregistrée en amont côté client tout de même) ? Question posée à Marion — reste ouverte indépendamment du point ci-dessus.
+- ~~**EN ATTENTE** Si le loyer est payé par TPE sur place, comment se fait la pré-autorisation de la caution ?~~ Sans objet depuis l'abandon du TPE (13/10/2026).
+- **CONFIRMÉ** (13/10/2026, décisions d'Alexis) L'empreinte est **posée automatiquement par le site** le jour de la remise, sur la carte enregistrée au paiement en ligne du loyer. **Sans empreinte en place, le set n'est pas remis** ; les gérants peuvent redemander une empreinte, que le client valide alors lui-même depuis son compte. Quand une empreinte arrive à expiration pendant la location, le site en repose une nouvelle puis libère l'ancienne. À noter : une empreinte posée sans le client tient 5 jours pour une carte Visa, 7 jours pour les autres réseaux (documentation Stripe).
 - **CONFIRMÉ** Restitution de la caution : **automatique 48h après réception du set**, avec un plafond de **7 jours maximum** dans tous les cas (indépendant de la rapidité de Marion à valider l'état des lieux).
 
 ### Hors périmètre
@@ -308,7 +309,7 @@ Cf. README.md pour le détail. Le lot de réponses de Marion du 13/09 a résolu 
 
 Les points ouverts par la révision du 18/09 (numérotation, périmètre du décompte, opposition au nom, périodes d'export, solde de la restitution) ont tous été tranchés le jour même. Il reste les deux points historiques :
 
-1. **Pré-autorisation de la caution en cas de paiement TPE sur place** : faut-il enregistrer la carte du client en amont, ou la caution est-elle prise directement sur place via le TPE ? (module 4)
+1. ~~**Pré-autorisation de la caution en cas de paiement TPE sur place**~~ : sans objet, le paiement par TPE est abandonné (13/10/2026, module 4).
 2. **Résidu de la validation manuelle des réservations** : le paiement est-il pris avant ou après la validation manuelle de Marion, et que se passe-t-il en cas de refus d'une réservation déjà payée (remboursement automatique) ? (module 5)
 
 Les deux lectures laissées en suspens le matin du 18/09 (séquence mensuelle, périmètre de la note complémentaire) ont été confirmées le jour même : la spécification des notes ne porte plus aucun point ouvert.

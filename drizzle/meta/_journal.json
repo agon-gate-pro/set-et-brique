@@ -169,6 +169,13 @@
       "when": 1791881385117,
       "tag": "0023_gift_voucher_purchaser",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791884604563,
+      "tag": "0024_deposit_saved_card",
+      "breakpoints": true
     }
   ]
 }

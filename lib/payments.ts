@@ -1,10 +1,11 @@
 import "server-only";
 
 import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
-import type Stripe from "stripe";
+import StripeSdk, { type Stripe } from "stripe";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
 import { ExtensionError, markExtensionPaid } from "@/lib/extensions";
+import { formatCents } from "@/lib/format";
 import { queueGiftVoucherEmail } from "@/lib/email/gift-voucher-emails";
 import { formatBatchNumber, generateGiftVoucherCode, giftVoucherDisplayStatus, giftVoucherExpiresAt } from "@/lib/gift-vouchers";
 import { giftVoucherAmounts } from "@/lib/site";
@@ -75,6 +76,76 @@ export async function lookupGiftVoucher(rawCode: string): Promise<VoucherLookup>
 }
 
 /* -------------------------------------------------------------------------- */
+/* Carte enregistrée pour la caution                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Client Stripe du client, créé au besoin. `fresh` en recrée un quand celui gardé en base est
+ * inconnu de Stripe (autre compte, ou passage des clés de test aux clés réelles).
+ */
+async function stripeCustomerFor(customerId: string, fresh = false) {
+  const customer = await db.query.customers.findFirst({
+    where: eq(schema.customers.id, customerId),
+    columns: { id: true, email: true, firstName: true, lastName: true, phone: true, stripeCustomerId: true },
+  });
+  if (!customer) throw new Error(`Client ${customerId} introuvable`);
+  if (customer.stripeCustomerId && !fresh) return customer.stripeCustomerId;
+  const created = await stripe().customers.create({
+    email: customer.email,
+    name: [customer.firstName, customer.lastName].filter(Boolean).join(" ") || undefined,
+    phone: customer.phone ?? undefined,
+    metadata: { customer_id: customer.id },
+  });
+  await db.update(schema.customers).set({ stripeCustomerId: created.id }).where(eq(schema.customers.id, customer.id));
+  return created.id;
+}
+
+/**
+ * Page de paiement d'une location ou d'une prolongation. En plus d'encaisser, elle enregistre la
+ * carte chez Stripe (`setup_future_usage`), rattachée au client Stripe : c'est sur elle que le site
+ * posera l'empreinte de caution le jour de la remise, sans redemander la carte. La page le dit au
+ * client juste sous le bouton de paiement.
+ */
+async function createRentalCheckoutSession(
+  customerId: string,
+  depositCents: number,
+  params: Omit<Stripe.Checkout.SessionCreateParams, "mode" | "locale" | "customer" | "customer_email" | "custom_text" | "expires_at">,
+) {
+  const build = (customer: string): Stripe.Checkout.SessionCreateParams => ({
+    ...params,
+    mode: "payment",
+    locale: "fr",
+    customer,
+    payment_intent_data: { ...params.payment_intent_data, setup_future_usage: "off_session" },
+    custom_text: {
+      submit: {
+        message: `Votre carte est enregistrée par Stripe pour la garantie de votre location (${formatCents(depositCents)}) : une empreinte bancaire, jamais débitée sauf casse, perte ou retard (conditions générales, article 6).`,
+      },
+    },
+    expires_at: expiresAt(),
+  });
+  try {
+    return await stripe().checkout.sessions.create(build(await stripeCustomerFor(customerId)));
+  } catch (e) {
+    const unknownCustomer = e instanceof StripeSdk.errors.StripeInvalidRequestError && e.code === "resource_missing" && e.param === "customer";
+    if (!unknownCustomer) throw e;
+    return stripe().checkout.sessions.create(build(await stripeCustomerFor(customerId, true)));
+  }
+}
+
+/** Carte utilisée pour un paiement Stripe, à garder sur la réservation. */
+async function paymentMethodOf(paymentIntentId: string | null) {
+  if (!paymentIntentId) return null;
+  try {
+    const intent = await stripe().paymentIntents.retrieve(paymentIntentId);
+    return typeof intent.payment_method === "string" ? intent.payment_method : (intent.payment_method?.id ?? null);
+  } catch (e) {
+    console.error("[stripe] carte du paiement illisible", paymentIntentId, e);
+    return null;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Réservation : lancement du paiement                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -93,7 +164,7 @@ export async function createBookingCheckout(opts: {
 }): Promise<BookingCheckoutResult> {
   const booking = await db.query.bookings.findFirst({
     where: and(eq(schema.bookings.id, opts.bookingId), eq(schema.bookings.customerId, opts.customerId)),
-    with: { set: { columns: { name: true } }, customer: { columns: { email: true } } },
+    with: { set: { columns: { name: true } } },
   });
   if (!booking || booking.status !== "pending_payment") {
     return { error: "Cette réservation n'est pas en attente de paiement." };
@@ -160,17 +231,13 @@ export async function createBookingCheckout(opts: {
   const metadata: CheckoutMetadata = { kind: "booking", booking_id: booking.id };
   if (voucherCode) metadata.voucher_code = voucherCode;
 
-  const session = await stripe().checkout.sessions.create({
-    mode: "payment",
-    locale: "fr",
-    customer_email: booking.customer.email,
+  const session = await createRentalCheckoutSession(booking.customerId, booking.depositCents, {
     client_reference_id: booking.id,
     line_items: lineItems,
     metadata,
     payment_intent_data: { description: `${rentalName} (${booking.reference})`, metadata },
     success_url: `${opts.origin}/compte?paye=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/compte?payer=${encodeURIComponent(booking.reference)}`,
-    expires_at: expiresAt(),
     integration_identifier: INTEGRATION_IDS.booking,
   });
   if (!session.url) return { error: "Stripe n'a pas renvoyé de page de paiement. Réessayez." };
@@ -188,7 +255,7 @@ export async function createBookingCheckout(opts: {
 export async function confirmBookingPayment(opts: {
   bookingId: string;
   voucherCode: string | null;
-  stripe?: { sessionId: string; paymentIntentId: string | null };
+  stripe?: { sessionId: string; paymentIntentId: string | null; paymentMethodId?: string | null };
 }): Promise<"confirmed" | "skipped"> {
   const now = new Date();
   const done = await db.transaction(async (tx) => {
@@ -199,7 +266,11 @@ export async function confirmBookingPayment(opts: {
         paymentDueAt: null,
         reviewedAt: now,
         ...(opts.stripe
-          ? { stripeCheckoutSessionId: opts.stripe.sessionId, stripePaymentIntentId: opts.stripe.paymentIntentId }
+          ? {
+              stripeCheckoutSessionId: opts.stripe.sessionId,
+              stripePaymentIntentId: opts.stripe.paymentIntentId,
+              ...(opts.stripe.paymentMethodId ? { stripePaymentMethodId: opts.stripe.paymentMethodId } : {}),
+            }
           : {}),
       })
       .where(and(eq(schema.bookings.id, opts.bookingId), eq(schema.bookings.status, "pending_payment")))
@@ -255,7 +326,7 @@ export async function createExtensionCheckout(opts: {
   const booking = extension
     ? await db.query.bookings.findFirst({
         where: and(eq(schema.bookings.id, extension.bookingId), eq(schema.bookings.customerId, opts.customerId)),
-        with: { set: { columns: { name: true } }, customer: { columns: { email: true } } },
+        with: { set: { columns: { name: true } } },
       })
     : null;
   if (!extension || !booking || extension.status !== "pending_payment") {
@@ -286,10 +357,7 @@ export async function createExtensionCheckout(opts: {
   const metadata: CheckoutMetadata = { kind: "extension", extension_id: extension.id, booking_id: booking.id };
   if (voucherCode) metadata.voucher_code = voucherCode;
 
-  const session = await stripe().checkout.sessions.create({
-    mode: "payment",
-    locale: "fr",
-    customer_email: booking.customer.email,
+  const session = await createRentalCheckoutSession(booking.customerId, booking.depositCents, {
     client_reference_id: extension.id,
     line_items: [
       {
@@ -308,7 +376,6 @@ export async function createExtensionCheckout(opts: {
     payment_intent_data: { description: `${name} (${booking.reference})`, metadata },
     success_url: `${opts.origin}/compte?prolongation=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${opts.origin}/compte`,
-    expires_at: expiresAt(),
     integration_identifier: INTEGRATION_IDS.extension,
   });
   if (!session.url) return { error: "Stripe n'a pas renvoyé de page de paiement. Réessayez." };
@@ -532,6 +599,14 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
       voucherCode: meta.voucher_code ?? null,
       stripe: { sessionId: session.id, paymentIntentId },
     });
+    // Carte de ce paiement gardée pour la caution : la plus récente, et la seule si le loyer avait
+    // été réglé par bon cadeau ou hors ligne.
+    if (outcome === "confirmed" && meta.booking_id) {
+      const paymentMethodId = await paymentMethodOf(paymentIntentId);
+      if (paymentMethodId) {
+        await db.update(schema.bookings).set({ stripePaymentMethodId: paymentMethodId }).where(eq(schema.bookings.id, meta.booking_id));
+      }
+    }
     return { status: "extension", extensionId: meta.extension_id, outcome };
   }
 
@@ -539,7 +614,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
     const outcome = await confirmBookingPayment({
       bookingId: meta.booking_id,
       voucherCode: meta.voucher_code ?? null,
-      stripe: { sessionId: session.id, paymentIntentId },
+      stripe: { sessionId: session.id, paymentIntentId, paymentMethodId: await paymentMethodOf(paymentIntentId) },
     });
     return { status: "booking", bookingId: meta.booking_id, outcome };
   }

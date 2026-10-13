@@ -28,11 +28,19 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 1. Libellé **« Payée, à remettre »** côté gestion, « Confirmée » gardé côté client.
 2. **« Rendue » sans couleur** dans la liste des réservations.
 
+3. **Pas de paiement par TPE** : tout passe par le paiement en ligne ; les gérants peuvent encore enregistrer à la main un règlement reçu autrement.
+4. **Caution par empreinte bancaire, posée automatiquement** par le site le jour de la remise, sur la carte enregistrée au paiement. Sans empreinte, le set n'est pas remis, et les gérants peuvent en redemander une. Elle est renouvelée si elle expire pendant la location (5 jours pour une carte Visa, 7 pour les autres).
+
+### Caution : où on en est
+
+Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Rien n'est encore bloqué sur sa carte. Restent : l'empreinte automatique le jour de la remise, le cas où elle échoue, le retour (libération ou retenue), la prolongation.
+
 ## 3. Mise en production et infrastructure (pour Madus)
 
 - **13 octobre** : `semaine-41` fusionnée avec le paiement Stripe de `main`, puis `main` avancée dessus (commit `56872b6`) ; branche `semaine-41` supprimée, `semaine-42` ouverte.
 - **13 octobre** : migration **`0022_extension_stripe`** appliquée à la base (deux colonnes vides ajoutées à `booking_extensions`, pour garder l'identifiant du paiement Stripe d'une prolongation). Les paiements de prolongation passent par le même webhook Stripe que les locations, rien à configurer de plus.
 - **13 octobre** : migration **`0023_gift_voucher_purchaser`** appliquée à la base (une colonne vide et son index sur `gift_vouchers`, pour rattacher un bon acheté au compte de son acheteur).
+- **13 octobre** : migration **`0024_deposit_saved_card`** appliquée à la base (deux colonnes vides : le client Stripe sur `customers`, la carte enregistrée sur `bookings`). À savoir pour le passage aux clés Stripe réelles : les clients Stripe créés en mode test n'existent pas en mode réel, le site en recrée un tout seul au premier paiement.
 
 ## 4. À voir avec Marion
 
@@ -43,6 +51,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 
+- Un paiement de location par carte en mode test : la phrase sur la carte enregistrée sous le bouton de la page Stripe, puis « carte enregistrée » à côté de la caution sur la fiche de la réservation.
 - L'achat d'un bon cadeau : bouton « Imprimer le bon cadeau », rendu à l'impression, puis le bon dans « Mes bons cadeaux ».
 - L'encart « regardez dans vos spams » en créant un compte de test : il doit apparaître à l'étape du code, pas avant.
 - Le paiement d'une prolongation de bout en bout, en mode test : par carte, avec un bon cadeau partiel, avec un bon qui couvre tout.
