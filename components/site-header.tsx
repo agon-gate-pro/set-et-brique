@@ -54,12 +54,16 @@ export function SiteHeader() {
   const [firstName, setFirstName] = useState<string | null>(null);
   // Réservations qui attendent le client (payer, répondre à une date proposée) : pastille du compte.
   const [pendingActions, setPendingActions] = useState(0);
+  // Gérant : réservations qui attendent Set et Brique (à traiter, à remettre aujourd'hui, en retard,
+  // caution refusée), en pastille sur « Espace de gestion ».
+  const [adminActions, setAdminActions] = useState(0);
   const loadCustomerName = useCallback(() => {
     fetch("/api/customer-name")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { firstName: string | null; lastName: string | null; pendingActions: number } | null) => {
+      .then((data: { firstName: string | null; lastName: string | null; pendingActions: number; adminActions?: number } | null) => {
         setFirstName(data?.firstName || null);
         setPendingActions(data?.pendingActions ?? 0);
+        setAdminActions(data?.adminActions ?? 0);
       })
       .catch(() => {});
   }, []);
@@ -72,6 +76,22 @@ export function SiteHeader() {
   // Après une déconnexion, le dernier chiffre lu ne doit pas rester affiché.
   const actionCount = user ? pendingActions : 0;
   const pendingLabel = actionCount > 0 ? `, ${actionCount} action${actionCount > 1 ? "s" : ""} en attente` : "";
+  const adminCount = user && admin ? adminActions : 0;
+  const adminLabel = `Espace de gestion${adminCount > 0 ? `, ${adminCount} réservation${adminCount > 1 ? "s" : ""} à traiter` : ""}`;
+  // Une demande peut arriver pendant que le gérant reste sur la même page : la pastille se relit
+  // aussi toutes les minutes, et quand il revient sur l'onglet.
+  useEffect(() => {
+    if (!user || !admin) return;
+    const timer = window.setInterval(loadCustomerName, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") loadCustomerName();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user, admin, loadCustomerName]);
 
   useEffect(() => {
     window.addEventListener("customer-profile-updated", loadCustomerName);
@@ -141,10 +161,12 @@ export function SiteHeader() {
               {admin ? (
                 <Link
                   href="/admin"
-                  className="whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 hover:brightness-95 transition"
+                  aria-label={adminLabel}
+                  className="relative whitespace-nowrap font-bold text-[15px] text-ink-deep bg-sun rounded-full px-3.5 py-1.5 hover:brightness-95 transition"
                 >
                   <span className="xl:hidden">Gestion</span>
                   <span className="hidden xl:inline">Espace de gestion</span>
+                  <PendingBadge count={adminCount} className="absolute -right-1.5 -top-1.5" />
                 </Link>
               ) : null}
               <div className="relative" ref={accountRef}>
@@ -236,15 +258,16 @@ export function SiteHeader() {
           <button
             type="button"
             className="relative flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors"
-            aria-label={`${open ? "Fermer le menu" : "Ouvrir le menu"}${pendingLabel}`}
+            aria-label={`${open ? "Fermer le menu" : "Ouvrir le menu"}${pendingLabel}${adminCount > 0 ? `, ${adminCount} à traiter en gestion` : ""}`}
             aria-expanded={open}
             aria-controls="menu-mobile"
             aria-haspopup="dialog"
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            {/* Sur mobile, le rond du compte est dans le menu replié : la pastille se pose sur le burger. */}
-            <PendingBadge count={actionCount} className="absolute -right-2 -top-2" />
+            {/* Sur mobile, le rond du compte et « Espace de gestion » sont dans le menu replié : la
+                pastille se pose sur le burger, et additionne les deux pour un gérant. */}
+            <PendingBadge count={actionCount + adminCount} className="absolute -right-2 -top-2" />
           </button>
         </div>
       </div>
@@ -255,6 +278,7 @@ export function SiteHeader() {
         onClose={closeMenu}
         admin={admin}
         actionCount={actionCount}
+        adminCount={adminCount}
         isCurrent={isCurrent}
       />
     ) : null}
@@ -283,11 +307,13 @@ function MobileMenu({
   onClose,
   admin,
   actionCount,
+  adminCount,
   isCurrent,
 }: {
   onClose: () => void;
   admin: boolean;
   actionCount: number;
+  adminCount: number;
   isCurrent: (href: string) => boolean;
 }) {
   const pathname = usePathname();
@@ -349,9 +375,10 @@ function MobileMenu({
             <Link
               href="/admin"
               onClick={onClose}
-              className="self-start mb-2 font-bold text-ink-deep bg-sun rounded-full px-4 py-2 hover:brightness-95 transition"
+              className="relative self-start mb-2 font-bold text-ink-deep bg-sun rounded-full px-4 py-2 hover:brightness-95 transition"
             >
               Espace de gestion
+              <PendingBadge count={adminCount} className="absolute -right-1.5 -top-1.5" />
             </Link>
           ) : null}
           {nav.map((item) => {
