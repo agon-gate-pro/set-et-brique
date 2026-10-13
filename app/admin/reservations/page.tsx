@@ -64,6 +64,8 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/r
       days: b.days,
       rentalCents: b.rentalCents,
       disassemblyCents: b.disassemblyCents,
+      depositCents: b.depositCents,
+      cardSaved: b.stripePaymentMethodId != null,
       pickupTime: b.pickupTime,
       setName: b.set.name,
       pickupPointId: b.pickupPointId,

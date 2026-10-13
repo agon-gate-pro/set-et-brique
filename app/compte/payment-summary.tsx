@@ -60,7 +60,7 @@ export function PaymentSummary({ booking, setName, pickupPoint, initiallyOpen }:
 
   function handlePay() {
     // Paiement en ligne (module 4) : page de paiement Stripe, bon cadeau revérifié et consommé côté
-    // serveur. Si le bon couvre tout, la réservation est confirmée sans passer par Stripe.
+    // serveur. Si le bon couvre tout, la page Stripe n'encaisse rien et enregistre la carte pour la caution.
     setPayError(null);
     startPaying(async () => {
       const result = await startBookingPayment(booking.id, voucher?.code ?? null);
@@ -224,10 +224,15 @@ export function PaymentSummary({ booking, setName, pickupPoint, initiallyOpen }:
                 Annuler
               </button>
               <button type="button" onClick={handlePay} disabled={paying} className="btn btn-brick disabled:opacity-60 disabled:cursor-wait">
-                {paying ? "Un instant…" : total - deducted === 0 ? "Valider" : "Payer par carte"}
+                {paying ? "Un instant…" : total - deducted === 0 ? "Enregistrer ma carte" : "Payer par carte"}
               </button>
             </div>
-            <p className="mt-3 text-xs text-slate-ink">Paiement sécurisé par Stripe. Vous serez redirigé vers la page de paiement.</p>
+            {/* Bon cadeau qui couvre tout : la carte est quand même demandée, pour la caution (voir `createBookingCheckout`). */}
+            <p className="mt-3 text-xs text-slate-ink">
+              {total - deducted === 0
+                ? "Rien à payer : votre bon cadeau règle la location. Stripe vous demande seulement votre carte pour la caution, sans la débiter."
+                : "Paiement sécurisé par Stripe. Vous serez redirigé vers la page de paiement."}
+            </p>
           </div>
         </div>
       ) : null}

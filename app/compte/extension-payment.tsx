@@ -59,7 +59,8 @@ export function ExtensionPayment({ extension, setName, reference, endDate, dueLa
 
   function handlePay() {
     // Paiement en ligne (module 4) : page de paiement Stripe, bon cadeau revérifié et consommé côté
-    // serveur. Si le bon couvre tout, la prolongation est appliquée sans passer par Stripe.
+    // serveur. Si le bon couvre tout, la prolongation est appliquée sans passer par Stripe, sauf si
+    // aucune carte n'est enregistrée pour la caution : Stripe la demande alors, sans rien encaisser.
     setPayError(null);
     startPaying(async () => {
       const result = await startExtensionPayment(extension.id, voucher?.code ?? null);
@@ -206,7 +207,11 @@ export function ExtensionPayment({ extension, setName, reference, endDate, dueLa
                 {paying ? "Un instant…" : total - deducted === 0 ? "Valider" : "Payer par carte"}
               </button>
             </div>
-            <p className="mt-3 text-xs text-slate-ink">Paiement sécurisé par Stripe. Vous serez redirigé vers la page de paiement.</p>
+            <p className="mt-3 text-xs text-slate-ink">
+              {total - deducted === 0
+                ? "Rien à payer : votre bon cadeau règle la prolongation. Si aucune carte n'est encore enregistrée pour la caution, Stripe vous la demandera, sans la débiter."
+                : "Paiement sécurisé par Stripe. Vous serez redirigé vers la page de paiement."}
+            </p>
           </div>
         </div>
       ) : null}

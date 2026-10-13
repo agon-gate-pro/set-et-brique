@@ -33,7 +33,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ### Caution : où on en est
 
-Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Rien n'est encore bloqué sur sa carte. Restent : l'empreinte automatique le jour de la remise, le cas où elle échoue, le retour (libération ou retenue), la prolongation.
+Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Si un bon cadeau règle toute la location, la carte est demandée quand même, sans rien débiter, pour que la caution soit possible. Rien n'est encore bloqué sur sa carte. Restent : l'empreinte automatique le jour de la remise, le cas où elle échoue, le retour (libération ou retenue), la prolongation.
 
 ## 3. Mise en production et infrastructure (pour Madus)
 

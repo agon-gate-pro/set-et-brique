@@ -106,24 +106,16 @@ async function stripeCustomerFor(customerId: string, fresh = false) {
  * posera l'empreinte de caution le jour de la remise, sans redemander la carte. La page le dit au
  * client juste sous le bouton de paiement.
  */
-async function createRentalCheckoutSession(
-  customerId: string,
-  depositCents: number,
-  params: Omit<Stripe.Checkout.SessionCreateParams, "mode" | "locale" | "customer" | "customer_email" | "custom_text" | "expires_at">,
-) {
-  const build = (customer: string): Stripe.Checkout.SessionCreateParams => ({
-    ...params,
-    mode: "payment",
-    locale: "fr",
-    customer,
-    payment_intent_data: { ...params.payment_intent_data, setup_future_usage: "off_session" },
-    custom_text: {
-      submit: {
-        message: `Votre carte est enregistrée par Stripe pour la garantie de votre location (${formatCents(depositCents)}) : une empreinte bancaire, jamais débitée sauf casse, perte ou retard (conditions générales, article 6).`,
-      },
-    },
-    expires_at: expiresAt(),
-  });
+type RentalSessionParams = Omit<
+  Stripe.Checkout.SessionCreateParams,
+  "mode" | "locale" | "customer" | "customer_email" | "custom_text" | "expires_at" | "currency"
+>;
+
+const guaranteeText = (depositCents: number) =>
+  `la garantie de votre location (${formatCents(depositCents)}) : une empreinte bancaire, jamais débitée sauf casse, perte ou retard (conditions générales, article 6).`;
+
+/** Ouvre une page Stripe au nom du client Stripe du client, recréé une fois si Stripe ne le connaît pas. */
+async function createCustomerSession(customerId: string, build: (customer: string) => Stripe.Checkout.SessionCreateParams) {
   try {
     return await stripe().checkout.sessions.create(build(await stripeCustomerFor(customerId)));
   } catch (e) {
@@ -131,6 +123,46 @@ async function createRentalCheckoutSession(
     if (!unknownCustomer) throw e;
     return stripe().checkout.sessions.create(build(await stripeCustomerFor(customerId, true)));
   }
+}
+
+function createRentalCheckoutSession(customerId: string, depositCents: number, params: RentalSessionParams) {
+  return createCustomerSession(customerId, (customer) => ({
+    ...params,
+    mode: "payment",
+    locale: "fr",
+    customer,
+    payment_intent_data: { ...params.payment_intent_data, setup_future_usage: "off_session" },
+    custom_text: { submit: { message: `Votre carte est enregistrée par Stripe pour ${guaranteeText(depositCents)}` } },
+    expires_at: expiresAt(),
+  }));
+}
+
+/**
+ * Même page sans rien encaisser (mode `setup`) : un bon cadeau couvre tout le prix, mais la caution
+ * reste due, et l'empreinte ne peut être posée que sur une carte enregistrée. Le client saisit donc
+ * sa carte avant que sa réservation soit confirmée (décision d'Alexis, 13 octobre 2026). Le bon est
+ * consommé à la livraison de la session, pas avant.
+ */
+function createCardOnlyCheckoutSession(
+  customerId: string,
+  depositCents: number,
+  params: Omit<RentalSessionParams, "line_items" | "payment_intent_data"> & { description: string },
+) {
+  const { description, ...rest } = params;
+  return createCustomerSession(customerId, (customer) => ({
+    ...rest,
+    mode: "setup",
+    currency: "eur",
+    locale: "fr",
+    customer,
+    setup_intent_data: { description, metadata: rest.metadata ?? undefined },
+    custom_text: {
+      submit: {
+        message: `Rien n'est débité : votre bon cadeau règle la location. Votre carte est seulement enregistrée par Stripe pour ${guaranteeText(depositCents)}`,
+      },
+    },
+    expires_at: expiresAt(),
+  }));
 }
 
 /** Carte utilisée pour un paiement Stripe, à garder sur la réservation. */
@@ -145,6 +177,19 @@ async function paymentMethodOf(paymentIntentId: string | null) {
   }
 }
 
+/** Carte enregistrée par une page Stripe sans paiement (mode `setup`). */
+async function savedCardOf(session: Stripe.Checkout.Session) {
+  const id = typeof session.setup_intent === "string" ? session.setup_intent : (session.setup_intent?.id ?? null);
+  if (!id) return null;
+  try {
+    const intent = await stripe().setupIntents.retrieve(id);
+    return typeof intent.payment_method === "string" ? intent.payment_method : (intent.payment_method?.id ?? null);
+  } catch (e) {
+    console.error("[stripe] carte enregistrée illisible", id, e);
+    return null;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Réservation : lancement du paiement                                        */
 /* -------------------------------------------------------------------------- */
@@ -152,8 +197,9 @@ async function paymentMethodOf(paymentIntentId: string | null) {
 export type BookingCheckoutResult = { error: string } | { url: string } | { confirmed: true };
 
 /**
- * Prépare le paiement du loyer d'une réservation acceptée. Si un bon cadeau couvre tout, la
- * réservation est confirmée sur-le-champ sans passer par Stripe (Stripe refuse un paiement à 0 €).
+ * Prépare le paiement du loyer d'une réservation acceptée. Si un bon cadeau couvre tout, la page
+ * Stripe n'encaisse rien et enregistre seulement la carte pour la caution (`createCardOnlyCheckoutSession`) ;
+ * la réservation est confirmée au retour, comme après un paiement.
  * `origin` est l'adresse du site telle que le navigateur la voit (localhost en développement).
  */
 export async function createBookingCheckout(opts: {
@@ -184,13 +230,26 @@ export async function createBookingCheckout(opts: {
   }
   const net = total - deducted;
 
+  const rentalName = `Location ${booking.set.name}, ${booking.days} jour${booking.days > 1 ? "s" : ""}`;
+  const successUrl = `${opts.origin}/compte?paye=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${opts.origin}/compte?payer=${encodeURIComponent(booking.reference)}`;
+
   if (net === 0 && voucherCode) {
-    const result = await confirmBookingPayment({ bookingId: booking.id, voucherCode });
-    if (result === "skipped") return { error: "Cette réservation n'est plus en attente de paiement." };
-    return { confirmed: true };
+    // Rien à encaisser, mais la carte est demandée pour la caution : la réservation est confirmée
+    // (et le bon consommé) quand le client revient de la page Stripe.
+    const session = await createCardOnlyCheckoutSession(booking.customerId, booking.depositCents, {
+      client_reference_id: booking.id,
+      metadata: { kind: "booking", booking_id: booking.id, voucher_code: voucherCode } satisfies CheckoutMetadata,
+      description: `${rentalName} (${booking.reference}), réglée par bon cadeau : carte pour la caution`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      integration_identifier: INTEGRATION_IDS.booking,
+    });
+    if (!session.url) return { error: "Stripe n'a pas renvoyé de page. Réessayez." };
+    await db.update(schema.bookings).set({ stripeCheckoutSessionId: session.id }).where(eq(schema.bookings.id, booking.id));
+    return { url: session.url };
   }
 
-  const rentalName = `Location ${booking.set.name}, ${booking.days} jour${booking.days > 1 ? "s" : ""}`;
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = voucherCode
     ? [
         {
@@ -236,8 +295,8 @@ export async function createBookingCheckout(opts: {
     line_items: lineItems,
     metadata,
     payment_intent_data: { description: `${rentalName} (${booking.reference})`, metadata },
-    success_url: `${opts.origin}/compte?paye=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${opts.origin}/compte?payer=${encodeURIComponent(booking.reference)}`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     integration_identifier: INTEGRATION_IDS.booking,
   });
   if (!session.url) return { error: "Stripe n'a pas renvoyé de page de paiement. Réessayez." };
@@ -256,8 +315,11 @@ export async function confirmBookingPayment(opts: {
   bookingId: string;
   voucherCode: string | null;
   stripe?: { sessionId: string; paymentIntentId: string | null; paymentMethodId?: string | null };
+  /** Carte enregistrée sans paiement, quand un bon cadeau a tout réglé. */
+  savedCardId?: string | null;
 }): Promise<"confirmed" | "skipped"> {
   const now = new Date();
+  const cardId = opts.stripe?.paymentMethodId ?? opts.savedCardId ?? null;
   const done = await db.transaction(async (tx) => {
     const [row] = await tx
       .update(schema.bookings)
@@ -266,12 +328,9 @@ export async function confirmBookingPayment(opts: {
         paymentDueAt: null,
         reviewedAt: now,
         ...(opts.stripe
-          ? {
-              stripeCheckoutSessionId: opts.stripe.sessionId,
-              stripePaymentIntentId: opts.stripe.paymentIntentId,
-              ...(opts.stripe.paymentMethodId ? { stripePaymentMethodId: opts.stripe.paymentMethodId } : {}),
-            }
+          ? { stripeCheckoutSessionId: opts.stripe.sessionId, stripePaymentIntentId: opts.stripe.paymentIntentId }
           : {}),
+        ...(cardId ? { stripePaymentMethodId: cardId } : {}),
       })
       .where(and(eq(schema.bookings.id, opts.bookingId), eq(schema.bookings.status, "pending_payment")))
       .returning({ id: schema.bookings.id });
@@ -347,15 +406,34 @@ export async function createExtensionCheckout(opts: {
   }
   const net = total - deducted;
 
-  if (net === 0 && voucherCode) {
-    const result = await confirmExtensionPayment({ extensionId: extension.id, voucherCode });
-    if (result === "skipped") return { error: "Cette prolongation n'est plus en attente de paiement." };
-    return { confirmed: true };
-  }
-
   const name = `Prolongation ${booking.set.name}, ${extension.extraDays} jour${extension.extraDays > 1 ? "s" : ""} de plus`;
   const metadata: CheckoutMetadata = { kind: "extension", extension_id: extension.id, booking_id: booking.id };
   if (voucherCode) metadata.voucher_code = voucherCode;
+  const successUrl = `${opts.origin}/compte?prolongation=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`;
+
+  if (net === 0 && voucherCode) {
+    // Bon cadeau qui couvre tout : appliquée tout de suite si une carte est déjà enregistrée pour la
+    // caution (cas courant, celle de la location) ; sinon la carte est demandée d'abord, sans débit.
+    if (booking.stripePaymentMethodId) {
+      const result = await confirmExtensionPayment({ extensionId: extension.id, voucherCode });
+      if (result === "skipped") return { error: "Cette prolongation n'est plus en attente de paiement." };
+      return { confirmed: true };
+    }
+    const session = await createCardOnlyCheckoutSession(booking.customerId, booking.depositCents, {
+      client_reference_id: extension.id,
+      metadata,
+      description: `${name} (${booking.reference}), réglée par bon cadeau : carte pour la caution`,
+      success_url: successUrl,
+      cancel_url: `${opts.origin}/compte`,
+      integration_identifier: INTEGRATION_IDS.extension,
+    });
+    if (!session.url) return { error: "Stripe n'a pas renvoyé de page. Réessayez." };
+    await db
+      .update(schema.bookingExtensions)
+      .set({ stripeCheckoutSessionId: session.id })
+      .where(eq(schema.bookingExtensions.id, extension.id));
+    return { url: session.url };
+  }
 
   const session = await createRentalCheckoutSession(booking.customerId, booking.depositCents, {
     client_reference_id: extension.id,
@@ -374,7 +452,7 @@ export async function createExtensionCheckout(opts: {
     ],
     metadata,
     payment_intent_data: { description: `${name} (${booking.reference})`, metadata },
-    success_url: `${opts.origin}/compte?prolongation=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: successUrl,
     cancel_url: `${opts.origin}/compte`,
     integration_identifier: INTEGRATION_IDS.extension,
   });
@@ -581,14 +659,64 @@ export async function retrieveCheckoutSession(sessionId: string) {
 }
 
 /**
+ * Retour d'une page Stripe sans paiement : le bon cadeau règle tout, la carte vient d'être
+ * enregistrée pour la caution. La carte est gardée dans tous les cas ; le bon est revérifié, car il
+ * a pu être utilisé ailleurs pendant que le client était sur la page. S'il ne couvre plus le prix,
+ * rien n'est confirmé et l'historique le dit : le client repasse par le paiement.
+ */
+async function fulfillCardOnlySession(session: Stripe.Checkout.Session, meta: Partial<CheckoutMetadata>): Promise<FulfillmentResult> {
+  const voucherCode = meta.voucher_code;
+  if (!meta.booking_id || !voucherCode) {
+    console.error("[stripe] session sans paiement sans métadonnées reconnues", session.id, meta);
+    return { status: "unknown" };
+  }
+  const bookingId = meta.booking_id;
+  const booking = await db.query.bookings.findFirst({
+    where: eq(schema.bookings.id, bookingId),
+    columns: { status: true, rentalCents: true, disassemblyCents: true },
+  });
+  const extension =
+    meta.kind === "extension" && meta.extension_id
+      ? await db.query.bookingExtensions.findFirst({ where: eq(schema.bookingExtensions.id, meta.extension_id) })
+      : null;
+  const result = (outcome: "confirmed" | "skipped"): FulfillmentResult =>
+    extension ? { status: "extension", extensionId: extension.id, outcome } : { status: "booking", bookingId, outcome };
+
+  // Déjà livrée (webhook et page de retour se suivent), annulée ou expirée entre-temps.
+  const stillDue = extension ? extension.status === "pending_payment" : booking?.status === "pending_payment";
+  if (!booking || !stillDue) return result("skipped");
+
+  const cardId = await savedCardOf(session);
+  if (cardId) await db.update(schema.bookings).set({ stripePaymentMethodId: cardId }).where(eq(schema.bookings.id, bookingId));
+
+  const total = extension ? extension.extraRentalCents : booking.rentalCents + (booking.disassemblyCents ?? 0);
+  const found = await lookupGiftVoucher(voucherCode);
+  if ("error" in found || found.voucher.amountCents < total) {
+    await db.insert(schema.bookingEvents).values({
+      bookingId,
+      actor: "system",
+      message: `Carte enregistrée pour la caution, mais le bon cadeau ${voucherCode} n'est plus valable : ${extension ? "prolongation" : "réservation"} toujours en attente de paiement`,
+    });
+    return result("skipped");
+  }
+
+  if (extension) return result(await confirmExtensionPayment({ extensionId: extension.id, voucherCode }));
+  return result(await confirmBookingPayment({ bookingId, voucherCode, savedCardId: cardId }));
+}
+
+/**
  * Livre ce qu'une session payée a acheté. Appelée par le webhook (`checkout.session.completed`,
  * `checkout.session.async_payment_succeeded`) et par les pages de retour. Ne fait rien tant que
  * `payment_status` est `unpaid` (moyen de paiement à notification différée : l'événement
  * `async_payment_succeeded` reviendra).
  */
 export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): Promise<FulfillmentResult> {
-  if (session.payment_status === "unpaid") return { status: "unpaid" };
+  // Une page sans paiement (mode `setup`) n'est jamais « unpaid » : sans ce contrôle, une session
+  // encore ouverte passerait pour livrée.
+  if (session.status !== "complete" || session.payment_status === "unpaid") return { status: "unpaid" };
   const meta = (session.metadata ?? {}) as Partial<CheckoutMetadata>;
+
+  if (session.mode === "setup") return fulfillCardOnlySession(session, meta);
 
   const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
 
