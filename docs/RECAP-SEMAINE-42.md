@@ -12,7 +12,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 - **Création de compte : « regardez dans vos spams »** (13 octobre). À l'étape où le site demande le code reçu par e-mail, un encart rappelle au client de vérifier ses courriers indésirables s'il ne voit pas l'e-mail.
 
-- **Bon cadeau acheté en ligne : imprimable** (13 octobre). Après le paiement, un bouton « Imprimer le bon cadeau » ouvre le bon dessiné par Marion, prêt à imprimer. L'acheteur le retrouve ensuite dans son compte, rubrique « Mes bons cadeaux », pour le revoir ou le réimprimer ; le bouton de l'e-mail d'achat y mène aussi. Le menu du compte a une nouvelle entrée « Mes bons cadeaux », à côté de « Mes locations ». Pas de PDF joint à l'e-mail.
+- **Bon cadeau acheté en ligne : imprimable** (13 octobre). Après le paiement, un bouton « Imprimer le bon cadeau » ouvre le bon dessiné par Marion, prêt à imprimer. L'acheteur le retrouve ensuite dans son compte, rubrique « Mes bons cadeaux », pour le revoir ou le réimprimer ; le bouton de l'e-mail d'achat y mène aussi. Le menu du compte a une nouvelle entrée « Mes bons cadeaux », à côté de « Mes locations ». Un bon utilisé indique la date et ce qu'il a payé (location ou prolongation) ; le set et la référence ne sont montrés que si c'est l'acheteur lui-même qui s'en est servi. Pas de PDF joint à l'e-mail.
 
 ### Pour les gérants (espace de gestion)
 

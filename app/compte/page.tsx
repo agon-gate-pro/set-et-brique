@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, like, or } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth";
 import { bookingCustomerColumns, findCustomerByClerkId } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
@@ -60,10 +60,40 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
     : [];
   // Bons cadeaux achetés en ligne avec ce compte, à revoir ou réimprimer.
   const vouchers = await db.query.giftVouchers.findMany({
-    columns: { id: true, code: true, amountCents: true, status: true, expiresAt: true },
+    columns: { id: true, code: true, amountCents: true, status: true, expiresAt: true, usedAt: true },
     where: eq(schema.giftVouchers.purchaserClerkUserId, userId),
     orderBy: [desc(schema.giftVouchers.createdAt)],
   });
+  // À quoi un bon utilisé a servi : le bon ne garde que sa date d'utilisation, la réservation se
+  // retrouve par la ligne d'historique écrite au paiement (« Bon cadeau SB-… utilisé », voir
+  // `lib/payments.ts` et `lib/extensions.ts`). Un bon marqué utilisé à la main par les gérants n'en a pas.
+  const usedCodes = vouchers.filter((v) => v.status === "used").map((v) => v.code);
+  const usages =
+    usedCodes.length > 0
+      ? await db
+          .select({
+            message: schema.bookingEvents.message,
+            customerId: schema.bookings.customerId,
+            reference: schema.bookings.reference,
+            setName: schema.sets.name,
+          })
+          .from(schema.bookingEvents)
+          .innerJoin(schema.bookings, eq(schema.bookings.id, schema.bookingEvents.bookingId))
+          .innerJoin(schema.sets, eq(schema.sets.id, schema.bookings.setId))
+          .where(or(...usedCodes.map((code) => like(schema.bookingEvents.message, `%Bon cadeau ${code} utilisé%`))))
+      : [];
+  /** « utilisé le 13 octobre 2026 pour la prolongation de Fontaine de Trevi (SB-GJFEU) ». */
+  function usageOf(v: (typeof vouchers)[number]) {
+    const when = v.usedAt ? `utilisé le ${formatDateLong(v.usedAt)}` : "utilisé";
+    const usage = usages.find((u) => u.message?.includes(`Bon cadeau ${v.code} utilisé`));
+    if (!usage) return when;
+    const what = usage.message?.startsWith("Prolongation") ? "la prolongation" : "la location";
+    // Le bon est fait pour être offert : si une autre personne s'en est servie, l'acheteur apprend
+    // seulement qu'il a servi à une location, pas laquelle.
+    return usage.customerId === customer?.id
+      ? `${when} pour ${what} de ${usage.setName} (${usage.reference})`
+      : `${when} pour ${what === "la location" ? "une location" : "une prolongation"}`;
+  }
   const current = bookings.filter((b) => b.status !== "returned" && b.status !== "cancelled");
   const past = bookings.filter((b) => b.status === "returned" || b.status === "cancelled");
 
@@ -165,7 +195,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
                     <p className="display text-xl font-semibold tracking-wide text-ink-deep">{v.code}</p>
                     <p className="text-sm text-slate-ink">
                       {formatCents(v.amountCents)} ·{" "}
-                      {status === "valid" ? `valable jusqu'au ${formatDateLong(v.expiresAt)}` : giftVoucherStatusLabels[status].toLowerCase()}
+                      {status === "valid"
+                        ? `valable jusqu'au ${formatDateLong(v.expiresAt)}`
+                        : status === "used"
+                          ? usageOf(v)
+                          : giftVoucherStatusLabels[status].toLowerCase()}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
