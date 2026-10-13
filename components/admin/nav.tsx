@@ -13,6 +13,9 @@ export type AdminLink = { href: string; label: string; separatorBefore?: boolean
 /** Rubriques en accès direct dans la barre du bas sur mobile, dans cet ordre ; les autres passent sous « Plus ». */
 const PRIMARY_HREFS = ["/admin", "/admin/reservations", "/admin/sets", "/admin/bons-cadeaux"];
 
+/** Rubrique qui porte la pastille des réservations à traiter. */
+const TODO_HREF = "/admin/reservations";
+
 /** Libellés raccourcis pour tenir dans un cinquième de la largeur d'un téléphone. */
 const SHORT_LABELS: Record<string, string> = {
   "/admin": "Tableau",
@@ -33,6 +36,29 @@ export function AdminNav({ links }: { links: AdminLink[] }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  // Réservations qui attendent les gérants : même chiffre que la pastille « Espace de gestion » du
+  // header, posé ici sur « Réservations ». Relu à chaque changement de page, et suivi quand le
+  // header le rafraîchit (toutes les minutes, événement `admin-actions`).
+  const [todo, setTodo] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/customer-name")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { adminActions?: number } | null) => {
+        if (!cancelled) setTodo(data?.adminActions ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+  useEffect(() => {
+    const onUpdate = (e: Event) => setTodo((e as CustomEvent<number>).detail ?? 0);
+    window.addEventListener("admin-actions", onUpdate);
+    return () => window.removeEventListener("admin-actions", onUpdate);
+  }, []);
+  const todoOf = (href: string) => (href === TODO_HREF ? todo : 0);
 
   return (
     <>
@@ -57,14 +83,28 @@ export function AdminNav({ links }: { links: AdminLink[] }) {
                   {/* Sans couleur par rubrique sur grand écran (essayée puis retirée à la demande d'Alexis, 8 octobre 2026). */}
                   <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                   {l.label}
+                  <TodoBadge count={todoOf(l.href)} className="ml-auto" />
                 </Link>
               </span>
             );
           })}
         </nav>
       </aside>
-      <MobileTabBar links={links} isActive={isActive} pathname={pathname} />
+      <MobileTabBar links={links} isActive={isActive} pathname={pathname} todoOf={todoOf} />
     </>
+  );
+}
+
+/** Pastille rouge du nombre de réservations à traiter ; rien à zéro. */
+function TodoBadge({ count, className = "" }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-label={`${count} à traiter`}
+      className={`flex h-5 min-w-5 items-center justify-center rounded-full bg-brick px-1 text-[11px] font-bold leading-none text-white ${className}`}
+    >
+      {count}
+    </span>
   );
 }
 
@@ -72,10 +112,12 @@ function MobileTabBar({
   links,
   isActive,
   pathname,
+  todoOf,
 }: {
   links: AdminLink[];
   isActive: (href: string) => boolean;
   pathname: string;
+  todoOf: (href: string) => number;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = useCallback(() => setMoreOpen(false), []);
@@ -108,6 +150,7 @@ function MobileTabBar({
                 label={SHORT_LABELS[l.href] ?? l.label}
                 Icon={icons[l.href]}
                 tone={isActive(l.href) ? toneOf(l.href) : null}
+                todo={todoOf(l.href)}
               />
             </li>
           ))}
@@ -141,7 +184,19 @@ function TabIcon({ Icon, tone }: { Icon: LucideIcon; tone: Tone | null }) {
   );
 }
 
-function TabLink({ href, label, Icon, tone }: { href: string; label: string; Icon: LucideIcon; tone: Tone | null }) {
+function TabLink({
+  href,
+  label,
+  Icon,
+  tone,
+  todo = 0,
+}: {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  tone: Tone | null;
+  todo?: number;
+}) {
   return (
     <Link
       href={href}
@@ -150,7 +205,10 @@ function TabLink({ href, label, Icon, tone }: { href: string; label: string; Ico
         tone ? `font-bold ${TONE_TEXT[tone]}` : "text-slate-ink"
       }`}
     >
-      <TabIcon Icon={Icon} tone={tone} />
+      <span className="relative">
+        <TabIcon Icon={Icon} tone={tone} />
+        <TodoBadge count={todo} className="absolute -right-1 -top-1 ring-2 ring-paper" />
+      </span>
       <span className="max-w-full truncate">{label}</span>
     </Link>
   );

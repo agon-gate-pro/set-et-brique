@@ -64,6 +64,8 @@ export function SiteHeader() {
         setFirstName(data?.firstName || null);
         setPendingActions(data?.pendingActions ?? 0);
         setAdminActions(data?.adminActions ?? 0);
+        // Le menu de l'espace de gestion affiche le même chiffre sur « Réservations ».
+        window.dispatchEvent(new CustomEvent("admin-actions", { detail: data?.adminActions ?? 0 }));
       })
       .catch(() => {});
   }, []);
