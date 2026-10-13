@@ -29,3 +29,25 @@ export function statusTone(status: BookingStatus): { row: string; badge: string 
 
 /** Pastille d'un état sans couleur dédiée (proposition de dates, location rendue). */
 export const neutralBadge = "border-slate-ink/15 bg-paper";
+
+/**
+ * Pastille d'une ligne d'historique liée à une prolongation. Ces lignes ne changent pas l'état de
+ * la location (`to_status` vide) : l'étape se lit au début du message écrit par `lib/extensions.ts`
+ * et `lib/payments.ts`. Mêmes couleurs que pour une location : jaune à traiter, orange à payer,
+ * vert payé, rouge refusé ou expiré. Un message reformulé là-bas perd sa pastille ici, rien de plus.
+ */
+const extensionEventBadges: { prefix: string; label: string; badge: string }[] = [
+  { prefix: "Prolongation demandée", label: "Prolongation demandée", badge: statusTone("pending_review")!.badge },
+  { prefix: "Prolongation acceptée", label: "Prolongation à payer", badge: statusTone("pending_payment")!.badge },
+  { prefix: "Prolongation payée", label: "Prolongation payée", badge: statusTone("confirmed")!.badge },
+  { prefix: "Prolongation refusée", label: "Prolongation refusée", badge: statusTone("cancelled")!.badge },
+  { prefix: "Prolongation expirée", label: "Prolongation expirée", badge: statusTone("cancelled")!.badge },
+  { prefix: "Demande de prolongation annulée", label: "Prolongation annulée", badge: neutralBadge },
+  { prefix: "Paiement en ligne de la prolongation refusé", label: "Paiement refusé", badge: statusTone("cancelled")!.badge },
+  { prefix: "Paiement en ligne reçu pour une prolongation", label: "À régulariser", badge: "border-brick bg-brick text-paper" },
+];
+
+export function extensionEventBadge(message: string | null): { label: string; badge: string } | null {
+  if (!message) return null;
+  return extensionEventBadges.find((b) => message.startsWith(b.prefix)) ?? null;
+}

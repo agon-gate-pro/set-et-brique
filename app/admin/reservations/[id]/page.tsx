@@ -9,7 +9,7 @@ import { AdminNoteForm, CustomerBlockForm, ExtensionActions, HandoverActions, Pa
 import { expireStaleExtensions } from "@/lib/extensions";
 import { getSetting } from "@/lib/settings";
 import { BookingTabs } from "./tabs";
-import { neutralBadge, statusTone } from "../status-tone";
+import { extensionEventBadge, neutralBadge, statusTone } from "../status-tone";
 import { requireRole } from "@/lib/auth";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { expireOverduePayments } from "@/lib/payment-expiry";
@@ -210,22 +210,26 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
               // Sur téléphone, les éléments s'empilent et le texte passe à la ligne.
               <>
                 <ol className="divide-y divide-slate-ink/10 text-sm sm:grid sm:grid-cols-[7.5rem_minmax(0,1fr)_auto_auto] sm:gap-x-4">
-                  {events.map((e) => (
-                    <li key={e.id} className="grid items-center gap-y-1 py-2 first:pt-0 sm:col-span-4 sm:grid-cols-subgrid">
-                      <span className="text-slate-ink tabular-nums whitespace-nowrap">{dateTime.format(e.createdAt)}</span>
-                      <span className="font-semibold text-ink-deep break-words sm:truncate" title={e.message ?? undefined}>
-                        {e.message ?? ""}
-                      </span>
-                      <span className="justify-self-start">
-                        {e.toStatus ? (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${statusTone(e.toStatus)?.badge ?? neutralBadge}`}>
-                            {adminBookingStatusLabels[e.toStatus]}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="text-slate-ink whitespace-nowrap">{actorLabels[e.actor]}</span>
-                    </li>
-                  ))}
+                  {events.map((e) => {
+                    // Nouvel état de la location, sinon l'étape d'une prolongation (qui ne change pas cet état).
+                    const badge = e.toStatus
+                      ? { label: adminBookingStatusLabels[e.toStatus], badge: statusTone(e.toStatus)?.badge ?? neutralBadge }
+                      : extensionEventBadge(e.message);
+                    return (
+                      <li key={e.id} className="grid items-center gap-y-1 py-2 first:pt-0 sm:col-span-4 sm:grid-cols-subgrid">
+                        <span className="text-slate-ink tabular-nums whitespace-nowrap">{dateTime.format(e.createdAt)}</span>
+                        <span className="font-semibold text-ink-deep break-words sm:truncate" title={e.message ?? undefined}>
+                          {e.message ?? ""}
+                        </span>
+                        <span className="justify-self-start">
+                          {badge ? (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${badge.badge}`}>{badge.label}</span>
+                          ) : null}
+                        </span>
+                        <span className="text-slate-ink whitespace-nowrap">{actorLabels[e.actor]}</span>
+                      </li>
+                    );
+                  })}
                 </ol>
                 {emails.length > 0 ? (
                   <>
