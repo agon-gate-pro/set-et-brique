@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { daysLate } from "@/lib/dates";
-import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
+import { adminBookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { ListActions } from "./list-actions";
 import { neutralBadge, statusTone } from "./status-tone";
 import type { BookingRow } from "./bookings-table";
@@ -40,7 +40,7 @@ export function BookingDialog({ row, today, onClose }: { row: BookingRow; today:
                   late > 0 ? "border-brick bg-brick text-paper" : (statusTone(row.status)?.badge ?? neutralBadge)
                 }`}
               >
-                {late > 0 ? `Retard de ${late} jour${late > 1 ? "s" : ""}` : bookingStatusLabels[row.status]}
+                {late > 0 ? `Retard de ${late} jour${late > 1 ? "s" : ""}` : adminBookingStatusLabels[row.status]}
               </span>
               {row.extension ? (
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${statusTone(row.extension)?.badge ?? neutralBadge}`}>

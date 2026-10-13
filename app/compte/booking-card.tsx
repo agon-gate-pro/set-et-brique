@@ -148,11 +148,20 @@ export function BookingCard({
       ) : null}
 
       {booking.status === "pending_payment" || booking.status === "confirmed" ? (
-        <p className="mt-4 text-slate-ink">
-          Remise prévue le {formatDate(booking.startDate)}
-          {booking.pickupTime ? ` à ${formatTime(booking.pickupTime)}` : ""}. Si nous devons modifier le lieu ou l&apos;heure,
-          vous le verrez ici.
-        </p>
+        // Date en gras sur sa propre ligne, la précision sur les modifications en dessous (demande d'Alexis,
+        // 13 octobre 2026) : en une seule phrase grise, la date se perdait.
+        <div className="mt-4">
+          <p className="text-ink-deep">
+            Remise prévue le{" "}
+            <strong className="font-bold">
+              {formatDate(booking.startDate)}
+              {booking.pickupTime ? ` à ${formatTime(booking.pickupTime)}` : ""}
+            </strong>
+          </p>
+          <p className="mt-1 text-sm text-slate-ink">
+            Si nous devons modifier le lieu ou l&apos;heure, vous le verrez ici.
+          </p>
+        </div>
       ) : null}
 
       {booking.status === "picked_up" ? (

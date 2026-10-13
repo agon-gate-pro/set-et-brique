@@ -206,6 +206,15 @@ export const bookingStatusLabels = {
   cancelled: "Annulée",
 } as const;
 
+/**
+ * Libellés de l'espace de gestion : « Confirmée » rassure le client, mais laisse croire aux gérants
+ * qu'il n'y a plus rien à faire alors que le set payé reste à remettre.
+ */
+export const adminBookingStatusLabels = {
+  ...bookingStatusLabels,
+  confirmed: "Payée, à remettre",
+} as const;
+
 /** `expired` n'est pas stocké en base : il se déduit de `status` + `expiresAt`. */
 export const giftVoucherStatusLabels = {
   valid: "Valide",

@@ -2,9 +2,11 @@ import type { BookingStatus } from "@/lib/db/schema";
 
 /**
  * Couleur d'une réservation selon son état, demande de la cliente : jaune à traiter, orange paiement à venir,
- * vert payé, rouge annulée. « Payé » couvre confirmée et rendue. Bleu pour un set en cours de location
- * chez le client (demande d'Alexis, 10 octobre 2026), pour le distinguer d'un set payé pas encore
- * remis ou déjà rendu ; l'orange, d'abord envisagé, sert déjà au paiement à venir. Proposition de dates : sans couleur. Partagée par le tableau des
+ * vert payé, rouge annulée. Bleu pour un set en cours de location chez le client (demande d'Alexis,
+ * 10 octobre 2026), pour le distinguer d'un set payé pas encore remis ; l'orange, d'abord envisagé,
+ * sert déjà au paiement à venir. Le vert ne vaut plus que pour « payée, à remettre » (13 octobre 2026) :
+ * une location rendue passe sans couleur, sinon les deux lignes se confondaient et un set à remettre
+ * semblait terminé. Proposition de dates : sans couleur aussi. Partagée par le tableau des
  * réservations (ligne et pastille) et la fiche d'une réservation (pastille), pour qu'un état ait
  * partout la même couleur.
  */
@@ -17,7 +19,6 @@ export function statusTone(status: BookingStatus): { row: string; badge: string 
     case "picked_up":
       return { row: "border-blue-500 bg-blue-50 hover:bg-blue-100 focus:bg-blue-100", badge: "border-blue-500 bg-blue-100 text-blue-900" };
     case "confirmed":
-    case "returned":
       return { row: "border-leaf bg-green-50 hover:bg-green-100 focus:bg-green-100", badge: "border-leaf bg-green-100 text-leaf-deep" };
     case "cancelled":
       return { row: "border-brick bg-red-50 hover:bg-red-100 focus:bg-red-100", badge: "border-brick bg-red-100 text-brick-deep" };
@@ -26,5 +27,5 @@ export function statusTone(status: BookingStatus): { row: string; badge: string 
   }
 }
 
-/** Pastille d'un état sans couleur dédiée (proposition de dates). */
+/** Pastille d'un état sans couleur dédiée (proposition de dates, location rendue). */
 export const neutralBadge = "border-slate-ink/15 bg-paper";

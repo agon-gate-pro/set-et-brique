@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 10 octobre 2026.
+Dernière mise à jour : 13 octobre 2026.
 
 ## 1. Où on en est
 
@@ -107,6 +107,11 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 13 octobre 2026
+
+- **Réservations (gestion) : « Payée, à remettre » au lieu de « Confirmée », et « Rendue » sans couleur** (`lib/format.ts`, `app/admin/reservations/status-tone.ts`, `bookings-table.tsx`, `booking-dialog.tsx`, `[id]/page.tsx`). Relevé par Alexis en testant le paiement Stripe : une fois le set payé, la ligne passait en « Confirmée », dans le même vert qu'une location rendue, comme si Set et Brique n'avait plus rien à faire. Le statut `confirmed` porte maintenant le libellé « Payée, à remettre » dans tout l'espace de gestion (liste, aperçu, fiche, historique), par un jeu de libellés propre aux gérants (`adminBookingStatusLabels`) ; le client lit toujours « Confirmée ». Le vert est réservé à cet état : une location rendue n'a plus de couleur. **Écart avec le code couleur de Marion** (« vert = payé », 27 septembre) : décidé par Alexis, à lui signaler. Vérifié : typage, lint ; à l'écran, à vérifier par Alexis.
+- **Espace client : date de remise mise en évidence** (`app/compte/booking-card.tsx`). Sur une location acceptée ou confirmée, « Remise prévue le … » et « Si nous devons modifier le lieu ou l'heure, vous le verrez ici » tenaient en une seule phrase grise. Deux lignes maintenant : la date et l'heure en gras, la précision sur les modifications en dessous, en plus petit. Demande d'Alexis. Vérifié : typage, lint ; à l'écran, à vérifier par Alexis.
 
 ### 12 octobre 2026
 

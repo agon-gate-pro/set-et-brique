@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { bookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
+import { adminBookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
 import { AdminNoteForm, CustomerBlockForm, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
 import { expireStaleExtensions } from "@/lib/extensions";
@@ -72,7 +72,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <AdminPageTitle section="/admin/reservations">{b.reference}</AdminPageTitle>
         <span className={`text-sm font-bold px-2 py-1 rounded-md border ${statusTone(b.status)?.badge ?? neutralBadge}`}>
-          {bookingStatusLabels[b.status]}
+          {adminBookingStatusLabels[b.status]}
         </span>
         {extensionLabel ? (
           <span className={`text-sm font-bold px-2 py-1 rounded-md border ${statusTone(extension!.status === "pending_review" ? "pending_review" : "pending_payment")?.badge ?? neutralBadge}`}>
@@ -205,7 +205,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                 {events.map((e) => (
                   <li key={e.id}>
                     <span className="text-sm">{dateTime.format(e.createdAt)}</span> · {e.message ?? ""}
-                    {e.toStatus ? ` → ${bookingStatusLabels[e.toStatus]}` : ""} <span className="text-sm">({actorLabels[e.actor]})</span>
+                    {e.toStatus ? ` → ${adminBookingStatusLabels[e.toStatus]}` : ""} <span className="text-sm">({actorLabels[e.actor]})</span>
                   </li>
                 ))}
                 {emails.length > 0 ? (

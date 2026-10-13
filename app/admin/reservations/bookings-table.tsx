@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronDown, MapPin } from "lucide-react";
 import { daysLate } from "@/lib/dates";
-import { bookingStatusLabels, formatCents, formatDateRangeShort, formatDateShort, formatTime } from "@/lib/format";
+import { adminBookingStatusLabels, formatCents, formatDateRangeShort, formatDateShort, formatTime } from "@/lib/format";
 import { neutralBadge, statusTone } from "./status-tone";
 import type { BookingStatus } from "@/lib/db/schema";
 import { BookingDialog } from "./booking-dialog";
@@ -67,7 +67,7 @@ function displayOf(r: BookingRow, late: number) {
         ? "Prolongation demandée"
         : r.extension === "pending_payment"
           ? "Prolongation à payer"
-          : bookingStatusLabels[r.status];
+          : adminBookingStatusLabels[r.status];
   return { row: tone?.row, badge: late > 0 ? "border-brick bg-brick text-paper" : (tone?.badge ?? neutralBadge), label };
 }
 
