@@ -70,18 +70,27 @@ export default async function GiftVoucherThanksPage({ searchParams }: PageProps<
           </p>
         </>
       )}
+      {/* Deux boutons, comme ailleurs sur le site : à trois, ils passaient sur deux lignes dans cette colonne étroite. */}
       <div className="mt-8 flex flex-wrap gap-4">
         {state === "ok" && voucher ? (
-          <Link href={`/compte/bons-cadeaux/${voucher.id}?imprimer=1`} className="btn btn-brick">
-            Imprimer le bon cadeau
-          </Link>
-        ) : null}
-        <Link href="/catalogue" className={`btn ${state === "ok" && voucher ? "btn-paper" : "btn-brick"}`}>
-          Voir le catalogue
-        </Link>
-        <Link href="/bons-cadeaux" className="btn btn-paper">
-          Retour aux bons cadeaux
-        </Link>
+          <>
+            <Link href={`/compte/bons-cadeaux/${voucher.id}?imprimer=1`} className="btn btn-brick">
+              Imprimer le bon cadeau
+            </Link>
+            <Link href="/catalogue" className="btn btn-paper">
+              Voir le catalogue
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link href="/catalogue" className="btn btn-brick">
+              Voir le catalogue
+            </Link>
+            <Link href="/bons-cadeaux" className="btn btn-paper">
+              Retour aux bons cadeaux
+            </Link>
+          </>
+        )}
       </div>
     </section>
   );
