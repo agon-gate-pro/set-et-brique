@@ -28,7 +28,8 @@ export type BookingEmailEvent =
   | "paid"
   /** Paiement en ligne (module 4) : même e-mail client que `paid`, plus une copie aux gérants. */
   | "paid_online"
-  /** Fin de l'empreinte de caution (`lib/deposits.ts`) : libérée sans débit, ou somme retenue. */
+  /** Empreinte de caution (`lib/deposits.ts`) : posée le jour de la remise, libérée sans débit, ou somme retenue. */
+  | "deposit_held"
   | "deposit_released"
   | "deposit_captured";
 
@@ -351,6 +352,25 @@ function returned(b: BookingWithDetails) {
   });
 }
 
+/** E0. Empreinte de caution posée, au client : il va voir la somme bloquée sur son relevé. */
+function depositHeld(b: BookingWithDetails) {
+  return customerMail("deposit_held", b, {
+    subject: `Votre caution est en place (${b.set.name}, ${b.reference})`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Comme prévu par les conditions de location (article 6), une empreinte de ${formatCents(b.depositCents)} vient d'être posée sur la carte utilisée pour votre location de ${b.set.name}. Rien n'est débité : la somme apparaît seulement comme bloquée sur votre compte le temps de la location.`,
+      ),
+      p(
+        "Si la location dure plus de quelques jours, votre banque peut afficher brièvement deux blocages : l'empreinte est renouvelée avant son terme, puis la précédente est libérée.",
+      ),
+      p("Elle est libérée dans les 48 heures qui suivent le retour du set, sauf casse, pièces manquantes ou retard."),
+      p(`Une question ? Répondez à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Voir ma location", href: siteLink("/compte") },
+  });
+}
+
 /** E1. Caution libérée après le contrôle du set, au client. */
 function depositReleased(b: BookingWithDetails) {
   return customerMail("deposit_released", b, {
@@ -664,6 +684,7 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   payment_expired: (b) => [paymentExpired(b)],
   paid: (b) => [paid(b)],
   paid_online: (b) => [paid(b), paidAdmin(b)],
+  deposit_held: (b) => [depositHeld(b)],
   deposit_released: (b) => [depositReleased(b)],
   deposit_captured: (b) => [depositCaptured(b)],
 };

@@ -112,6 +112,25 @@ type RentalSessionParams = Omit<
   "mode" | "locale" | "customer" | "customer_email" | "custom_text" | "expires_at" | "currency"
 >;
 
+/**
+ * Seule une carte (ou Link, qui en enveloppe une) accepte une empreinte (`capture_method: manual`).
+ * Les autres moyens enregistrables sans le client (Bancontact ou iDEAL, gardés en prélèvement SEPA,
+ * Klarna, Amazon Pay, PayPal…) feraient échouer la caution : ils sont écartés des pages de location
+ * et d'enregistrement de carte, sans toucher à ce que le Dashboard active (jamais
+ * `payment_method_types` en dur, conseil Stripe). La page d'un bon cadeau garde tous les moyens.
+ */
+const NOT_A_CARD: Stripe.Checkout.SessionCreateParams.ExcludedPaymentMethodType[] = [
+  "acss_debit", "affirm", "afterpay_clearpay", "alipay", "alma", "amazon_pay", "au_becs_debit", "bacs_debit", "bancontact",
+  "billie", "bizum", "blik", "boleto", "cashapp", "crypto", "customer_balance", "eps", "fpx", "giropay", "grabpay", "ideal",
+  "kakao_pay", "klarna", "konbini", "kr_card", "mb_way", "mobilepay", "multibanco", "naver_pay", "nz_bank_account", "oxxo",
+  "p24", "pay_by_bank", "payco", "paynow", "paypal", "paypay", "payto", "pix", "promptpay", "revolut_pay", "samsung_pay",
+  "satispay", "scalapay", "sepa_debit", "sequra", "sofort", "sunbit", "swish", "twint", "upi", "us_bank_account", "wechat_pay",
+  "zip",
+];
+
+/** Types de moyen de paiement sur lesquels une empreinte peut être posée. */
+const HOLDABLE_TYPES = new Set(["card", "link"]);
+
 const guaranteeText = (depositCents: number) =>
   `la garantie de votre location (${formatCents(depositCents)}) : une empreinte bancaire, jamais débitée sauf casse, perte ou retard (conditions générales, article 6).`;
 
@@ -132,6 +151,7 @@ function createRentalCheckoutSession(customerId: string, depositCents: number, p
     mode: "payment",
     locale: "fr",
     customer,
+    excluded_payment_method_types: NOT_A_CARD,
     payment_intent_data: { ...params.payment_intent_data, setup_future_usage: "off_session" },
     custom_text: { submit: { message: `Votre carte est enregistrée par Stripe pour ${guaranteeText(depositCents)}` } },
     expires_at: expiresAt(),
@@ -156,6 +176,7 @@ function createCardOnlyCheckoutSession(
     currency: "eur",
     locale: "fr",
     customer,
+    excluded_payment_method_types: NOT_A_CARD,
     setup_intent_data: { description, metadata: rest.metadata ?? undefined },
     custom_text: {
       submit: {
@@ -166,12 +187,29 @@ function createCardOnlyCheckoutSession(
   }));
 }
 
+/**
+ * Moyen de paiement enregistré, gardé sur la réservation seulement si une empreinte peut être posée
+ * dessus. Un autre type (prélèvement SEPA né d'un Bancontact, par exemple, si le Dashboard en laissait
+ * passer un) est noté dans l'historique : les gérants sauront pourquoi la caution échouera.
+ */
+async function holdablePaymentMethod(pm: string | Stripe.PaymentMethod | null | undefined, bookingId: string) {
+  if (!pm) return null;
+  const method = typeof pm === "string" ? await stripe().paymentMethods.retrieve(pm) : pm;
+  if (HOLDABLE_TYPES.has(method.type)) return method.id;
+  await db.insert(schema.bookingEvents).values({
+    bookingId,
+    actor: "system",
+    message: `Paiement par ${method.type}, qui ne permet pas d'empreinte : aucune carte enregistrée pour la caution`,
+  });
+  return null;
+}
+
 /** Carte utilisée pour un paiement Stripe, à garder sur la réservation. */
-async function paymentMethodOf(paymentIntentId: string | null) {
+async function paymentMethodOf(paymentIntentId: string | null, bookingId: string) {
   if (!paymentIntentId) return null;
   try {
-    const intent = await stripe().paymentIntents.retrieve(paymentIntentId);
-    return typeof intent.payment_method === "string" ? intent.payment_method : (intent.payment_method?.id ?? null);
+    const intent = await stripe().paymentIntents.retrieve(paymentIntentId, { expand: ["payment_method"] });
+    return await holdablePaymentMethod(intent.payment_method, bookingId);
   } catch (e) {
     console.error("[stripe] carte du paiement illisible", paymentIntentId, e);
     return null;
@@ -179,12 +217,12 @@ async function paymentMethodOf(paymentIntentId: string | null) {
 }
 
 /** Carte enregistrée par une page Stripe sans paiement (mode `setup`). */
-async function savedCardOf(session: Stripe.Checkout.Session) {
+async function savedCardOf(session: Stripe.Checkout.Session, bookingId: string) {
   const id = typeof session.setup_intent === "string" ? session.setup_intent : (session.setup_intent?.id ?? null);
   if (!id) return null;
   try {
-    const intent = await stripe().setupIntents.retrieve(id);
-    return typeof intent.payment_method === "string" ? intent.payment_method : (intent.payment_method?.id ?? null);
+    const intent = await stripe().setupIntents.retrieve(id, { expand: ["payment_method"] });
+    return await holdablePaymentMethod(intent.payment_method, bookingId);
   } catch (e) {
     console.error("[stripe] carte enregistrée illisible", id, e);
     return null;
@@ -693,7 +731,7 @@ async function fulfillCardOnlySession(session: Stripe.Checkout.Session, meta: Pa
   const stillDue = extension ? extension.status === "pending_payment" : booking?.status === "pending_payment";
   if (!booking || !stillDue) return result("skipped");
 
-  const cardId = await savedCardOf(session);
+  const cardId = await savedCardOf(session, bookingId);
   if (cardId) await db.update(schema.bookings).set({ stripePaymentMethodId: cardId }).where(eq(schema.bookings.id, bookingId));
 
   const total = extension ? extension.extraRentalCents : booking.rentalCents + (booking.disassemblyCents ?? 0);
@@ -737,7 +775,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
     // Carte de ce paiement gardée pour la caution : la plus récente, et la seule si le loyer avait
     // été réglé par bon cadeau ou hors ligne.
     if (outcome === "confirmed" && meta.booking_id) {
-      const paymentMethodId = await paymentMethodOf(paymentIntentId);
+      const paymentMethodId = await paymentMethodOf(paymentIntentId, meta.booking_id);
       if (paymentMethodId) {
         await db.update(schema.bookings).set({ stripePaymentMethodId: paymentMethodId }).where(eq(schema.bookings.id, meta.booking_id));
       }
@@ -749,7 +787,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
     const outcome = await confirmBookingPayment({
       bookingId: meta.booking_id,
       voucherCode: meta.voucher_code ?? null,
-      stripe: { sessionId: session.id, paymentIntentId, paymentMethodId: await paymentMethodOf(paymentIntentId) },
+      stripe: { sessionId: session.id, paymentIntentId, paymentMethodId: await paymentMethodOf(paymentIntentId, meta.booking_id) },
     });
     return { status: "booking", bookingId: meta.booking_id, outcome };
   }

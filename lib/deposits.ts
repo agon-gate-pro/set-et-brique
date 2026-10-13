@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, eq, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import { after } from "next/server";
 import StripeSdk from "stripe";
-import { todayIso } from "@/lib/dates";
+import { addDays, todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails } from "@/lib/email/booking-emails";
 import { formatCents } from "@/lib/format";
@@ -27,6 +27,9 @@ import { stripe } from "@/lib/stripe";
  *
  * Pas encore là : le client qui valide lui-même une empreinte refusée, « Redemander l'empreinte »
  * et le blocage de « Set remis » (étape 3).
+ *
+ * Seules une carte ou Link acceptent une empreinte : les pages de paiement n'offrent qu'eux, et
+ * `lib/payments.ts` ne garde que ces moyens dans `stripe_payment_method_id`.
  */
 
 /** Validité retenue quand Stripe n'annonce pas de date : la plus courte, celle de Visa. */
@@ -34,6 +37,13 @@ const FALLBACK_VALIDITY_MS = (4 * 24 + 18) * 3_600_000;
 
 /** Une empreinte qui tombe avant le prochain passage quotidien (plus une marge) est renouvelée. */
 const RENEW_BEFORE_MS = 30 * 3_600_000;
+
+/**
+ * Réservation payée dont la remise n'a pas eu lieu : au-delà de ce nombre de jours après la date
+ * prévue, la tâche du matin ne pose ni ne renouvelle plus l'empreinte (sinon elle tournerait tous
+ * les cinq jours tant que personne n'annule). La fiche de gestion, elle, pose encore à l'ouverture.
+ */
+const PICKUP_GRACE_DAYS = 3;
 
 /** Délai de contrôle du set après son retour, au bout duquel la caution est libérée d'office (CGL, article 6). */
 export const RELEASE_AFTER_RETURN_MS = 48 * 3_600_000;
@@ -71,85 +81,88 @@ export type DepositResult = "held" | "failed" | "skipped";
  * déjà en place (hors renouvellement). Le résultat est écrit sur la réservation et dans l'historique.
  */
 export async function placeDepositHold(bookingId: string, opts: { renew?: boolean } = {}): Promise<DepositResult> {
-  const booking = await db.query.bookings.findFirst({
-    where: eq(schema.bookings.id, bookingId),
-    with: { customer: { columns: { stripeCustomerId: true } }, set: { columns: { name: true } } },
-  });
-  if (!booking || booking.depositCents <= 0) return "skipped";
-  // Set rendu : on ne pose plus rien, mais une empreinte en place peut encore être renouvelée
-  // pendant les 48 heures de contrôle, pour que les gérants gardent de quoi retenir une somme.
-  const out = booking.status === "confirmed" || booking.status === "picked_up";
-  const underReview = booking.status === "returned" && booking.depositStatus === "held" && opts.renew;
-  if (!out && !underReview) return "skipped";
-  if (booking.depositStatus === "held" && !opts.renew) return "skipped";
-  if (booking.depositStatus === "released" || booking.depositStatus === "captured") return "skipped";
+  // Verrou sur la ligne le temps de l'appel Stripe : la tâche du matin et l'ouverture de la fiche
+  // peuvent se croiser, le second passage relit l'empreinte posée par le premier et s'arrête.
+  const outcome = await db.transaction(async (tx) => {
+    await tx.execute(sql`select 1 from ${schema.bookings} where ${schema.bookings.id} = ${bookingId} for update`);
+    const booking = await tx.query.bookings.findFirst({
+      where: eq(schema.bookings.id, bookingId),
+      with: { customer: { columns: { stripeCustomerId: true } }, set: { columns: { name: true } } },
+    });
+    if (!booking || booking.depositCents <= 0) return { result: "skipped" as const };
+    // Set rendu : on ne pose plus rien, mais une empreinte en place peut encore être renouvelée
+    // pendant les 48 heures de contrôle, pour que les gérants gardent de quoi retenir une somme.
+    const out = booking.status === "confirmed" || booking.status === "picked_up";
+    const underReview = booking.status === "returned" && booking.depositStatus === "held" && opts.renew;
+    if (!out && !underReview) return { result: "skipped" as const };
+    if (booking.depositStatus === "held" && !opts.renew) return { result: "skipped" as const };
+    if (booking.depositStatus === "released" || booking.depositStatus === "captured") return { result: "skipped" as const };
 
-  const previousIntentId = booking.depositStatus === "held" ? booking.stripeDepositPaymentIntentId : null;
-  const amount = formatCents(booking.depositCents);
+    const previousIntentId = booking.depositStatus === "held" ? booking.stripeDepositPaymentIntentId : null;
+    const amount = formatCents(booking.depositCents);
 
-  async function fail(reason: string) {
-    // Un renouvellement refusé laisse l'empreinte en cours jusqu'à son terme : elle reste « en place ».
-    if (previousIntentId) {
-      await db.insert(schema.bookingEvents).values({
-        bookingId,
-        actor: "system",
-        message: `Renouvellement de l'empreinte de caution refusé : ${reason}. L'empreinte en cours reste valable jusqu'au ${booking!.depositExpiresAt ? dateTime.format(booking!.depositExpiresAt) : "terme prévu"}`,
-      });
-      await db.update(schema.bookings).set({ depositError: reason }).where(eq(schema.bookings.id, bookingId));
-      return "failed" as const;
+    async function fail(reason: string) {
+      // Un renouvellement refusé laisse l'empreinte en cours jusqu'à son terme : elle reste « en place ».
+      if (previousIntentId) {
+        await tx.insert(schema.bookingEvents).values({
+          bookingId,
+          actor: "system",
+          message: `Renouvellement de l'empreinte de caution refusé : ${reason}. L'empreinte en cours reste valable jusqu'au ${booking!.depositExpiresAt ? dateTime.format(booking!.depositExpiresAt) : "terme prévu"}`,
+        });
+        await tx.update(schema.bookings).set({ depositError: reason }).where(eq(schema.bookings.id, bookingId));
+        return { result: "failed" as const };
+      }
+      // Même refus déjà noté (la tâche repasse chaque jour) : pas de nouvelle ligne d'historique.
+      if (!(booking!.depositStatus === "failed" && booking!.depositError === reason)) {
+        await tx.insert(schema.bookingEvents).values({
+          bookingId,
+          actor: "system",
+          message: `Empreinte de caution de ${amount} refusée : ${reason}`,
+        });
+      }
+      await tx.update(schema.bookings).set({ depositStatus: "failed", depositError: reason }).where(eq(schema.bookings.id, bookingId));
+      return { result: "failed" as const };
     }
-    // Même refus déjà noté (la tâche repasse chaque jour) : pas de nouvelle ligne d'historique.
-    if (!(booking!.depositStatus === "failed" && booking!.depositError === reason)) {
-      await db.insert(schema.bookingEvents).values({
-        bookingId,
-        actor: "system",
-        message: `Empreinte de caution de ${amount} refusée : ${reason}`,
-      });
+
+    if (!booking.stripePaymentMethodId || !booking.customer.stripeCustomerId) {
+      return fail("aucune carte enregistrée pour cette réservation");
     }
-    await db.update(schema.bookings).set({ depositStatus: "failed", depositError: reason }).where(eq(schema.bookings.id, bookingId));
-    return "failed" as const;
-  }
 
-  if (!booking.stripePaymentMethodId || !booking.customer.stripeCustomerId) {
-    return fail("aucune carte enregistrée pour cette réservation");
-  }
+    let intent: StripeSdk.PaymentIntent;
+    try {
+      intent = await stripe().paymentIntents.create(
+        {
+          amount: booking.depositCents,
+          currency: "eur",
+          customer: booking.customer.stripeCustomerId,
+          payment_method: booking.stripePaymentMethodId,
+          capture_method: "manual",
+          confirm: true,
+          off_session: true,
+          description: `Caution ${booking.set.name} (${booking.reference}), empreinte non débitée`,
+          metadata: { kind: "deposit", booking_id: booking.id },
+          expand: ["latest_charge"],
+        },
+        // Même appel rejoué (coupure réseau) dans les dix minutes : Stripe rend la même empreinte.
+        { idempotencyKey: `deposit-${booking.id}-${opts.renew ? "renew-" : ""}${Math.floor(Date.now() / 600_000)}` },
+      );
+    } catch (e) {
+      // Stripe laisse parfois un paiement en attente d'une validation que personne ne fera : on l'annule.
+      const pending = e instanceof StripeSdk.errors.StripeCardError ? e.payment_intent?.id : null;
+      if (pending) await stripe().paymentIntents.cancel(pending).catch(() => {});
+      if (!(e instanceof StripeSdk.errors.StripeError)) console.error("[stripe] empreinte de caution", bookingId, e);
+      return fail(refusalReason(e));
+    }
+    if (intent.status !== "requires_capture") {
+      await stripe().paymentIntents.cancel(intent.id).catch(() => {});
+      return fail("la banque demande une validation du client");
+    }
 
-  let intent: StripeSdk.PaymentIntent;
-  try {
-    intent = await stripe().paymentIntents.create(
-      {
-        amount: booking.depositCents,
-        currency: "eur",
-        customer: booking.customer.stripeCustomerId,
-        payment_method: booking.stripePaymentMethodId,
-        capture_method: "manual",
-        confirm: true,
-        off_session: true,
-        description: `Caution ${booking.set.name} (${booking.reference}), empreinte non débitée`,
-        metadata: { kind: "deposit", booking_id: booking.id },
-        expand: ["latest_charge"],
-      },
-      // Deux passages rapprochés (tâche planifiée et ouverture de la fiche) ne posent qu'une empreinte.
-      { idempotencyKey: `deposit-${booking.id}-${opts.renew ? "renew-" : ""}${Math.floor(Date.now() / 600_000)}` },
-    );
-  } catch (e) {
-    // Stripe laisse parfois un paiement en attente d'une validation que personne ne fera : on l'annule.
-    const pending = e instanceof StripeSdk.errors.StripeCardError ? e.payment_intent?.id : null;
-    if (pending) await stripe().paymentIntents.cancel(pending).catch(() => {});
-    if (!(e instanceof StripeSdk.errors.StripeError)) console.error("[stripe] empreinte de caution", bookingId, e);
-    return fail(refusalReason(e));
-  }
-  if (intent.status !== "requires_capture") {
-    await stripe().paymentIntents.cancel(intent.id).catch(() => {});
-    return fail("la banque demande une validation du client");
-  }
+    const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+    const captureBefore = charge?.payment_method_details?.card?.capture_before;
+    const now = new Date();
+    const expiresAt = captureBefore ? new Date(captureBefore * 1000) : new Date(now.getTime() + FALLBACK_VALIDITY_MS);
 
-  const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
-  const captureBefore = charge?.payment_method_details?.card?.capture_before;
-  const now = new Date();
-  const expiresAt = captureBefore ? new Date(captureBefore * 1000) : new Date(now.getTime() + FALLBACK_VALIDITY_MS);
-
-  await db.transaction(async (tx) => {
     await tx
       .update(schema.bookings)
       .set({
@@ -165,14 +178,19 @@ export async function placeDepositHold(bookingId: string, opts: { renew?: boolea
       actor: "system",
       message: `Empreinte de caution ${previousIntentId ? "renouvelée" : "posée"} : ${amount} bloqués sur la carte du client, sans débit, jusqu'au ${dateTime.format(expiresAt)}`,
     });
+    return { result: "held" as const, intentId: intent.id, previousIntentId, firstHold: !previousIntentId && out };
   });
 
+  if (outcome.result !== "held") return outcome.result;
   // La nouvelle empreinte est en place : l'ancienne peut être libérée.
-  if (previousIntentId && previousIntentId !== intent.id) {
+  if (outcome.previousIntentId && outcome.previousIntentId !== outcome.intentId) {
     await stripe()
-      .paymentIntents.cancel(previousIntentId)
-      .catch((e) => console.error("[stripe] ancienne empreinte non libérée", previousIntentId, e));
+      .paymentIntents.cancel(outcome.previousIntentId)
+      .catch((e) => console.error("[stripe] ancienne empreinte non libérée", outcome.previousIntentId, e));
   }
+  // Le client voit la somme bloquée sur son relevé : on le prévient à la première pose (pas à un
+  // renouvellement, qui ne change rien pour lui).
+  if (outcome.firstHold) queueBookingEmails("deposit_held", bookingId);
   return "held";
 }
 
@@ -230,12 +248,15 @@ export function queueDepositRenewal(bookingId: string) {
  *
  * 0. empreintes à libérer : set rendu depuis plus de 48 heures, réservation annulée ;
  * 1. empreintes arrivées à leur terme : la banque a déjà libéré la somme, la réservation le dit ;
+ *    si le set est encore dû, une nouvelle empreinte est tentée dans la foulée ;
  * 2. empreintes à poser : réservations payées dont le jour de remise est arrivé ;
  * 3. empreintes à renouveler : set encore à remettre ou chez le client, empreinte qui expire bientôt.
  *
  * Une réservation dont l'empreinte a été refusée n'est pas retentée d'elle-même : une carte refusée
  * le matin le serait encore le lendemain, et chaque essai compte pour la banque du client. La
- * relance viendra des gérants (étape 3).
+ * relance viendra des gérants (étape 3). Une réservation payée dont la remise a plus de
+ * `PICKUP_GRACE_DAYS` jours de retard n'est plus posée ni renouvelée : aux gérants de l'annuler
+ * ou de la remettre (l'ouverture de sa fiche pose encore l'empreinte).
  */
 export async function syncDepositHolds(now = new Date()) {
   const b = schema.bookings;
@@ -263,8 +284,14 @@ export async function syncDepositHolds(now = new Date()) {
     }
   }
 
+  // Set encore dû : chez le client, ou à remettre depuis peu (voir `PICKUP_GRACE_DAYS`).
+  const pickupNotStale = addDays(today, -PICKUP_GRACE_DAYS);
+  const stillDue = or(eq(b.status, "picked_up"), and(eq(b.status, "confirmed"), gte(b.startDate, pickupNotStale)));
+
+  let held = 0;
+  let failed = 0;
   const expired = await db
-    .select({ id: b.id, status: b.status })
+    .select({ id: b.id, status: b.status, startDate: b.startDate })
     .from(b)
     .where(and(eq(b.depositStatus, "held"), lt(b.depositExpiresAt, now)));
   for (const x of expired) {
@@ -282,27 +309,33 @@ export async function syncDepositHolds(now = new Date()) {
           : "Empreinte de caution arrivée à son terme : somme libérée par la banque, sans débit",
       });
     });
+    // Set encore dû (le renouvellement a été manqué, tâche du matin sautée par exemple) : la carte
+    // est connue, une nouvelle empreinte est tentée tout de suite plutôt que de laisser la caution
+    // sans garantie jusqu'à ce que les gérants s'en aperçoivent.
+    if (x.status === "picked_up" || (x.status === "confirmed" && x.startDate >= pickupNotStale)) {
+      const r = await placeDepositHold(x.id);
+      if (r === "held") held++;
+      if (r === "failed") failed++;
+    }
   }
 
   const toPlace = await db
     .select({ id: b.id })
     .from(b)
-    .where(and(eq(b.status, "confirmed"), eq(b.depositStatus, "none"), lte(b.startDate, today)));
+    .where(and(eq(b.status, "confirmed"), eq(b.depositStatus, "none"), lte(b.startDate, today), gte(b.startDate, pickupNotStale)));
   const toRenew = await db
     .select({ id: b.id })
     .from(b)
     .where(
       and(
         // `returned` : pendant les 48 heures de contrôle (au-delà, elle vient d'être libérée ci-dessus).
-        inArray(b.status, ["confirmed", "picked_up", "returned"]),
+        or(stillDue, eq(b.status, "returned")),
         eq(b.depositStatus, "held"),
         isNotNull(b.depositExpiresAt),
         lt(b.depositExpiresAt, new Date(now.getTime() + RENEW_BEFORE_MS)),
       ),
     );
 
-  let held = 0;
-  let failed = 0;
   for (const x of toPlace) {
     const r = await placeDepositHold(x.id);
     if (r === "held") held++;
