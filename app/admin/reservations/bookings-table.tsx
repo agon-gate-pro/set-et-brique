@@ -29,6 +29,8 @@ export type BookingRow = {
   customerBlocked: boolean;
   /** Demande de prolongation en cours sur cette location : à traiter, ou acceptée et à payer. */
   extension: "pending_review" | "pending_payment" | null;
+  /** Ce que cette demande ajoute à la location, pour l'aperçu : nouvelle date de retour, jours et supplément. */
+  extensionDetail: { newEndDate: string; extraDays: number; extraRentalCents: number } | null;
 };
 
 type Group = { key: string; title: string; statuses: BookingStatus[] };

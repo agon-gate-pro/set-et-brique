@@ -15,6 +15,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 - **Confirmation avant « Set rendu »** (13 octobre) : le bouton ouvre une petite fenêtre « Set rendu ? » avant d'enregistrer le retour, pour éviter de clore une location par un clic malheureux.
 - **Tableau de bord : bandeau « sets à remettre »** (13 octobre) : un bandeau vert en haut de page, comme le bandeau jaune des demandes à traiter, rappelle le nombre de sets payés qui restent à remettre et ouvre la liste de ces réservations.
 - **Historique d'une réservation : le plus récent en haut** (13 octobre), pour les événements comme pour les e-mails, et une présentation plus lisible : une seule ligne par événement, bien séparée, avec la date à gauche, le texte au milieu, le nouvel état en pastille de couleur et l'auteur ou le destinataire à droite. Un texte trop long est coupé par « … » sur ordinateur et se lit en entier en passant la souris dessus.
+- **Aperçu d'une réservation : la prolongation en détail** (13 octobre). Quand un client a demandé à prolonger, la fenêtre d'aperçu montre la période d'origine, puis un encart avec la nouvelle date de retour, le nombre de jours en plus et le supplément.
 
 ## 2. Décisions prises cette semaine (Alexis)
 

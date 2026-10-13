@@ -32,7 +32,13 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/r
       .orderBy(asc(schema.pickupPoints.sortOrder), asc(schema.pickupPoints.createdAt)),
     // Prolongations en cours : une au plus par location (index unique).
     db
-      .select({ bookingId: schema.bookingExtensions.bookingId, status: schema.bookingExtensions.status })
+      .select({
+        bookingId: schema.bookingExtensions.bookingId,
+        status: schema.bookingExtensions.status,
+        newEndDate: schema.bookingExtensions.newEndDate,
+        extraDays: schema.bookingExtensions.extraDays,
+        extraRentalCents: schema.bookingExtensions.extraRentalCents,
+      })
       .from(schema.bookingExtensions)
       .where(inArray(schema.bookingExtensions.status, [...ACTIVE_EXTENSION_STATUSES])),
   ]);
@@ -45,27 +51,33 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/r
   // `pending_payment`, `to_handover`, `ongoing`). Clés inconnues ignorées par le tableau.
   const statusGroups = typeof statut === "string" && statut ? statut.split(",") : null;
 
-  const extensionByBooking = new Map(extensions.map((e) => [e.bookingId, e.status as "pending_review" | "pending_payment"]));
+  const extensionByBooking = new Map(extensions.map((e) => [e.bookingId, e]));
 
-  const rows: BookingRow[] = bookings.map((b) => ({
-    id: b.id,
-    reference: b.reference,
-    status: b.status,
-    startDate: b.startDate,
-    endDate: b.endDate,
-    days: b.days,
-    rentalCents: b.rentalCents,
-    disassemblyCents: b.disassemblyCents,
-    pickupTime: b.pickupTime,
-    setName: b.set.name,
-    pickupPointId: b.pickupPointId,
-    pickupPointName: b.pickupPoint?.name ?? null,
-    customerFirstName: b.customer.firstName,
-    customerLastName: b.customer.lastName,
-    customerPhone: b.customer.phone,
-    customerBlocked: b.customer.blocked,
-    extension: extensionByBooking.get(b.id) ?? null,
-  }));
+  const rows: BookingRow[] = bookings.map((b) => {
+    const ext = extensionByBooking.get(b.id);
+    return {
+      id: b.id,
+      reference: b.reference,
+      status: b.status,
+      startDate: b.startDate,
+      endDate: b.endDate,
+      days: b.days,
+      rentalCents: b.rentalCents,
+      disassemblyCents: b.disassemblyCents,
+      pickupTime: b.pickupTime,
+      setName: b.set.name,
+      pickupPointId: b.pickupPointId,
+      pickupPointName: b.pickupPoint?.name ?? null,
+      customerFirstName: b.customer.firstName,
+      customerLastName: b.customer.lastName,
+      customerPhone: b.customer.phone,
+      customerBlocked: b.customer.blocked,
+      extension: ext ? (ext.status as "pending_review" | "pending_payment") : null,
+      extensionDetail: ext
+        ? { newEndDate: ext.newEndDate, extraDays: ext.extraDays, extraRentalCents: ext.extraRentalCents }
+        : null,
+    };
+  });
 
   return (
     <>

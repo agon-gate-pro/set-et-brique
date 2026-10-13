@@ -99,6 +99,32 @@ export function BookingDialog({ row, today, onClose }: { row: BookingRow; today:
           </Block>
         </dl>
 
+        {row.extension && row.extensionDetail ? (
+          // Prolongation en cours : les blocs du dessus restent ceux de la location d'origine (la date de
+          // retour ne change qu'au paiement), la demande s'affiche à part, dans la couleur de sa pastille.
+          <div
+            className={`mt-5 rounded-xl border p-4 ${
+              row.extension === "pending_review" ? "border-sun-deep bg-sun/20" : "border-orange-500 bg-orange-50"
+            }`}
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-ink">
+              {row.extension === "pending_review" ? "Prolongation demandée" : "Prolongation acceptée, à payer"}
+            </p>
+            <p className="mt-1 font-semibold text-ink-deep">
+              Retour repoussé du {formatDate(row.endDate)} au {formatDate(row.extensionDetail.newEndDate)}
+            </p>
+            <p className="text-sm text-slate-ink">
+              {row.extensionDetail.extraDays} jour{row.extensionDetail.extraDays > 1 ? "s" : ""} de plus · supplément de{" "}
+              {formatCents(row.extensionDetail.extraRentalCents)}
+            </p>
+            <p className="mt-1 text-sm text-slate-ink">
+              {row.extension === "pending_review"
+                ? "À accepter ou refuser depuis la fiche complète."
+                : "Le retour reste à la date d'origine tant que le supplément n'est pas payé."}
+            </p>
+          </div>
+        ) : null}
+
         <div className="mt-6 border-t border-slate-ink/10">
           {row.status === "pending_review" ? (
             <div className="flex justify-end">
