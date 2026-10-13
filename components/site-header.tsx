@@ -182,6 +182,16 @@ export function SiteHeader() {
                       Mes locations
                       <PendingBadge count={actionCount} className="ml-auto" />
                     </Link>
+                    {/* Même page que « Mes locations », à la rubrique des bons cadeaux achetés (13 octobre 2026). */}
+                    <Link
+                      href="/compte#bons-cadeaux"
+                      role="menuitem"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 font-semibold text-sm text-ink-deep hover:bg-sky transition-colors"
+                    >
+                      <Gift className="h-4 w-4" />
+                      Mes bons cadeaux
+                    </Link>
                     <Link
                       href="/compte/profil"
                       role="menuitem"
@@ -373,6 +383,10 @@ function MobileMenu({
               <ClipboardList className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
               Mes locations
               <PendingBadge count={actionCount} />
+            </Link>
+            <Link href="/compte#bons-cadeaux" onClick={onClose} className={linkClass(false)}>
+              <Gift className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
+              Mes bons cadeaux
             </Link>
             <Link href="/compte/profil" onClick={onClose} className={linkClass(isCurrent("/compte/profil"))}>
               <Settings className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />

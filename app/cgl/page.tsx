@@ -8,7 +8,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Texte validé par la cliente (version du 7 octobre 2026), repris tel quel : c'est un document
+ * Texte validé par la cliente (version du 13 octobre 2026 : article 9, prolongation, réécrit sur
+ * notre proposition et validé par elle ; le reste date du 7 octobre 2026), repris tel quel : c'est un document
  * contractuel, ses chiffres et ses coordonnées sont donc écrits en dur, pas tirés de `lib/site.ts`
  * ni de la base. Toute modification du texte vient d'elle.
  */
@@ -75,7 +76,7 @@ export default function RentalTermsPage() {
           <br className="hidden sm:block" /> de location
         </h1>
         <p className="mt-4 text-lg text-slate-ink">
-          Version du <strong className="text-ink-deep">7 octobre 2026</strong>
+          Version du <strong className="text-ink-deep">13 octobre 2026</strong>
         </p>
         <div className="mt-6 flex items-center gap-3">
           <span className="block h-1 w-12 rounded-full bg-brick" />
@@ -248,14 +249,33 @@ export default function RentalTermsPage() {
 
             <Article number={9} title="Prolongation">
               <p>
-                Le client peut demander une prolongation pendant sa location. Set et Brique examine
-                manuellement sa demande selon la disponibilité du set. Sans son accord, la date et
-                l’heure de restitution initiales restent applicables.
+                Le client peut demander une prolongation depuis son compte pendant sa location, au
+                plus tard la veille de la date de restitution convenue. Aucune demande n’est
+                possible le jour de la restitution. Set et Brique examine manuellement chaque
+                demande selon la disponibilité du set.
+              </p>
+              <p>
+                Tant que Set et Brique n’a pas accepté la demande et que le client n’a pas payé la
+                prolongation, la date et l’heure de restitution initiales restent applicables. Une
+                demande restée sans réponse à la fin du jour de restitution initial est caduque.
               </p>
               <p>
                 Si Set et Brique accepte la prolongation, le client paie 2 € par jour supplémentaire
-                sur le site et autorise, si nécessaire, la garantie liée à cette prolongation. Aucun
-                nouveau rendez-vous de remise n’est nécessaire.
+                sur le site, dans le délai indiqué lors de l’acceptation. Ce délai ne dépasse jamais
+                la fin du jour de restitution initial. À défaut de paiement dans ce délai, la
+                prolongation est annulée sans frais et le set est à restituer à la date initiale. En
+                cas de retard, l’article 10 s’applique.
+              </p>
+              <p>
+                Au paiement de la prolongation, Set et Brique demande une nouvelle empreinte
+                bancaire de garantie du même montant, puis demande la libération de la précédente.
+                Selon la banque du client, les deux empreintes peuvent apparaître en même temps
+                pendant quelques jours. Aucune n’est débitée en dehors des cas prévus par les
+                présentes conditions.
+              </p>
+              <p>
+                Une fois payée, la prolongation repousse la date de restitution. Le lieu de
+                restitution ne change pas et aucun nouveau rendez-vous de remise n’est nécessaire.
               </p>
             </Article>
 

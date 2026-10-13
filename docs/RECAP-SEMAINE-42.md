@@ -12,7 +12,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 - **Création de compte : « regardez dans vos spams »** (13 octobre). À l'étape où le site demande le code reçu par e-mail, un encart rappelle au client de vérifier ses courriers indésirables s'il ne voit pas l'e-mail.
 
-- **Bon cadeau acheté en ligne : imprimable** (13 octobre). Après le paiement, un bouton « Imprimer le bon cadeau » ouvre le bon dessiné par Marion, prêt à imprimer. L'acheteur le retrouve ensuite dans son compte, rubrique « Mes bons cadeaux », pour le revoir ou le réimprimer ; le bouton de l'e-mail d'achat y mène aussi. Pas de PDF joint à l'e-mail.
+- **Bon cadeau acheté en ligne : imprimable** (13 octobre). Après le paiement, un bouton « Imprimer le bon cadeau » ouvre le bon dessiné par Marion, prêt à imprimer. L'acheteur le retrouve ensuite dans son compte, rubrique « Mes bons cadeaux », pour le revoir ou le réimprimer ; le bouton de l'e-mail d'achat y mène aussi. Le menu du compte a une nouvelle entrée « Mes bons cadeaux », à côté de « Mes locations ». Pas de PDF joint à l'e-mail.
 
 ### Pour les gérants (espace de gestion)
 
@@ -36,6 +36,9 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ## 4. À voir avec Marion
 
+**Réponses reçues le 13 octobre** aux questions de la semaine 41 : prolongation possible jusqu'à la veille du retour et date d'origine due sans réponse ou sans paiement, oui ; nouvelle empreinte de caution au paiement de la prolongation, oui ; numéros de téléphone étrangers refusés, ok. Pour le paragraphe des conditions générales, elle demande une proposition de texte.
+
+- ~~**Article 9 des conditions générales (prolongation)**~~ : texte proposé, validé par Marion et mis en ligne le 13 octobre (les conditions générales passent en « version du 13 octobre 2026 »).
 - **Couleurs de la liste des réservations** : son code couleur disait « vert = payé », location rendue comprise. Depuis le 13 octobre, une location rendue n'a plus de couleur, pour qu'un set payé à remettre ne se confonde pas avec une location terminée. À lui signaler.
 
 ## 5. À vérifier par Alexis avant la mise en ligne

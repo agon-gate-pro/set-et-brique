@@ -143,9 +143,19 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         </ul>
       )}
 
-      {vouchers.length > 0 ? (
+      {/* Toujours affichée : l'entrée « Mes bons cadeaux » du menu du compte mène ici (`#bons-cadeaux`). */}
+      <h2 id="bons-cadeaux" className="mt-10 text-2xl font-semibold scroll-mt-24">
+        Mes bons cadeaux
+      </h2>
+      {vouchers.length === 0 ? (
+        <p className="mt-3 text-slate-ink max-w-xl">
+          Vous n&apos;avez pas encore acheté de bon cadeau.{" "}
+          <Link href="/bons-cadeaux" className="font-semibold underline underline-offset-4">
+            Offrir un bon cadeau
+          </Link>
+        </p>
+      ) : (
         <>
-          <h2 className="mt-10 text-2xl font-semibold">Mes bons cadeaux</h2>
           <ul className="mt-4 space-y-3">
             {vouchers.map((v) => {
               const status = giftVoucherDisplayStatus(v);
@@ -173,7 +183,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
             })}
           </ul>
         </>
-      ) : null}
+      )}
 
       {past.length > 0 ? (
         <>
