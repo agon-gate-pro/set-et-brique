@@ -6,7 +6,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ### Pour les clients
 
-- **Date de remise plus lisible dans « Mes locations »** (13 octobre) : « Remise prévue le mer. 14 octobre 2026 à 10:00 » a sa propre ligne, date en gras ; la phrase « Si nous devons modifier le lieu ou l'heure, vous le verrez ici » passe en dessous, en plus petit.
+- **Date de remise plus lisible dans « Mes locations »** (13 octobre) : « Remise prévue le mer. 14 octobre 2026 à 10:00 » a sa propre ligne, date en gras ; la phrase « Si nous devons modifier le lieu ou l'heure, vous le verrez ici » passe en dessous, en plus petit. Pareil pour une location en cours : « À rendre le jeu. 15 octobre 2026 » en premier, date en gras, puis « Set récupéré le … » en plus petit.
 
 ### Pour les gérants (espace de gestion)
 

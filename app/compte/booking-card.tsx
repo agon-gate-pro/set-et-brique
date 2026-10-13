@@ -171,10 +171,16 @@ export function BookingCard({
             contacter au plus vite pour convenir du retour.
           </p>
         ) : (
-          <p className="mt-4 text-slate-ink">
-            Set récupéré{booking.pickedUpAt ? ` le ${formatDate(booking.pickedUpAt.toISOString().slice(0, 10))}` : ""}. À rendre le{" "}
-            {formatDate(booking.endDate)}, à l&apos;heure qui vous arrange.
-          </p>
+          // Même présentation que la remise prévue : la date à retenir en gras sur sa ligne, le reste en dessous.
+          <div className="mt-4">
+            <p className="text-ink-deep">
+              À rendre le <strong className="font-bold">{formatDate(booking.endDate)}</strong>, à l&apos;heure qui vous
+              arrange.
+            </p>
+            <p className="mt-1 text-sm text-slate-ink">
+              Set récupéré{booking.pickedUpAt ? ` le ${formatDate(booking.pickedUpAt.toISOString().slice(0, 10))}` : ""}.
+            </p>
+          </div>
         )
       ) : null}
 
