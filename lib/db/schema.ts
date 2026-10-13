@@ -73,6 +73,13 @@ export const bookingExtensionStatus = pgEnum("booking_extension_status", [
 
 export const bookingActor = pgEnum("booking_actor", ["customer", "admin", "system"]);
 
+/**
+ * Empreinte de caution d'une réservation (`lib/deposits.ts`) : `none` tant qu'elle n'a pas été
+ * tentée, `held` en place sur la carte, `failed` refusée ou expirée alors que le set est encore
+ * dû, `released` libérée sans débit, `captured` prélevée en tout ou partie.
+ */
+export const bookingDepositStatus = pgEnum("booking_deposit_status", ["none", "held", "failed", "released", "captured"]);
+
 export const giftVoucherOrigin = pgEnum("gift_voucher_origin", ["purchase", "admin"]);
 
 export const giftVoucherStatus = pgEnum("gift_voucher_status", [
@@ -319,6 +326,12 @@ export const bookings = pgTable(
      * le numéro de carte. Vide si rien n'a été payé par carte (bon cadeau, paiement hors ligne).
      */
     stripePaymentMethodId: text("stripe_payment_method_id"),
+    depositStatus: bookingDepositStatus("deposit_status").notNull().default("none"),
+    depositHeldAt: timestamp("deposit_held_at", { withTimezone: true }),
+    /** Fin de validité de l'empreinte annoncée par Stripe (5 jours pour Visa, 7 pour les autres réseaux). */
+    depositExpiresAt: timestamp("deposit_expires_at", { withTimezone: true }),
+    /** Motif du dernier refus, en clair, montré aux gérants. */
+    depositError: text("deposit_error"),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
     /** Motif communiqué au client en cas de refus ou d'annulation. */

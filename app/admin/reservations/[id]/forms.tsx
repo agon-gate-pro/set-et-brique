@@ -5,7 +5,7 @@ import { useFormDirty } from "@/lib/use-form-dirty";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
 import type { Booking, BookingExtension, Customer } from "@/lib/db/schema";
 import { daysLate, todayIso } from "@/lib/dates";
-import { formatCents, formatDate, formatTime } from "@/lib/format";
+import { depositStateLabel, formatCents, formatDate, formatTime } from "@/lib/format";
 import { paymentMethods } from "@/lib/validation";
 import {
   acceptBooking,
@@ -100,8 +100,24 @@ export function HandoverActions({ booking }: { booking: Booking }) {
         <h2 className="text-2xl font-semibold">Remise du set</h2>
         <p className="mt-2 text-slate-ink">
           À enregistrer une fois le set remis en main propre, remise prévue le {formatDate(booking.startDate)}.
-          {booking.status === "pending_payment" ? " Le loyer peut être réglé sur place par TPE." : ""}
         </p>
+        {/* Caution : l'empreinte se pose toute seule le matin du jour de remise (`lib/deposits.ts`). */}
+        {booking.status === "confirmed" && booking.depositCents > 0 ? (
+          booking.depositStatus === "held" ? (
+            <p className="mt-2 font-semibold text-leaf-deep">
+              Caution de {formatCents(booking.depositCents)} : {depositStateLabel(booking)?.toLowerCase()}.
+            </p>
+          ) : booking.depositStatus === "failed" ? (
+            <p className="mt-2 rounded-xl border border-brick/30 bg-red-50 px-4 py-3 font-semibold text-brick-deep">
+              Caution de {formatCents(booking.depositCents)} non garantie. {depositStateLabel(booking)}. Voyez avec le client
+              avant de remettre le set.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-slate-ink">
+              Caution de {formatCents(booking.depositCents)} : {depositStateLabel(booking)?.toLowerCase()}.
+            </p>
+          )
+        ) : null}
         <form action={pickupAction} className="mt-4 grid gap-4 sm:grid-cols-[10rem_1fr_auto] items-end">
           <input type="hidden" name="id" value={booking.id} />
           <Field label="Remis le">

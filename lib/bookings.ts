@@ -115,6 +115,7 @@ export const bookingCustomerColumns = {
   days: true,
   rentalCents: true,
   depositCents: true,
+  depositStatus: true,
   disassemblyCents: true,
   proposedStartDate: true,
   proposedEndDate: true,

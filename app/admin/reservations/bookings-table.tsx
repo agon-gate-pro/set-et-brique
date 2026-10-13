@@ -19,9 +19,10 @@ export type BookingRow = {
   rentalCents: number;
   /** Option « rendre le set monté » choisie, prix figé ; null = non choisie. */
   disassemblyCents: number | null;
-  /** Caution du set, et si une carte est enregistrée chez Stripe pour poser son empreinte. */
+  /** Caution du set, et où en est son empreinte (`depositStateLabel`) ; `depositMissing` quand elle est refusée. */
   depositCents: number;
-  cardSaved: boolean;
+  depositLabel: string | null;
+  depositMissing: boolean;
   pickupTime: string | null;
   setName: string;
   pickupPointId: string | null;

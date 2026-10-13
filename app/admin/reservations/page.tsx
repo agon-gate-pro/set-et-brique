@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { asc, desc, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { todayIso } from "@/lib/dates";
+import { depositStateLabel } from "@/lib/format";
 import { ACTIVE_EXTENSION_STATUSES, expireStaleExtensions } from "@/lib/extensions";
 import { BookingsTable, UPCOMING_GROUP_KEYS, type BookingRow } from "./bookings-table";
 import { requireRole } from "@/lib/auth";
@@ -65,7 +66,8 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/r
       rentalCents: b.rentalCents,
       disassemblyCents: b.disassemblyCents,
       depositCents: b.depositCents,
-      cardSaved: b.stripePaymentMethodId != null,
+      depositLabel: depositStateLabel(b),
+      depositMissing: b.depositStatus === "failed",
       pickupTime: b.pickupTime,
       setName: b.set.name,
       pickupPointId: b.pickupPointId,

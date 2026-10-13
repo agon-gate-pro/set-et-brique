@@ -215,6 +215,35 @@ export const adminBookingStatusLabels = {
   confirmed: "Payée, à remettre",
 } as const;
 
+const depositDateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
+
+/**
+ * Où en est l'empreinte de caution d'une réservation, en quelques mots pour les gérants (fiche,
+ * aperçu, bloc « Remise du set »). Null tant que la question ne se pose pas : réservation pas
+ * encore payée, ou annulée sans empreinte.
+ */
+export function depositStateLabel(b: {
+  status: string;
+  depositStatus: string;
+  depositExpiresAt: Date | null;
+  depositError: string | null;
+  stripePaymentMethodId: string | null;
+}): string | null {
+  switch (b.depositStatus) {
+    case "held":
+      return `Empreinte en place${b.depositExpiresAt ? ` jusqu'au ${depositDateTime.format(b.depositExpiresAt)}` : ""}`;
+    case "failed":
+      return `Empreinte refusée${b.depositError ? ` : ${b.depositError}` : ""}`;
+    case "released":
+      return "Empreinte libérée, sans débit";
+    case "captured":
+      return "Caution prélevée";
+    default:
+      if (b.status !== "confirmed" && b.status !== "picked_up") return null;
+      return b.stripePaymentMethodId ? "Carte enregistrée, empreinte posée le jour de la remise" : "Aucune carte enregistrée";
+  }
+}
+
 /** `expired` n'est pas stocké en base : il se déduit de `status` + `expiresAt`. */
 export const giftVoucherStatusLabels = {
   valid: "Valide",

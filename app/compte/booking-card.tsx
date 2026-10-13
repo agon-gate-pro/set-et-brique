@@ -57,6 +57,20 @@ export function BookingCard({
   const placeChanged = previousPickupPoint !== pickupPoint;
   const cancellable = booking.status === "pending_review" || booking.status === "date_proposed";
   const late = booking.status === "picked_up" ? daysLate(booking.endDate, todayIso()) : 0;
+  // Caution : ce que le client doit savoir de l'empreinte posée sur sa carte (`lib/deposits.ts`).
+  const deposit = formatCents(booking.depositCents);
+  const depositNote =
+    booking.depositCents <= 0
+      ? null
+      : booking.depositStatus === "held"
+        ? `Caution : une empreinte de ${deposit} est en place sur votre carte. Elle n'est pas débitée.`
+        : booking.depositStatus === "failed" && (booking.status === "confirmed" || booking.status === "picked_up")
+          ? `Caution : l'empreinte de ${deposit} n'a pas pu être posée sur votre carte. Contactez-nous avant la remise du set.`
+          : booking.depositStatus === "released"
+            ? `Caution : l'empreinte de ${deposit} est libérée, rien n'a été débité.`
+            : booking.depositStatus === "none" && booking.status === "confirmed"
+              ? `Caution : une empreinte de ${deposit} sera posée sur votre carte le jour de la remise, sans débit.`
+              : null;
   // Une prolongation en cours prime sur « En cours de location » : c'est elle qui attend quelque chose.
   const extensionStatus = extension?.current?.status ?? null;
   const statusBadge =
@@ -162,6 +176,10 @@ export function BookingCard({
             Si nous devons modifier le lieu ou l&apos;heure, vous le verrez ici.
           </p>
         </div>
+      ) : null}
+
+      {depositNote ? (
+        <p className={`mt-3 text-sm ${booking.depositStatus === "failed" ? "font-semibold text-brick-deep" : "text-slate-ink"}`}>{depositNote}</p>
       ) : null}
 
       {booking.status === "picked_up" ? (

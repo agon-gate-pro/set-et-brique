@@ -33,7 +33,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ### Caution : où on en est
 
-Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Si un bon cadeau règle toute la location, la carte est demandée quand même, sans rien débiter, pour que la caution soit possible. Rien n'est encore bloqué sur sa carte. Restent : l'empreinte automatique le jour de la remise, le cas où elle échoue, le retour (libération ou retenue), la prolongation.
+Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Si un bon cadeau règle toute la location, la carte est demandée quand même, sans rien débiter, pour que la caution soit possible. **Étape 2 faite le 13 octobre** : le matin du jour de remise, le site bloque tout seul le montant de la caution sur cette carte, sans la débiter, et la rebloque si l'empreinte arrive à expiration pendant la location. Les gérants voient sur la réservation si l'empreinte est en place ou refusée (et pourquoi) ; le client le voit sur sa location. Restent : le cas où elle échoue (le client la valide lui-même, les gérants peuvent la redemander, pas de remise sans elle), le retour (libération ou retenue), la prolongation.
 
 ## 3. Mise en production et infrastructure (pour Madus)
 
@@ -41,6 +41,7 @@ Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client 
 - **13 octobre** : migration **`0022_extension_stripe`** appliquée à la base (deux colonnes vides ajoutées à `booking_extensions`, pour garder l'identifiant du paiement Stripe d'une prolongation). Les paiements de prolongation passent par le même webhook Stripe que les locations, rien à configurer de plus.
 - **13 octobre** : migration **`0023_gift_voucher_purchaser`** appliquée à la base (une colonne vide et son index sur `gift_vouchers`, pour rattacher un bon acheté au compte de son acheteur).
 - **13 octobre** : migration **`0024_deposit_saved_card`** appliquée à la base (deux colonnes vides : le client Stripe sur `customers`, la carte enregistrée sur `bookings`). À savoir pour le passage aux clés Stripe réelles : les clients Stripe créés en mode test n'existent pas en mode réel, le site en recrée un tout seul au premier paiement.
+- **13 octobre** : migration **`0025_deposit_hold`** appliquée à la base (état de l'empreinte de caution sur `bookings`). La tâche planifiée du matin (`/api/cron/paiements-expires`) pose et renouvelle désormais les empreintes : elle doit tourner chaque jour, donc `CRON_SECRET` doit rester en place dans Vercel.
 
 ## 4. À voir avec Marion
 
@@ -51,6 +52,7 @@ Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client 
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 
+- L'empreinte de caution en mode test : une location dont la remise est aujourd'hui, payée par carte ; la fiche doit afficher « Empreinte en place jusqu'au … » et le Dashboard Stripe un paiement « non capturé » du montant de la caution. Puis le cas d'un refus avec la carte de test `4000 0027 6000 3184` (la banque exige une validation à chaque opération : le paiement passe après validation, l'empreinte automatique est refusée).
 - Un paiement de location par carte en mode test : la phrase sur la carte enregistrée sous le bouton de la page Stripe, puis « carte enregistrée » à côté de la caution sur la fiche de la réservation.
 - L'achat d'un bon cadeau : bouton « Imprimer le bon cadeau », rendu à l'impression, puis le bon dans « Mes bons cadeaux ».
 - L'encart « regardez dans vos spams » en créant un compte de test : il doit apparaître à l'étape du code, pas avant.

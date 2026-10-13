@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
 import { Bot, Store, User } from "lucide-react";
 import { db, schema } from "@/lib/db";
-import { adminBookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
+import { adminBookingStatusLabels, depositStateLabel, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
+import { placeDepositHoldIfDue } from "@/lib/deposits";
 import { daysLate, todayIso } from "@/lib/dates";
 import { AdminNoteForm, CustomerBlockForm, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
 import { expireStaleExtensions } from "@/lib/extensions";
@@ -40,6 +41,10 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
   // Prolongation restée sans réponse ou sans paiement à temps : expirée avant d'afficher la fiche.
   await expireStaleExtensions();
   const { id } = await params;
+  // Jour de remise arrivé et empreinte de caution pas encore tentée (paiement enregistré après le
+  // passage du matin, par exemple) : posée avant d'afficher la fiche, pour que les gérants voient
+  // où elle en est au moment de remettre le set. Un échec technique ne bloque pas l'affichage.
+  await placeDepositHoldIfDue(id).catch((e) => console.error("[stripe] empreinte de caution à l'ouverture de la fiche", id, e));
   const booking = await db.query.bookings.findFirst({
     where: eq(schema.bookings.id, id),
     with: {
@@ -130,11 +135,13 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                     <span className="block text-sm text-slate-ink">
                       {b.disassemblyCents != null ? `+ ${formatCents(b.disassemblyCents)} rendu monté` : "Rendu monté : non"}
                     </span>
-                    <span className="block text-sm text-slate-ink">
-                      Caution {formatCents(b.depositCents)}
-                      {/* Carte gardée chez Stripe au paiement en ligne : l'empreinte de caution se posera dessus. */}
-                      {b.stripePaymentMethodId ? " · carte enregistrée" : ""}
-                    </span>
+                    <span className="block text-sm text-slate-ink">Caution {formatCents(b.depositCents)}</span>
+                    {/* État de l'empreinte de caution (`lib/deposits.ts`) ; en rouge quand elle manque alors que le set est dû. */}
+                    {depositStateLabel(b) ? (
+                      <span className={`block text-sm ${b.depositStatus === "failed" ? "font-bold text-brick-deep" : "text-slate-ink"}`}>
+                        {depositStateLabel(b)}
+                      </span>
+                    ) : null}
                   </Block>
                   <Block label="Remise">
                     <span className="block font-semibold text-ink-deep">

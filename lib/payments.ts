@@ -4,6 +4,7 @@ import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import StripeSdk, { type Stripe } from "stripe";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
+import { queueDepositHoldIfDue } from "@/lib/deposits";
 import { ExtensionError, markExtensionPaid } from "@/lib/extensions";
 import { formatCents } from "@/lib/format";
 import { queueGiftVoucherEmail } from "@/lib/email/gift-voucher-emails";
@@ -364,6 +365,8 @@ export async function confirmBookingPayment(opts: {
   });
   if (!done) return "skipped";
   queueBookingEmails("paid_online", opts.bookingId);
+  // Payée le jour même de la remise : l'empreinte de caution n'attend pas la tâche du lendemain.
+  queueDepositHoldIfDue(opts.bookingId);
   return "confirmed";
 }
 

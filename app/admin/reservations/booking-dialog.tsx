@@ -80,11 +80,11 @@ export function BookingDialog({ row, today, onClose }: { row: BookingRow; today:
             {row.disassemblyCents != null ? (
               <span className="block text-sm text-slate-ink">+ {formatCents(row.disassemblyCents)} rendu monté</span>
             ) : null}
-            {/* Comme sur la fiche : la caution du set, et la carte gardée chez Stripe pour son empreinte. */}
-            <span className="block text-sm text-slate-ink">
-              Caution {formatCents(row.depositCents)}
-              {row.cardSaved ? " · carte enregistrée" : ""}
-            </span>
+            {/* Comme sur la fiche : la caution du set, puis où en est son empreinte. */}
+            <span className="block text-sm text-slate-ink">Caution {formatCents(row.depositCents)}</span>
+            {row.depositLabel ? (
+              <span className={`block text-sm ${row.depositMissing ? "font-bold text-brick-deep" : "text-slate-ink"}`}>{row.depositLabel}</span>
+            ) : null}
           </Block>
           <Block label="Remise">
             <span className="block font-semibold text-ink-deep">
