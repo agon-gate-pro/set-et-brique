@@ -171,7 +171,14 @@ export function ExtensionPayment({ extension, setName, reference, endDate, dueLa
                     spellCheck={false}
                     className={`${inputClass} uppercase placeholder:normal-case`}
                   />
-                  <button type="submit" disabled={checking || !code.trim()} className="btn btn-paper text-sm py-2 px-4 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {/* Grisé tant qu'aucun code n'est saisi, vert dès qu'on peut l'appliquer : comme les boutons « Enregistrer ». */}
+                  <button
+                    type="submit"
+                    disabled={checking || !code.trim()}
+                    className={`btn text-sm py-2 px-4 shrink-0 ${
+                      checking ? "btn-leaf opacity-60 cursor-wait" : code.trim() ? "btn-leaf" : "bg-slate-200 text-slate-ink/50 shadow-none cursor-not-allowed"
+                    }`}
+                  >
                     {checking ? "Vérification…" : "Appliquer"}
                   </button>
                 </div>
