@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
+import { Bot, Store, User } from "lucide-react";
 import { db, schema } from "@/lib/db";
 import { adminBookingStatusLabels, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { daysLate, todayIso } from "@/lib/dates";
@@ -18,7 +19,12 @@ import { AdminPageTitle } from "@/components/admin/sections";
 export const metadata: Metadata = { title: "Réservation", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-const actorLabels = { customer: "client", admin: "gérants", system: "système" } as const;
+/** Auteur d'une ligne d'historique : une icône et un nom, pour le repérer d'un coup d'œil dans la colonne. */
+const actors = {
+  customer: { label: "Client", icon: User },
+  admin: { label: "Gérants", icon: Store },
+  system: { label: "Système", icon: Bot },
+} as const;
 const emailStatusLabels: Record<string, string> = {
   sent: "envoyé",
   failed: "échec de l'envoi",
@@ -215,6 +221,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                     const badge = e.toStatus
                       ? { label: adminBookingStatusLabels[e.toStatus], badge: statusTone(e.toStatus)?.badge ?? neutralBadge }
                       : extensionEventBadge(e.message);
+                    const actor = actors[e.actor];
                     return (
                       <li key={e.id} className="grid items-center gap-y-1 py-2 first:pt-0 sm:col-span-4 sm:grid-cols-subgrid">
                         <span className="text-slate-ink tabular-nums whitespace-nowrap">{dateTime.format(e.createdAt)}</span>
@@ -226,7 +233,10 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-md border whitespace-nowrap ${badge.badge}`}>{badge.label}</span>
                           ) : null}
                         </span>
-                        <span className="text-slate-ink whitespace-nowrap">{actorLabels[e.actor]}</span>
+                        <span className="flex items-center gap-1.5 font-semibold text-ink-deep whitespace-nowrap">
+                          <actor.icon className="h-4 w-4 shrink-0 text-slate-ink" aria-hidden="true" />
+                          {actor.label}
+                        </span>
                       </li>
                     );
                   })}
