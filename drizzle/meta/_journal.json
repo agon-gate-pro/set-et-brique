@@ -183,6 +183,13 @@
       "when": 1791886006403,
       "tag": "0025_deposit_hold",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791887986231,
+      "tag": "0026_deposit_settlement",
+      "breakpoints": true
     }
   ]
 }

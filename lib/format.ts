@@ -228,6 +228,8 @@ export function depositStateLabel(b: {
   depositExpiresAt: Date | null;
   depositError: string | null;
   stripePaymentMethodId: string | null;
+  depositCapturedCents?: number | null;
+  depositCaptureReason?: string | null;
 }): string | null {
   switch (b.depositStatus) {
     case "held":
@@ -237,7 +239,9 @@ export function depositStateLabel(b: {
     case "released":
       return "Empreinte libérée, sans débit";
     case "captured":
-      return "Caution prélevée";
+      return `${b.depositCapturedCents != null ? `${formatCents(b.depositCapturedCents)} retenus sur la caution` : "Somme retenue sur la caution"}${
+        b.depositCaptureReason ? ` : ${b.depositCaptureReason}` : ""
+      }`;
     default:
       if (b.status !== "confirmed" && b.status !== "picked_up") return null;
       return b.stripePaymentMethodId ? "Carte enregistrée, empreinte posée le jour de la remise" : "Aucune carte enregistrée";

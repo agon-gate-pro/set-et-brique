@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, eq, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
 import { after } from "next/server";
 import StripeSdk from "stripe";
 import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { queueBookingEmails } from "@/lib/email/booking-emails";
 import { formatCents } from "@/lib/format";
 import { stripe } from "@/lib/stripe";
 
@@ -20,8 +21,12 @@ import { stripe } from "@/lib/stripe";
  * pratique) et 7 jours pour les autres réseaux : c'est pourquoi elle est posée au plus tard, le
  * jour de la remise, et renouvelée ensuite. La date exacte vient de Stripe (`capture_before`).
  *
+ * Au retour (étape 4) : les gérants libèrent l'empreinte ou retiennent une somme ; sans geste de
+ * leur part, elle est libérée d'office 48 heures après le retour. À la prolongation (étape 5) :
+ * une nouvelle empreinte est posée au paiement du supplément, puis l'ancienne libérée.
+ *
  * Pas encore là : le client qui valide lui-même une empreinte refusée, « Redemander l'empreinte »
- * et le blocage de « Set remis » (étape 3) ; la libération et les retenues au retour (étape 4).
+ * et le blocage de « Set remis » (étape 3).
  */
 
 /** Validité retenue quand Stripe n'annonce pas de date : la plus courte, celle de Visa. */
@@ -29,6 +34,9 @@ const FALLBACK_VALIDITY_MS = (4 * 24 + 18) * 3_600_000;
 
 /** Une empreinte qui tombe avant le prochain passage quotidien (plus une marge) est renouvelée. */
 const RENEW_BEFORE_MS = 30 * 3_600_000;
+
+/** Délai de contrôle du set après son retour, au bout duquel la caution est libérée d'office (CGL, article 6). */
+export const RELEASE_AFTER_RETURN_MS = 48 * 3_600_000;
 
 const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
 
@@ -68,7 +76,11 @@ export async function placeDepositHold(bookingId: string, opts: { renew?: boolea
     with: { customer: { columns: { stripeCustomerId: true } }, set: { columns: { name: true } } },
   });
   if (!booking || booking.depositCents <= 0) return "skipped";
-  if (booking.status !== "confirmed" && booking.status !== "picked_up") return "skipped";
+  // Set rendu : on ne pose plus rien, mais une empreinte en place peut encore être renouvelée
+  // pendant les 48 heures de contrôle, pour que les gérants gardent de quoi retenir une somme.
+  const out = booking.status === "confirmed" || booking.status === "picked_up";
+  const underReview = booking.status === "returned" && booking.depositStatus === "held" && opts.renew;
+  if (!out && !underReview) return "skipped";
   if (booking.depositStatus === "held" && !opts.renew) return "skipped";
   if (booking.depositStatus === "released" || booking.depositStatus === "captured") return "skipped";
 
@@ -192,8 +204,31 @@ export function queueDepositHoldIfDue(bookingId: string) {
 }
 
 /**
+ * Prolongation payée (étape 5) : une nouvelle empreinte est posée, puis l'ancienne libérée, comme
+ * l'annonce l'article 9 des conditions générales. Elle repart ainsi pour toute sa durée de validité
+ * au début de la période ajoutée. Si la précédente avait été refusée, c'est une nouvelle tentative,
+ * sur la carte du paiement de la prolongation quand il y en a une.
+ */
+export function queueDepositRenewal(bookingId: string) {
+  after(async () => {
+    try {
+      const booking = await db.query.bookings.findFirst({
+        where: eq(schema.bookings.id, bookingId),
+        columns: { status: true, depositStatus: true },
+      });
+      if (!booking || booking.status !== "picked_up") return;
+      if (booking.depositStatus !== "held" && booking.depositStatus !== "failed" && booking.depositStatus !== "none") return;
+      await placeDepositHold(bookingId, { renew: true });
+    } catch (e) {
+      console.error("[stripe] empreinte de caution après prolongation", bookingId, e);
+    }
+  });
+}
+
+/**
  * Passage régulier (tâche planifiée quotidienne) :
  *
+ * 0. empreintes à libérer : set rendu depuis plus de 48 heures, réservation annulée ;
  * 1. empreintes arrivées à leur terme : la banque a déjà libéré la somme, la réservation le dit ;
  * 2. empreintes à poser : réservations payées dont le jour de remise est arrivé ;
  * 3. empreintes à renouveler : set encore à remettre ou chez le client, empreinte qui expire bientôt.
@@ -205,6 +240,28 @@ export function queueDepositHoldIfDue(bookingId: string) {
 export async function syncDepositHolds(now = new Date()) {
   const b = schema.bookings;
   const today = todayIso();
+
+  // Set rendu depuis plus de 48 heures sans retenue, ou réservation annulée : l'empreinte est libérée.
+  const toRelease = await db
+    .select({ id: b.id })
+    .from(b)
+    .where(
+      and(
+        eq(b.depositStatus, "held"),
+        or(
+          and(eq(b.status, "returned"), lt(b.returnedAt, new Date(now.getTime() - RELEASE_AFTER_RETURN_MS))),
+          eq(b.status, "cancelled"),
+        ),
+      ),
+    );
+  let released = 0;
+  for (const x of toRelease) {
+    try {
+      if ((await releaseDepositHold(x.id, "system")) === "released") released++;
+    } catch (e) {
+      console.error("[stripe] libération automatique de la caution", x.id, e);
+    }
+  }
 
   const expired = await db
     .select({ id: b.id, status: b.status })
@@ -236,7 +293,8 @@ export async function syncDepositHolds(now = new Date()) {
     .from(b)
     .where(
       and(
-        inArray(b.status, ["confirmed", "picked_up"]),
+        // `returned` : pendant les 48 heures de contrôle (au-delà, elle vient d'être libérée ci-dessus).
+        inArray(b.status, ["confirmed", "picked_up", "returned"]),
         eq(b.depositStatus, "held"),
         isNotNull(b.depositExpiresAt),
         lt(b.depositExpiresAt, new Date(now.getTime() + RENEW_BEFORE_MS)),
@@ -255,5 +313,102 @@ export async function syncDepositHolds(now = new Date()) {
     if (r === "held") held++;
     if (r === "failed") failed++;
   }
-  return { expired: expired.length, held, failed };
+  return { released, expired: expired.length, held, failed };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fin de l'empreinte : libération ou retenue (étape 4)                       */
+/* -------------------------------------------------------------------------- */
+
+export class DepositError extends Error {}
+
+/** Empreinte en place d'une réservation, ou l'erreur à montrer aux gérants. */
+async function heldDeposit(bookingId: string) {
+  const booking = await db.query.bookings.findFirst({ where: eq(schema.bookings.id, bookingId) });
+  if (!booking) throw new DepositError("Réservation introuvable.");
+  if (booking.depositStatus !== "held" || !booking.stripeDepositPaymentIntentId) {
+    throw new DepositError("Aucune empreinte de caution n'est en place sur cette réservation.");
+  }
+  return { booking, intentId: booking.stripeDepositPaymentIntentId };
+}
+
+/**
+ * Libère l'empreinte sans rien débiter : la somme redevient disponible sur la carte du client (le
+ * délai d'affichage dépend ensuite de sa banque). Par les gérants après contrôle du set, ou d'office
+ * 48 heures après le retour (`syncDepositHolds`).
+ */
+export async function releaseDepositHold(bookingId: string, actor: "admin" | "system"): Promise<"released" | "skipped"> {
+  const booking = await db.query.bookings.findFirst({ where: eq(schema.bookings.id, bookingId) });
+  if (!booking || booking.depositStatus !== "held" || !booking.stripeDepositPaymentIntentId) return "skipped";
+  try {
+    await stripe().paymentIntents.cancel(booking.stripeDepositPaymentIntentId);
+  } catch (e) {
+    // Déjà annulée ou expirée chez Stripe : la somme n'est plus bloquée, l'état suit.
+    const gone = e instanceof StripeSdk.errors.StripeInvalidRequestError && (e.code === "payment_intent_unexpected_state" || e.code === "resource_missing");
+    if (!gone) throw e;
+  }
+  const done = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(schema.bookings)
+      .set({ depositStatus: "released", depositSettledAt: new Date(), depositError: null })
+      .where(and(eq(schema.bookings.id, bookingId), eq(schema.bookings.depositStatus, "held")))
+      .returning({ id: schema.bookings.id });
+    if (!row) return false;
+    await tx.insert(schema.bookingEvents).values({
+      bookingId,
+      actor,
+      message:
+        actor === "system"
+          ? `Empreinte de caution de ${formatCents(booking.depositCents)} libérée automatiquement, sans débit`
+          : `Empreinte de caution de ${formatCents(booking.depositCents)} libérée, sans débit`,
+    });
+    return true;
+  });
+  if (!done) return "skipped";
+  // Seulement quand la location a eu lieu : une réservation annulée a déjà son e-mail.
+  if (booking.status === "returned") queueBookingEmails("deposit_released", bookingId);
+  return "released";
+}
+
+/**
+ * Retient une somme sur la caution (casse, pièces perdues, retard, set rendu non démonté…) : elle
+ * est débitée, le reste de l'empreinte est libéré par Stripe. Une empreinte ne se prélève qu'une
+ * fois. Le motif est montré au client, comme l'exigent les conditions générales (article 6).
+ */
+export async function captureDeposit(bookingId: string, amountCents: number, reason: string) {
+  const { booking, intentId } = await heldDeposit(bookingId);
+  if (!Number.isInteger(amountCents) || amountCents <= 0) throw new DepositError("Indiquez la somme à retenir.");
+  if (amountCents > booking.depositCents) {
+    throw new DepositError(`La retenue ne peut pas dépasser la caution (${formatCents(booking.depositCents)}).`);
+  }
+  try {
+    await stripe().paymentIntents.capture(intentId, { amount_to_capture: amountCents });
+  } catch (e) {
+    console.error("[stripe] retenue sur caution", bookingId, e);
+    throw new DepositError(
+      e instanceof StripeSdk.errors.StripeInvalidRequestError
+        ? "L'empreinte n'est plus valable chez Stripe (expirée ou déjà traitée) : rien n'a été prélevé."
+        : "Stripe n'a pas pu prélever la somme. Réessayez dans un instant.",
+    );
+  }
+  const rest = booking.depositCents - amountCents;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.bookings)
+      .set({
+        depositStatus: "captured",
+        depositCapturedCents: amountCents,
+        depositCaptureReason: reason,
+        depositSettledAt: new Date(),
+        depositError: null,
+      })
+      .where(eq(schema.bookings.id, bookingId));
+    await tx.insert(schema.bookingEvents).values({
+      bookingId,
+      actor: "admin",
+      message: `Caution : ${formatCents(amountCents)} retenus sur ${formatCents(booking.depositCents)} (${reason})${rest > 0 ? `, ${formatCents(rest)} libérés` : ""}`,
+    });
+  });
+  queueBookingEmails("deposit_captured", bookingId);
+  return { amountCents, rest };
 }

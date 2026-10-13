@@ -18,6 +18,8 @@ import {
   markReturned,
   refuseBooking,
   refuseBookingExtension,
+  releaseDeposit,
+  retainDeposit,
   saveAdminNote,
   toggleCustomerBlock,
   toggleReminders,
@@ -176,6 +178,111 @@ export function HandoverActions({ booking }: { booking: Booking }) {
   }
 
   return null;
+}
+
+const releaseFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" });
+
+/**
+ * Fin de l'empreinte de caution (`lib/deposits.ts`). Set rendu : libérer tout de suite, ou retenir
+ * une somme avec un motif montré au client ; sans geste, elle est libérée d'office 48 heures après
+ * le retour. Set en retard de deux jours ou plus : prélever la caution entière (CGL, article 10),
+ * à la main, pour que les gérants puissent y renoncer si le client a donné des nouvelles.
+ */
+export function DepositActions({ booking }: { booking: Booking }) {
+  const [releaseState, releaseAction] = useActionState(releaseDeposit, null);
+  const [retainState, retainAction] = useActionState(retainDeposit, null);
+  const [fullState, fullAction] = useActionState(retainDeposit, null);
+  if (booking.depositStatus !== "held") return null;
+  const deposit = formatCents(booking.depositCents);
+
+  if (booking.status === "returned") {
+    const autoRelease = booking.returnedAt ? new Date(booking.returnedAt.getTime() + 48 * 3_600_000) : null;
+    return (
+      <section id="caution" className="mt-8 brick-card p-6 bg-sky scroll-mt-24">
+        <h2 className="text-2xl font-semibold">Caution</h2>
+        <p className="mt-2 text-slate-ink">
+          L&apos;empreinte de <strong className="text-ink-deep">{deposit}</strong> est toujours en place sur la carte du client.
+          {autoRelease ? (
+            <>
+              {" "}
+              Sans geste de votre part, elle est libérée automatiquement après le{" "}
+              <strong className="text-ink-deep">{releaseFormatter.format(autoRelease)}</strong>.
+            </>
+          ) : null}
+        </p>
+
+        <form action={releaseAction} className="mt-4 flex flex-wrap items-center gap-3">
+          <input type="hidden" name="id" value={booking.id} />
+          <SubmitButton variant="leaf">Set conforme : libérer la caution</SubmitButton>
+          <FormMessage state={releaseState} />
+        </form>
+
+        <form action={retainAction} className="mt-6 grid gap-4 border-t border-slate-ink/15 pt-5 sm:grid-cols-[9rem_1fr_auto] items-end">
+          <input type="hidden" name="id" value={booking.id} />
+          <h3 className="sm:col-span-3 font-bold">Retenir une somme</h3>
+          <Field label="Somme, en euros" hint={`Au plus ${deposit}`}>
+            {/* Pas de `required` : la fenêtre de confirmation masquerait la bulle du navigateur ; l'action vérifie et répond dans la fenêtre. */}
+            <input name="amount" inputMode="decimal" className={inputClass} placeholder="15" />
+          </Field>
+          <Field label="Motif, visible du client">
+            <input name="reason" className={inputClass} placeholder="Set rendu monté : forfait démontage" />
+          </Field>
+          <ConfirmButton
+            asDialog
+            state={retainState}
+            confirmLabel="Oui, prélever cette somme"
+            pendingLabel="Prélèvement…"
+            className="btn btn-brick text-paper hover:text-paper no-underline"
+          >
+            Retenir sur la caution
+          </ConfirmButton>
+          <p className="sm:col-span-3 text-sm text-slate-ink">
+            La somme est débitée de la carte du client, le reste de l&apos;empreinte est libéré. Une seule retenue est
+            possible par caution : additionnez tout ce qui est dû. Le client reçoit un e-mail avec la somme et le motif.
+          </p>
+          <div className="sm:col-span-3">
+            <FormMessage state={retainState} />
+          </div>
+        </form>
+      </section>
+    );
+  }
+
+  const late = booking.status === "picked_up" ? daysLate(booking.endDate, todayIso()) : 0;
+  if (late < 2) return null;
+  return (
+    <section id="caution" className="mt-8 brick-card p-6 bg-brick/10 border-brick scroll-mt-24">
+      <h2 className="text-2xl font-semibold">Caution</h2>
+      <p className="mt-2 text-brick-deep font-semibold">
+        Retard de {late} jours. Si le client n&apos;a ni rendu le set ni donné de nouvelles, les conditions générales
+        (article 10) prévoient de prélever la totalité de la caution, soit {deposit}.
+      </p>
+      <form action={fullAction} className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] items-end">
+        <input type="hidden" name="id" value={booking.id} />
+        <input type="hidden" name="full" value="true" />
+        <Field label="Motif, visible du client">
+          <input
+            name="reason"
+            required
+            className={inputClass}
+            defaultValue={`Set non restitué, ${late} jours après la date de retour convenue`}
+          />
+        </Field>
+        <ConfirmButton
+          asDialog
+          state={fullState}
+          confirmLabel={`Oui, prélever ${deposit}`}
+          pendingLabel="Prélèvement…"
+          className="btn btn-brick text-paper hover:text-paper no-underline"
+        >
+          Prélever toute la caution
+        </ConfirmButton>
+        <div className="sm:col-span-2">
+          <FormMessage state={fullState} />
+        </div>
+      </form>
+    </section>
+  );
 }
 
 export function ReviewActions({

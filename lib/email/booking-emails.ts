@@ -27,7 +27,10 @@ export type BookingEmailEvent =
   | "payment_expired"
   | "paid"
   /** Paiement en ligne (module 4) : même e-mail client que `paid`, plus une copie aux gérants. */
-  | "paid_online";
+  | "paid_online"
+  /** Fin de l'empreinte de caution (`lib/deposits.ts`) : libérée sans débit, ou somme retenue. */
+  | "deposit_released"
+  | "deposit_captured";
 
 export type ReminderKind = "reminder_eve" | "reminder_day" | "reminder_late";
 
@@ -348,6 +351,52 @@ function returned(b: BookingWithDetails) {
   });
 }
 
+/** E1. Caution libérée après le contrôle du set, au client. */
+function depositReleased(b: BookingWithDetails) {
+  return customerMail("deposit_released", b, {
+    subject: `Votre caution est libérée (${b.set.name}, ${b.reference})`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Le set ${b.set.name} est rentré complet et en bon état : merci d'en avoir pris soin ! L'empreinte de ${formatCents(b.depositCents)} posée sur votre carte est libérée, rien n'a été débité.`,
+      ),
+      p("Selon votre banque, la somme peut mettre quelques jours à réapparaître comme disponible sur votre compte."),
+      p(`Une question ? Répondez à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Voir le catalogue", href: siteLink("/catalogue") },
+  });
+}
+
+/** E2. Somme retenue sur la caution, au client : montant et motif (CGL, article 6). */
+function depositCaptured(b: BookingWithDetails) {
+  const kept = b.depositCapturedCents ?? 0;
+  const rest = b.depositCents - kept;
+  return customerMail("deposit_captured", b, {
+    subject: `Caution : ${formatCents(kept)} retenus pour votre location de ${b.set.name} (${b.reference})`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Après le contrôle du set ${b.set.name}, nous avons dû retenir ${formatCents(kept)} sur votre caution de ${formatCents(b.depositCents)}, en application des conditions générales de location.`,
+      ),
+      {
+        type: "box",
+        lines: [
+          `Motif : ${b.depositCaptureReason?.trim() || "précisé par Set et Brique"}`,
+          `Somme retenue : ${formatCents(kept)}`,
+          rest > 0 ? `Somme libérée : ${formatCents(rest)}` : "La caution est retenue en totalité",
+        ],
+      },
+      p(
+        rest > 0
+          ? "Le reste de l'empreinte est libéré. Selon votre banque, il peut mettre quelques jours à réapparaître comme disponible."
+          : "Si le set est restitué ensuite, nous établirons le décompte des sommes dues et vous rembourserons le solde éventuel.",
+      ),
+      p(`Vous n'êtes pas d'accord, ou vous souhaitez en parler ? Répondez à cet e-mail ou ${callUs} : nous regardons cela avec vous.`),
+    ],
+    button: { label: "Voir ma location", href: siteLink("/compte") },
+  });
+}
+
 /** B5. Annulation pour non-paiement dans le délai (`lib/payment-expiry.ts`), au client. */
 function paymentExpired(b: BookingWithDetails) {
   return customerMail("payment_expired", b, {
@@ -615,6 +664,8 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   payment_expired: (b) => [paymentExpired(b)],
   paid: (b) => [paid(b)],
   paid_online: (b) => [paid(b), paidAdmin(b)],
+  deposit_released: (b) => [depositReleased(b)],
+  deposit_captured: (b) => [depositCaptured(b)],
 };
 
 export const reminderMails: Record<ReminderKind, (b: BookingWithDetails) => Mail> = {

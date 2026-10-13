@@ -4,7 +4,7 @@ import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import StripeSdk, { type Stripe } from "stripe";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
-import { queueDepositHoldIfDue } from "@/lib/deposits";
+import { queueDepositHoldIfDue, queueDepositRenewal } from "@/lib/deposits";
 import { ExtensionError, markExtensionPaid } from "@/lib/extensions";
 import { formatCents } from "@/lib/format";
 import { queueGiftVoucherEmail } from "@/lib/email/gift-voucher-emails";
@@ -479,12 +479,13 @@ export async function confirmExtensionPayment(opts: {
   voucherCode: string | null;
   stripe?: { sessionId: string; paymentIntentId: string | null };
 }): Promise<"confirmed" | "skipped"> {
+  let bookingId: string;
   try {
-    await markExtensionPaid(
+    ({ bookingId } = await markExtensionPaid(
       opts.extensionId,
       opts.stripe ? "carte bancaire, paiement en ligne Stripe" : "bon cadeau",
       { voucherCode: opts.voucherCode, stripe: opts.stripe },
-    );
+    ));
   } catch (e) {
     if (!(e instanceof ExtensionError)) throw e;
     const paymentIntentId = opts.stripe?.paymentIntentId;
@@ -513,6 +514,9 @@ export async function confirmExtensionPayment(opts: {
     return "skipped";
   }
   queueExtensionEmails("extension_paid_online", opts.extensionId);
+  // Nouvelle empreinte de caution pour la période ajoutée, puis libération de l'ancienne (après la
+  // réponse : la carte de ce paiement a alors été rangée sur la réservation).
+  queueDepositRenewal(bookingId);
   return "confirmed";
 }
 

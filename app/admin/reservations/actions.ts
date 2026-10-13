@@ -7,6 +7,8 @@ import { daysLate, todayIso } from "@/lib/availability";
 import { paymentDeadline } from "@/lib/bookings";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { db, schema } from "@/lib/db";
+import { DepositError, captureDeposit, queueDepositRenewal, releaseDepositHold } from "@/lib/deposits";
+import { formatCents } from "@/lib/format";
 import { queueBookingEmails, queueExtensionEmails, type ExtensionEmailEvent } from "@/lib/email/booking-emails";
 import { ExtensionError, acceptExtension, markExtensionPaid, refuseExtension } from "@/lib/extensions";
 import {
@@ -285,6 +287,49 @@ export async function markReturned(_: ActionState, formData: FormData): Promise<
   return { ok: late > 0 ? `Retour enregistré, ${late} jour${late > 1 ? "s" : ""} de retard.` : "Retour enregistré." };
 }
 
+/** Libérer l'empreinte de caution après contrôle du set : rien n'est débité. */
+export async function releaseDeposit(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  try {
+    const result = await releaseDepositHold(id, "admin");
+    revalidate(id);
+    return result === "released"
+      ? { ok: "Caution libérée, rien n'a été débité. Le client est prévenu par e-mail." }
+      : { error: "Aucune empreinte de caution n'est en place sur cette réservation." };
+  } catch (e) {
+    console.error("[stripe] libération de la caution", id, e);
+    return { error: "Stripe n'a pas pu libérer l'empreinte. Réessayez dans un instant." };
+  }
+}
+
+/**
+ * Retenir une somme sur la caution, avec un motif montré au client. `full` : la caution entière
+ * (retard de deux jours sans nouvelles, CGL article 10), sans montant à saisir.
+ */
+export async function retainDeposit(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reason) return { error: "Indiquez le motif de la retenue : il est montré au client." };
+  const booking = await db.query.bookings.findFirst({ where: eq(schema.bookings.id, id), columns: { depositCents: true } });
+  if (!booking) return { error: "Réservation introuvable" };
+  // « 30 », « 30,50 » ou « 30.5 » euros.
+  const raw = String(formData.get("amount") ?? "").trim().replace(/\s|€/g, "").replace(",", ".");
+  const amountCents = formData.get("full") === "true" ? booking.depositCents : Math.round(Number(raw) * 100);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return { error: "Indiquez la somme à retenir, en euros." };
+  try {
+    const { rest } = await captureDeposit(id, amountCents, reason);
+    revalidate(id);
+    return {
+      ok: `${formatCents(amountCents)} retenus sur la caution${rest > 0 ? `, ${formatCents(rest)} libérés` : ""}. Le client est prévenu par e-mail, avec le motif.`,
+    };
+  } catch (e) {
+    if (e instanceof DepositError) return { error: e.message };
+    throw e;
+  }
+}
+
 /**
  * Suspendre ou reprendre les rappels de retard par e-mail (retard convenu avec le client) :
  * tant que la séquence est suspendue, le rappel J+1 et son forfait de 30 € ne partent pas.
@@ -395,7 +440,12 @@ export async function markBookingExtensionPaid(_: ActionState, formData: FormDat
   return extensionAction(
     id,
     "extension_paid",
-    () => markExtensionPaid(id, `${method}${note ? `. ${note}` : ""}`),
+    async () => {
+      const paid = await markExtensionPaid(id, `${method}${note ? `. ${note}` : ""}`);
+      // Nouvelle empreinte de caution pour la période ajoutée, comme après un paiement en ligne.
+      queueDepositRenewal(paid.bookingId);
+      return paid;
+    },
     `Paiement enregistré (${method}). La date de retour est repoussée.`,
   );
 }

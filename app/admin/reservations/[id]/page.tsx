@@ -7,7 +7,7 @@ import { db, schema } from "@/lib/db";
 import { adminBookingStatusLabels, depositStateLabel, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { placeDepositHoldIfDue } from "@/lib/deposits";
 import { daysLate, todayIso } from "@/lib/dates";
-import { AdminNoteForm, CustomerBlockForm, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
+import { AdminNoteForm, CustomerBlockForm, DepositActions, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
 import { expireStaleExtensions } from "@/lib/extensions";
 import { getSetting } from "@/lib/settings";
 import { BookingTabs } from "./tabs";
@@ -109,6 +109,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       <PaymentActions booking={b} delayHours={paymentDelayHours} />
       <ExtensionActions extension={extension} endDate={b.endDate} />
       <HandoverActions booking={b} />
+      <DepositActions booking={b} />
 
       <BookingTabs
         tabs={[

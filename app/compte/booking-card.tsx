@@ -68,6 +68,10 @@ export function BookingCard({
           ? `Caution : l'empreinte de ${deposit} n'a pas pu être posée sur votre carte. Contactez-nous avant la remise du set.`
           : booking.depositStatus === "released"
             ? `Caution : l'empreinte de ${deposit} est libérée, rien n'a été débité.`
+            : booking.depositStatus === "captured"
+              ? `Caution : ${formatCents(booking.depositCapturedCents ?? 0)} retenus sur ${deposit}${
+                  booking.depositCaptureReason ? ` (${booking.depositCaptureReason})` : ""
+                }. Le reste est libéré.`
             : booking.depositStatus === "none" && booking.status === "confirmed"
               ? `Caution : une empreinte de ${deposit} sera posée sur votre carte le jour de la remise, sans débit.`
               : null;

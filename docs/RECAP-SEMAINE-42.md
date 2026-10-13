@@ -34,7 +34,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 ### Caution : où on en est
 
-Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Si un bon cadeau règle toute la location, la carte est demandée quand même, sans rien débiter, pour que la caution soit possible. **Étape 2 faite le 13 octobre** : le matin du jour de remise, le site bloque tout seul le montant de la caution sur cette carte, sans la débiter, et la rebloque si l'empreinte arrive à expiration pendant la location. Les gérants voient sur la réservation si l'empreinte est en place ou refusée (et pourquoi) ; le client le voit sur sa location. Restent : le cas où elle échoue (le client la valide lui-même, les gérants peuvent la redemander, pas de remise sans elle), le retour (libération ou retenue), la prolongation.
+Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client est enregistrée par Stripe quand il paie sa location ou sa prolongation, et la page de paiement le lui dit. Si un bon cadeau règle toute la location, la carte est demandée quand même, sans rien débiter, pour que la caution soit possible. **Étape 2 faite le 13 octobre** : le matin du jour de remise, le site bloque tout seul le montant de la caution sur cette carte, sans la débiter, et la rebloque si l'empreinte arrive à expiration pendant la location. Les gérants voient sur la réservation si l'empreinte est en place ou refusée (et pourquoi) ; le client le voit sur sa location. **Étapes 4 et 5 faites le 13 octobre** : une fois le set rendu, la réservation affiche un bloc « Caution » avec deux gestes, « Set conforme : libérer la caution » ou « Retenir une somme » (montant et motif, que le client reçoit par e-mail). Sans geste, la caution est libérée toute seule 48 heures après le retour. À partir de deux jours de retard, les gérants peuvent prélever la caution entière ; ce n'est jamais automatique. Quand une prolongation est payée, une nouvelle empreinte remplace l'ancienne. **Reste l'étape 3** : le cas où l'empreinte est refusée (le client la valide lui-même, les gérants peuvent la redemander, pas de remise sans elle).
 
 ## 3. Mise en production et infrastructure (pour Madus)
 
@@ -43,17 +43,21 @@ Chantier en cinq étapes. **Étape 1 faite le 13 octobre** : la carte du client 
 - **13 octobre** : migration **`0023_gift_voucher_purchaser`** appliquée à la base (une colonne vide et son index sur `gift_vouchers`, pour rattacher un bon acheté au compte de son acheteur).
 - **13 octobre** : migration **`0024_deposit_saved_card`** appliquée à la base (deux colonnes vides : le client Stripe sur `customers`, la carte enregistrée sur `bookings`). À savoir pour le passage aux clés Stripe réelles : les clients Stripe créés en mode test n'existent pas en mode réel, le site en recrée un tout seul au premier paiement.
 - **13 octobre** : migration **`0025_deposit_hold`** appliquée à la base (état de l'empreinte de caution sur `bookings`). La tâche planifiée du matin (`/api/cron/paiements-expires`) pose et renouvelle désormais les empreintes : elle doit tourner chaque jour, donc `CRON_SECRET` doit rester en place dans Vercel.
+- **13 octobre** : migration **`0026_deposit_settlement`** appliquée à la base (somme retenue, motif et date de fin de l'empreinte sur `bookings`). La même tâche du matin libère les cautions 48 heures après le retour.
 
 ## 4. À voir avec Marion
 
 **Réponses reçues le 13 octobre** aux questions de la semaine 41 : prolongation possible jusqu'à la veille du retour et date d'origine due sans réponse ou sans paiement, oui ; nouvelle empreinte de caution au paiement de la prolongation, oui ; numéros de téléphone étrangers refusés, ok. Pour le paragraphe des conditions générales, elle demande une proposition de texte.
 
+- **E-mails de caution** : deux nouveaux textes à relire, « caution libérée » et « somme retenue sur la caution » (partie E de `EMAILS.md`). Le second annonce un prélèvement : à relire en priorité.
+- **Prélèvement de la caution entière après deux jours de retard** : les conditions générales le prévoient ; le site le laisse à la main des gérants (un bouton, pas un automatisme). À confirmer.
 - ~~**Article 9 des conditions générales (prolongation)**~~ : texte proposé, validé par Marion et mis en ligne le 13 octobre (les conditions générales passent en « version du 13 octobre 2026 »).
 - **Couleurs de la liste des réservations** : son code couleur disait « vert = payé », location rendue comprise. Depuis le 13 octobre, une location rendue n'a plus de couleur, pour qu'un set payé à remettre ne se confonde pas avec une location terminée. À lui signaler.
 
 ## 5. À vérifier par Alexis avant la mise en ligne
 
 - L'empreinte de caution en mode test : une location dont la remise est aujourd'hui, payée par carte ; la fiche doit afficher « Empreinte en place jusqu'au … » et le Dashboard Stripe un paiement « non capturé » du montant de la caution. Puis le cas d'un refus avec la carte de test `4000 0027 6000 3184` (la banque exige une validation à chaque opération : le paiement passe après validation, l'empreinte automatique est refusée).
+- La fin de la caution, sur une location dont l'empreinte est en place : « Set rendu », puis « Set conforme : libérer la caution » sur une première location, et « Retenir une somme » (par exemple 15 €) sur une seconde ; vérifier dans le Dashboard Stripe le paiement annulé, ou capturé pour 15 €, et l'e-mail reçu par le client.
 - Un paiement de location par carte en mode test : la phrase sur la carte enregistrée sous le bouton de la page Stripe, puis « carte enregistrée » à côté de la caution sur la fiche de la réservation.
 - L'achat d'un bon cadeau : bouton « Imprimer le bon cadeau », rendu à l'impression, puis le bon dans « Mes bons cadeaux ».
 - L'encart « regardez dans vos spams » en créant un compte de test : il doit apparaître à l'étape du code, pas avant.

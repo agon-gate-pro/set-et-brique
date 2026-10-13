@@ -503,8 +503,55 @@ Un imprévu ? Répondez à cet e-mail ou appelez-nous au 07 83 73 70 20.
 
 ---
 
+## E. Caution
+
+Ajoutés le 13 octobre 2026 avec l'empreinte de caution (`lib/deposits.ts`). Aucun e-mail ne part quand l'empreinte est posée ou renouvelée : le client le lit sur sa location.
+
+### E1. Caution libérée, au client
+
+Déclencheur : les gérants libèrent l'empreinte après le contrôle du set, ou elle est libérée d'office 48 heures après le retour.
+
+**Objet** : Votre caution est libérée ({{set}}, {{reference}})
+
+Bonjour {{prenom}},
+
+Le set {{set}} est rentré complet et en bon état : merci d'en avoir pris soin ! L'empreinte de {{caution}} posée sur votre carte est libérée, rien n'a été débité.
+
+Selon votre banque, la somme peut mettre quelques jours à réapparaître comme disponible sur votre compte.
+
+Une question ? Répondez à cet e-mail ou appelez-nous au 07 83 73 70 20.
+
+[Bouton : Voir le catalogue → {{lien_catalogue}}]
+
+[signature]
+
+### E2. Somme retenue sur la caution, au client
+
+Déclencheur : les gérants retiennent une somme (bloc « Caution » de la fiche), ou prélèvent la caution entière après deux jours de retard. Les conditions générales (article 6) imposent d'indiquer le motif et le calcul.
+
+**Objet** : Caution : {{somme_retenue}} retenus pour votre location de {{set}} ({{reference}})
+
+Bonjour {{prenom}},
+
+Après le contrôle du set {{set}}, nous avons dû retenir {{somme_retenue}} sur votre caution de {{caution}}, en application des conditions générales de location.
+
+> Motif : {{motif}}
+> Somme retenue : {{somme_retenue}}
+> Somme libérée : {{somme_liberee}} (ou « La caution est retenue en totalité »)
+
+Le reste de l'empreinte est libéré. Selon votre banque, il peut mettre quelques jours à réapparaître comme disponible. (Caution retenue en totalité : « Si le set est restitué ensuite, nous établirons le décompte des sommes dues et vous rembourserons le solde éventuel. »)
+
+Vous n'êtes pas d'accord, ou vous souhaitez en parler ? Répondez à cet e-mail ou appelez-nous au 07 83 73 70 20 : nous regardons cela avec vous.
+
+[Bouton : Voir ma location → {{lien_compte}}]
+
+[signature]
+
+---
+
 ## Points à faire valider par Marion
 
+- Les deux e-mails de caution (partie E), rédigés sans elle le 13 octobre 2026 : le ton de E2, qui annonce un prélèvement, est à relire en priorité.
 - Les six e-mails de prolongation (partie D), rédigés sans elle le 10 octobre 2026 : textes et accroches à relire.
 
 - La mention « pièce d'identité » à la remise (A3) : la demande-t-elle réellement ?

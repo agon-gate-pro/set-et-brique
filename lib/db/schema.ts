@@ -332,6 +332,11 @@ export const bookings = pgTable(
     depositExpiresAt: timestamp("deposit_expires_at", { withTimezone: true }),
     /** Motif du dernier refus, en clair, montré aux gérants. */
     depositError: text("deposit_error"),
+    /** Somme retenue sur la caution et son motif, montré au client (CGL, article 6). Le reste est libéré. */
+    depositCapturedCents: integer("deposit_captured_cents"),
+    depositCaptureReason: text("deposit_capture_reason"),
+    /** Fin de vie de l'empreinte : libérée ou prélevée. */
+    depositSettledAt: timestamp("deposit_settled_at", { withTimezone: true }),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
     /** Motif communiqué au client en cas de refus ou d'annulation. */

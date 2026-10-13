@@ -458,7 +458,15 @@ Elle est appelée **deux fois** : par le **webhook** `POST /api/stripe/webhook` 
 - Une empreinte refusée n'est pas retentée automatiquement : même carte, même refus, et chaque essai compte pour la banque.
 - Affichage : `depositStateLabel` (`lib/format.ts`) pour la fiche, l'aperçu et le bloc « Remise du set » ; `depositNote` dans `app/compte/booking-card.tsx` pour le client.
 
-**Pas encore fait** : pour la caution, la validation d'une empreinte refusée par le client lui-même, « Redemander l'empreinte » et le blocage de « Set remis » (étape 3), la capture en cas de litige et la libération 48 h après le retour (étape 4), l'empreinte liée à une prolongation (étape 5) ; les délais de 1 h et 15 min de la spécification (sans objet tant que la demande reste `pending_payment` avec son échéance de 24 h), les notes (module 8) à l'émission du paiement, le remboursement d'une réservation payée puis annulée par Set et Brique (à faire à la main dans le Dashboard Stripe pour l'instant).
+**Caution, étapes 4 et 5 : fin de l'empreinte** (13 octobre 2026, migration 0026 : `deposit_captured_cents`, `deposit_capture_reason`, `deposit_settled_at`).
+
+- `releaseDepositHold(bookingId, actor)` : `paymentIntents.cancel`, état `released`, e-mail `deposit_released` quand la location a eu lieu. Appelée par « Set conforme : libérer la caution » (`releaseDeposit`) et par `syncDepositHolds` pour un set rendu depuis plus de 48 heures (`RELEASE_AFTER_RETURN_MS`) ou une réservation annulée. Un paiement déjà annulé ou expiré chez Stripe est traité comme libéré.
+- `captureDeposit(bookingId, amountCents, reason)` : `paymentIntents.capture` avec `amount_to_capture` ; Stripe libère le reste, et une empreinte ne se capture qu'une fois. État `captured`, somme et motif gardés, e-mail `deposit_captured`. Appelée par « Retenir une somme » et « Prélever toute la caution » (`retainDeposit`, champ `full`). Ce dernier bouton n'apparaît qu'à partir de deux jours de retard, et reste un geste des gérants : rien n'est prélevé automatiquement.
+- Renouvellement pendant le contrôle : `placeDepositHold(…, { renew: true })` accepte une réservation `returned` dont l'empreinte est en place, pour que les 48 heures restent couvertes.
+- Prolongation : `queueDepositRenewal(bookingId)` après `markExtensionPaid` (paiement en ligne dans `confirmExtensionPayment`, paiement enregistré par les gérants dans `markBookingExtensionPaid`) pose une nouvelle empreinte puis annule l'ancienne ; si la précédente était refusée, c'est une nouvelle tentative.
+- Interface : bloc « Caution » de la fiche (`DepositActions`, `[id]/forms.tsx`), affiché seulement quand l'empreinte est en place.
+
+**Pas encore fait** : pour la caution, la validation d'une empreinte refusée par le client lui-même, « Redemander l'empreinte » et le blocage de « Set remis » (étape 3) ; les délais de 1 h et 15 min de la spécification (sans objet tant que la demande reste `pending_payment` avec son échéance de 24 h), les notes (module 8) à l'émission du paiement, le remboursement d'une réservation payée puis annulée par Set et Brique (à faire à la main dans le Dashboard Stripe pour l'instant).
 
 ## 10. Documents émis au client (à construire)
 
