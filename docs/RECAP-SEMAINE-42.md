@@ -14,6 +14,7 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 - **Location rendue : plus de couleur** (13 octobre). Le vert est réservé aux sets payés qui restent à remettre ; une location terminée s'efface dans la liste.
 - **Confirmation avant « Set rendu »** (13 octobre) : le bouton ouvre une petite fenêtre « Set rendu ? » avant d'enregistrer le retour, pour éviter de clore une location par un clic malheureux.
 - **Tableau de bord : bandeau « sets à remettre »** (13 octobre) : un bandeau vert en haut de page, comme le bandeau jaune des demandes à traiter, rappelle le nombre de sets payés qui restent à remettre et ouvre la liste de ces réservations.
+- **Historique d'une réservation : le plus récent en haut** (13 octobre), pour les événements comme pour les e-mails.
 
 ## 2. Décisions prises cette semaine (Alexis)
 

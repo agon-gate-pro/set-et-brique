@@ -41,7 +41,8 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       set: { columns: { id: true, name: true, slug: true } },
       copy: { columns: { label: true, status: true } },
       pickupPoint: { columns: { name: true } },
-      events: { orderBy: [asc(schema.bookingEvents.createdAt)] },
+      // Historique et e-mails : le plus récent en haut (13 octobre 2026), c'est lui qu'on vient lire.
+      events: { orderBy: [desc(schema.bookingEvents.createdAt)] },
       // La plus récente suffit : une seule demande peut être en cours à la fois.
       extensions: { orderBy: [desc(schema.bookingExtensions.createdAt)], limit: 1 },
     },
@@ -51,7 +52,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
     .select()
     .from(schema.emailLog)
     .where(eq(schema.emailLog.bookingId, id))
-    .orderBy(asc(schema.emailLog.createdAt));
+    .orderBy(desc(schema.emailLog.createdAt));
   const paymentDelayHours = await getSetting("payment_delay_hours");
   const pickupPoints = await db
     .select({ id: schema.pickupPoints.id, name: schema.pickupPoints.name })
