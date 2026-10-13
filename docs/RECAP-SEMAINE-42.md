@@ -12,6 +12,8 @@ Base du point de fin de semaine avec Madus et Marion. Branche `semaine-42`. Le d
 
 - **Réservation payée : « Payée, à remettre »** (13 octobre). Une fois le set payé, la réservation s'affichait « Confirmée », dans le même vert qu'une location rendue : on aurait dit qu'il n'y avait plus rien à faire. Elle s'affiche maintenant « Payée, à remettre », dans la liste, l'aperçu, la fiche et l'historique. Le client, lui, voit toujours « Confirmée » dans son compte.
 - **Location rendue : plus de couleur** (13 octobre). Le vert est réservé aux sets payés qui restent à remettre ; une location terminée s'efface dans la liste.
+- **Confirmation avant « Set rendu »** (13 octobre) : le bouton ouvre une petite fenêtre « Set rendu ? » avant d'enregistrer le retour, pour éviter de clore une location par un clic malheureux.
+- **Tableau de bord : bandeau « sets à remettre »** (13 octobre) : un bandeau vert en haut de page, comme le bandeau jaune des demandes à traiter, rappelle le nombre de sets payés qui restent à remettre et ouvre la liste de ces réservations.
 
 ## 2. Décisions prises cette semaine (Alexis)
 

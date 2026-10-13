@@ -109,6 +109,19 @@ export function DashboardView({ f }: { f: DashboardFigures }) {
           <ArrowRight className="h-5 w-5 shrink-0" aria-hidden="true" />
         </Link>
       ) : null}
+      {f.toHandOver > 0 ? (
+        // Même vert que « Payée, à remettre » dans la liste des réservations : payé, il reste la remise.
+        <Link
+          href="/admin/reservations?statut=to_handover"
+          className="mt-4 flex items-center gap-3 brick-card bg-green-100 border-leaf p-4 sm:p-5 font-semibold text-leaf-deep hover:bg-green-200 transition-colors"
+        >
+          <PackageCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className="flex-1">
+            {f.toHandOver} set{f.toHandOver > 1 ? "s" : ""} à remettre
+          </span>
+          <ArrowRight className="h-5 w-5 shrink-0" aria-hidden="true" />
+        </Link>
+      ) : null}
 
       <GroupTitle tone="bg-sea">À faire</GroupTitle>
       <ul className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

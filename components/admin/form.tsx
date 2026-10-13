@@ -46,6 +46,7 @@ export function ConfirmButton({
   pendingLabel = "Suppression…",
   compact = false,
   dismissLabel = "Annuler",
+  confirmVariant = "brick",
 }: {
   children: ReactNode;
   confirmLabel?: string;
@@ -70,6 +71,8 @@ export function ConfirmButton({
   compact?: boolean;
   /** Libellé du lien qui renonce, sur place. « Annuler » prête à confusion quand l'action est elle-même une annulation. */
   dismissLabel?: string;
+  /** Couleur du bouton de confirmation de la fenêtre (`asDialog`) : vert quand on confirme un geste courant plutôt qu'une suppression. */
+  confirmVariant?: "brick" | "leaf";
 }) {
   const [armed, setArmed] = useState(false);
   const { pending } = useFormStatus();
@@ -111,7 +114,7 @@ export function ConfirmButton({
                   type="submit"
                   form={form}
                   disabled={pending}
-                  className="btn btn-brick text-sm py-2 px-3 disabled:opacity-60 disabled:cursor-wait"
+                  className={`btn ${confirmVariant === "leaf" ? "btn-leaf" : "btn-brick"} text-sm py-2 px-3 disabled:opacity-60 disabled:cursor-wait`}
                 >
                   {pending ? pendingLabel : confirmLabel}
                 </button>

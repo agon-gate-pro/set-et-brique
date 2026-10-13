@@ -140,7 +140,17 @@ export function HandoverActions({ booking }: { booking: Booking }) {
             <textarea name="returnNote" rows={3} className={inputClass} placeholder="Complet, sachets refaits. Une figurine sans son casque." />
           </Field>
           <div>
-            <SubmitButton variant="leaf">Set rendu</SubmitButton>
+            {/* Confirmation avant d'enregistrer le retour (13 octobre 2026) : le geste est définitif et un clic par erreur clôt la location. */}
+            <ConfirmButton
+              asDialog
+              state={returnState}
+              confirmLabel="Oui, le set est rendu"
+              confirmVariant="leaf"
+              pendingLabel="Enregistrement…"
+              className="btn btn-leaf text-paper hover:text-paper no-underline"
+            >
+              Set rendu
+            </ConfirmButton>
           </div>
           <FormMessage state={returnState} />
         </form>
