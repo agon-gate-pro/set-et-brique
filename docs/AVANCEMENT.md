@@ -126,6 +126,10 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ## 5. Journal
 
+### 14 octobre 2026
+
+- **Première empreinte de caution réelle, en mode test.** À 7 h, la tâche planifiée a posé l'empreinte de la réservation SB-SMGY8 (Château Harry Potter, remise le jour même, 300 €) : paiement Stripe en `requires_capture`, capture manuelle, carte enregistrée au paiement du loyer, ligne d'historique, `deposit_expires_at` au 19 octobre 1 h (`capture_before` de Stripe), e-mail E0 « Votre caution est en place » reçu par Alexis. La chaîne de l'étape 2 et les corrections de la veille sont donc vérifiées en vrai. Reste à dérouler sur cette réservation : « Set remis », retour, libération ou retenue (étape 4).
+
 ### 13 octobre 2026
 
 - **Réservations (gestion) : « Payée, à remettre » au lieu de « Confirmée », et « Rendue » sans couleur** (`lib/format.ts`, `app/admin/reservations/status-tone.ts`, `bookings-table.tsx`, `booking-dialog.tsx`, `[id]/page.tsx`). Relevé par Alexis en testant le paiement Stripe : une fois le set payé, la ligne passait en « Confirmée », dans le même vert qu'une location rendue, comme si Set et Brique n'avait plus rien à faire. Le statut `confirmed` porte maintenant le libellé « Payée, à remettre » dans tout l'espace de gestion (liste, aperçu, fiche, historique), par un jeu de libellés propre aux gérants (`adminBookingStatusLabels`) ; le client lit toujours « Confirmée ». Le vert est réservé à cet état : une location rendue n'a plus de couleur. **Écart avec le code couleur de Marion** (« vert = payé », 27 septembre) : décidé par Alexis, à lui signaler. Vérifié : typage, lint ; à l'écran, à vérifier par Alexis.
