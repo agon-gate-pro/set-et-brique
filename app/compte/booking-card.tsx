@@ -69,7 +69,9 @@ export function BookingCard({
       : booking.depositStatus === "held"
         ? `Caution : une empreinte de ${deposit} est en place sur votre carte. Elle n'est pas débitée.`
         : booking.depositStatus === "failed" && (booking.status === "confirmed" || booking.status === "picked_up")
-          ? `Caution : l'empreinte de ${deposit} n'a pas pu être posée sur votre carte. Le set ne peut être remis qu'une fois la caution garantie : enregistrez une carte ci-dessous (la même, validée par votre banque, ou une autre).`
+          ? `Caution : l'empreinte de ${deposit} n'a pas pu être posée sur votre carte. ${
+              booking.status === "picked_up" ? "Elle reste due pendant la location" : "Le set ne peut être remis qu'une fois la caution garantie"
+            } : enregistrez une carte ci-dessous (la même, validée par votre banque, ou une autre).`
           : booking.depositStatus === "released"
             ? `Caution : l'empreinte de ${deposit} est libérée, rien n'a été débité.`
             : booking.depositStatus === "captured"

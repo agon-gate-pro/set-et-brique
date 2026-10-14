@@ -148,13 +148,17 @@ export async function placeDepositHold(bookingId: string, opts: { renew?: boolea
           expand: ["latest_charge"],
         },
         // Même appel rejoué (coupure réseau) dans les dix minutes : Stripe rend la même empreinte.
-        { idempotencyKey: `deposit-${booking.id}-${opts.renew ? "renew-" : ""}${Math.floor(Date.now() / 600_000)}` },
+        // La carte fait partie de la clé : une carte enregistrée juste après un refus repart à neuf
+        // (même clé avec d'autres paramètres, Stripe refuserait l'appel).
+        {
+          idempotencyKey: `deposit-${booking.id}-${booking.stripePaymentMethodId}-${opts.renew ? "renew-" : ""}${Math.floor(Date.now() / 600_000)}`,
+        },
       );
     } catch (e) {
       // Stripe laisse parfois un paiement en attente d'une validation que personne ne fera : on l'annule.
       const pending = e instanceof StripeSdk.errors.StripeCardError ? e.payment_intent?.id : null;
       if (pending) await stripe().paymentIntents.cancel(pending).catch(() => {});
-      if (!(e instanceof StripeSdk.errors.StripeError)) console.error("[stripe] empreinte de caution", bookingId, e);
+      if (!(e instanceof StripeSdk.errors.StripeCardError)) console.error("[stripe] empreinte de caution", bookingId, e);
       return fail(refusalReason(e));
     }
     if (intent.status !== "requires_capture") {
