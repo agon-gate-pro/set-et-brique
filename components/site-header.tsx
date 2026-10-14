@@ -15,6 +15,8 @@ import {
   Menu,
   Settings,
   ShoppingBag,
+  TriangleAlert,
+  UserRound,
   Users,
   X,
   type LucideIcon,
@@ -52,6 +54,9 @@ export function SiteHeader() {
   }, [accountOpen]);
 
   const [firstName, setFirstName] = useState<string | null>(null);
+  // Compte sans fiche client (nouveau compte) : pas de prénom pour le rond, et des coordonnées à
+  // remplir avant de réserver. Vrai seulement une fois la réponse lue, pour ne rien faire clignoter.
+  const [profileMissing, setProfileMissing] = useState(false);
   // Réservations qui attendent le client (payer, répondre à une date proposée) : pastille du compte.
   const [pendingActions, setPendingActions] = useState(0);
   // Gérant : réservations qui attendent Set et Brique (à traiter, à remettre aujourd'hui, en retard,
@@ -62,6 +67,7 @@ export function SiteHeader() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { firstName: string | null; lastName: string | null; pendingActions: number; adminActions?: number } | null) => {
         setFirstName(data?.firstName || null);
+        setProfileMissing(Boolean(data) && !data?.firstName);
         setPendingActions(data?.pendingActions ?? 0);
         setAdminActions(data?.adminActions ?? 0);
         // Le menu de l'espace de gestion affiche le même chiffre sur « Réservations ».
@@ -77,6 +83,7 @@ export function SiteHeader() {
   }, [user, pathname, loadCustomerName]);
   // Après une déconnexion, le dernier chiffre lu ne doit pas rester affiché.
   const actionCount = user ? pendingActions : 0;
+  const missing = user ? profileMissing : false;
   const pendingLabel = actionCount > 0 ? `, ${actionCount} action${actionCount > 1 ? "s" : ""} en attente` : "";
   const adminCount = user && admin ? adminActions : 0;
   const adminLabel = `Espace de gestion${adminCount > 0 ? `, ${adminCount} réservation${adminCount > 1 ? "s" : ""} à traiter` : ""}`;
@@ -177,25 +184,44 @@ export function SiteHeader() {
                   aria-haspopup="menu"
                   aria-expanded={accountOpen}
                   onClick={() => setAccountOpen((v) => !v)}
-                  aria-label={`${firstName ? `Mon compte (${firstName})` : "Mon compte"}${pendingLabel}`}
+                  aria-label={`${firstName ? `Mon compte (${firstName})` : "Mon compte"}${pendingLabel}${missing ? ", coordonnées à compléter" : ""}`}
                   className={`flex items-center gap-2 rounded-full hover:bg-sun/25 transition-colors cursor-pointer ${
                     admin ? "" : "xl:border xl:border-sun-deep/30 xl:bg-sun/15 xl:py-1 xl:pl-1 xl:pr-3.5 xl:shadow-brick-sm"
                   }`}
                 >
                   <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sun text-sm font-bold text-ink-deep">
-                    {firstName ? firstName[0].toUpperCase() : null}
+                    {firstName ? firstName[0].toUpperCase() : <UserRound className="h-5 w-5" aria-hidden="true" />}
                     <PendingBadge count={actionCount} className="absolute -right-1.5 -top-1.5" />
+                    {missing ? <ProfileMissingBadge className="absolute -right-1.5 -bottom-1.5" /> : null}
                   </span>
                   {/* Gérant : avatar seul, la barre porte déjà « Espace de gestion ». */}
-                  {firstName && !admin ? (
-                    <span className="hidden xl:inline whitespace-nowrap font-semibold text-sm text-ink-deep">{firstName}</span>
+                  {!admin ? (
+                    <span className="hidden xl:inline whitespace-nowrap font-semibold text-sm text-ink-deep">
+                      {firstName ?? "Mon compte"}
+                    </span>
                   ) : null}
                 </button>
                 {accountOpen ? (
+                  // Accroché au bord droit du rond, dernier élément de la barre : le menu s'ouvre vers
+                  // la gauche et ne sort pas de l'écran (retour d'Alexis, 14 octobre 2026).
                   <div
                     role="menu"
-                    className="absolute left-0 mt-2 w-56 rounded-xl border border-slate-ink/10 bg-paper shadow-brick-sm py-2 z-50"
+                    className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-ink/10 bg-paper shadow-brick-sm py-2 z-50"
                   >
+                    {missing ? (
+                      <Link
+                        href={COORDINATES_URL}
+                        role="menuitem"
+                        onClick={() => setAccountOpen(false)}
+                        className="mx-2 mb-1.5 flex items-start gap-2.5 rounded-lg bg-sun/30 px-3 py-2.5 text-sm text-ink-deep hover:bg-sun/50 transition-colors"
+                      >
+                        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" aria-hidden="true" />
+                        <span>
+                          <span className="block font-bold">Compléter mes coordonnées</span>
+                          <span className="block text-slate-ink">Nécessaires pour réserver</span>
+                        </span>
+                      </Link>
+                    ) : null}
                     <Link
                       href="/compte"
                       role="menuitem"
@@ -260,7 +286,7 @@ export function SiteHeader() {
           <button
             type="button"
             className="relative flex items-center justify-center rounded-xl border border-slate-ink/15 p-2.5 text-ink-deep hover:bg-sky transition-colors"
-            aria-label={`${open ? "Fermer le menu" : "Ouvrir le menu"}${pendingLabel}${adminCount > 0 ? `, ${adminCount} à traiter en gestion` : ""}`}
+            aria-label={`${open ? "Fermer le menu" : "Ouvrir le menu"}${pendingLabel}${adminCount > 0 ? `, ${adminCount} à traiter en gestion` : ""}${missing ? ", coordonnées à compléter" : ""}`}
             aria-expanded={open}
             aria-controls="menu-mobile"
             aria-haspopup="dialog"
@@ -270,6 +296,7 @@ export function SiteHeader() {
             {/* Sur mobile, le rond du compte et « Espace de gestion » sont dans le menu replié : la
                 pastille se pose sur le burger, et additionne les deux pour un gérant. */}
             <PendingBadge count={actionCount + adminCount} className="absolute -right-2 -top-2" />
+            {missing ? <ProfileMissingBadge className="absolute -right-2 -bottom-2" /> : null}
           </button>
         </div>
       </div>
@@ -281,6 +308,7 @@ export function SiteHeader() {
         admin={admin}
         actionCount={actionCount}
         adminCount={adminCount}
+        profileMissing={missing}
         isCurrent={isCurrent}
       />
     ) : null}
@@ -310,12 +338,14 @@ function MobileMenu({
   admin,
   actionCount,
   adminCount,
+  profileMissing,
   isCurrent,
 }: {
   onClose: () => void;
   admin: boolean;
   actionCount: number;
   adminCount: number;
+  profileMissing: boolean;
   isCurrent: (href: string) => boolean;
 }) {
   const pathname = usePathname();
@@ -408,6 +438,19 @@ function MobileMenu({
           </Show>
           <Show when="signed-in">
             <p className="px-3 pb-1 text-xs font-bold uppercase tracking-wide text-slate-ink">Mon compte</p>
+            {profileMissing ? (
+              <Link
+                href={COORDINATES_URL}
+                onClick={onClose}
+                className="mb-1 flex items-start gap-3 rounded-xl bg-sun/30 px-3 py-2.5 text-ink-deep hover:bg-sun/50 transition-colors"
+              >
+                <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" aria-hidden="true" />
+                <span>
+                  <span className="block font-bold">Compléter mes coordonnées</span>
+                  <span className="block text-sm text-slate-ink">Nécessaires pour réserver</span>
+                </span>
+              </Link>
+            ) : null}
             <Link href="/compte" onClick={onClose} aria-current={pathname === "/compte" ? "page" : undefined} className={linkClass(pathname === "/compte")}>
               <ClipboardList className="h-5 w-5 shrink-0 text-slate-ink" aria-hidden="true" />
               Mes locations
@@ -431,6 +474,21 @@ function MobileMenu({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Onglet « Coordonnées » de la gestion du compte (même adresse que `coordinatesUrl()` de `lib/bookings`, réservé au serveur). */
+const COORDINATES_URL = "/compte/profil/coordonnees";
+
+/** Pastille orange « ! » : coordonnées à compléter (compte sans fiche client). */
+function ProfileMissingBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[12px] font-bold leading-none text-white ring-2 ring-paper ${className}`}
+    >
+      !
+    </span>
   );
 }
 
