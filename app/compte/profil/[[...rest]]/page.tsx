@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { asc, desc, eq } from "drizzle-orm";
+import { ClerkMountGuard } from "@/components/clerk-mount-guard";
 import { bookingCustomerColumns, findCustomerByClerkId, safeReturnPath } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { bookingStatusLabels, formatCents, formatDate } from "@/lib/format";
@@ -54,59 +55,61 @@ export default async function ProfilePage({ searchParams }: PageProps<"/compte/p
           </p>
         ) : null}
       </div>
-      <ProfilePanel
-        coordonnees={
-          <>
-            <h2 className="text-2xl font-semibold">Coordonnées</h2>
-            <div className="mt-6">
-              <ProfileForm
-                customer={customer ?? null}
-                defaults={{ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" }}
-                pickupPoints={pickupPoints}
-                returnTo={returnTo}
-              />
-            </div>
-          </>
-        }
-        historique={
-          <>
-            <h2 className="text-2xl font-semibold">Historique</h2>
-            {bookings.length === 0 ? (
-              <p className="mt-4 text-slate-ink">Aucune réservation pour l&apos;instant.</p>
-            ) : (
-              <ul className="mt-6 divide-y divide-slate-ink/10">
-                {bookings.map((b) => (
-                  <li key={b.id} className="py-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <div>
-                      <p className="font-bold text-ink-deep">
-                        <Link href={`/catalogue/${b.set.slug}`} className="underline underline-offset-4">
-                          {b.set.name}
-                        </Link>
-                        <span className="ml-2 text-sm font-semibold text-slate-ink">{b.reference}</span>
-                      </p>
-                      <p className="text-sm text-slate-ink">
-                        Du {formatDate(b.startDate)} au {formatDate(b.endDate)}
-                        {b.pickupPoint ? ` · ${b.pickupPoint.name}` : ""}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-ink-deep">{formatCents(b.rentalCents)}</p>
-                      <p className="text-sm text-slate-ink">{bookingStatusLabels[b.status]}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="mt-6 text-sm text-slate-ink">
-              Pour répondre à une proposition de date ou annuler une demande, passez par{" "}
-              <Link href="/compte" className="font-semibold underline underline-offset-4">
-                Mes locations
-              </Link>
-              .
-            </p>
-          </>
-        }
-      />
+      <ClerkMountGuard>
+        <ProfilePanel
+          coordonnees={
+            <>
+              <h2 className="text-2xl font-semibold">Coordonnées</h2>
+              <div className="mt-6">
+                <ProfileForm
+                  customer={customer ?? null}
+                  defaults={{ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" }}
+                  pickupPoints={pickupPoints}
+                  returnTo={returnTo}
+                />
+              </div>
+            </>
+          }
+          historique={
+            <>
+              <h2 className="text-2xl font-semibold">Historique</h2>
+              {bookings.length === 0 ? (
+                <p className="mt-4 text-slate-ink">Aucune réservation pour l&apos;instant.</p>
+              ) : (
+                <ul className="mt-6 divide-y divide-slate-ink/10">
+                  {bookings.map((b) => (
+                    <li key={b.id} className="py-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <div>
+                        <p className="font-bold text-ink-deep">
+                          <Link href={`/catalogue/${b.set.slug}`} className="underline underline-offset-4">
+                            {b.set.name}
+                          </Link>
+                          <span className="ml-2 text-sm font-semibold text-slate-ink">{b.reference}</span>
+                        </p>
+                        <p className="text-sm text-slate-ink">
+                          Du {formatDate(b.startDate)} au {formatDate(b.endDate)}
+                          {b.pickupPoint ? ` · ${b.pickupPoint.name}` : ""}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-ink-deep">{formatCents(b.rentalCents)}</p>
+                        <p className="text-sm text-slate-ink">{bookingStatusLabels[b.status]}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-6 text-sm text-slate-ink">
+                Pour répondre à une proposition de date ou annuler une demande, passez par{" "}
+                <Link href="/compte" className="font-semibold underline underline-offset-4">
+                  Mes locations
+                </Link>
+                .
+              </p>
+            </>
+          }
+        />
+      </ClerkMountGuard>
     </section>
   );
 }

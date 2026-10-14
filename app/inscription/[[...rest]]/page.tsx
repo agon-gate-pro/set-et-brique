@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
+import { ClerkMountGuard } from "@/components/clerk-mount-guard";
 import { coordinatesUrl, safeReturnPath } from "@/lib/bookings";
 import { SpamNotice } from "./spam-notice";
 
@@ -22,7 +23,9 @@ export default async function SignUpPage({ searchParams }: PageProps<"/inscripti
           </p>
         </div>
         <SpamNotice />
-        <SignUp forceRedirectUrl={afterSignUp} />
+        <ClerkMountGuard>
+          <SignUp forceRedirectUrl={afterSignUp} />
+        </ClerkMountGuard>
       </div>
     </section>
   );

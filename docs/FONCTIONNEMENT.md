@@ -307,7 +307,9 @@ Une ligne Drizzle passée en prop à un composant client est sérialisée entiè
 
 Règle de conservation retenue : 3 ans après la dernière activité du client, ou dès qu'il supprime son compte. Les notes et les contrats sont archivés dans le logiciel comptable avec leurs durées légales propres, la plateforme n'en est pas le dépôt : elle les émet et permet de les exporter. Aujourd'hui, supprimer son compte depuis l'onglet Sécurité efface l'utilisateur chez Clerk mais laisse la ligne `customers` et les réservations, rattachées à un identifiant Clerk orphelin : la purge et l'anonymisation restent à écrire, voir `AVANCEMENT.md` §2.
 
-Les clés Clerk fournies par l'intégration Vercel sont celles d'une instance de développement (`pk_test_`). Avant la mise en production sur le domaine final, il faudra créer l'instance de production dans le Dashboard Clerk et remplacer les clés dans Vercel.
+Clerk est installé par l'intégration Vercel Marketplace (application `set-et-brique-clerk`, espace Clerk « Agon-gate »). L'intégration gère les variables `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` (type « Config ») : instance de développement (`pk_test_`) pour Preview et Development, instance de production (`pk_live_`, domaine `set-et-brique.com`, Frontend API `clerk.set-et-brique.com`) pour Production, depuis le 14 octobre 2026. Ces variables ne se modifient pas à la main ; le domaine de production se règle dans Vercel (intégration Clerk → Settings → Change Configuration). Les deux instances ont chacune leurs comptes et leurs réglages, à aligner à la main. `pnpm role` lit `.env.local`, donc vise l'instance de développement ; en production, le rôle se pose dans le Dashboard (Users → Metadata → Public).
+
+Les composants Clerk (`SignIn`, `SignUp`, `UserProfile`) sont dessinés dans le navigateur par le script de Clerk. `ClerkMountGuard` (`components/clerk-mount-guard.tsx`) les entoure sur `/connexion`, `/inscription` et `/compte/profil` : si aucun `.cl-rootBox` n'est apparu au bout de 8 secondes, il affiche un message et un bouton « Recharger la page », retirés dès que Clerk s'affiche.
 
 ## 7. Espace de gestion
 
