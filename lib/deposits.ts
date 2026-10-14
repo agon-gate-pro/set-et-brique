@@ -25,8 +25,10 @@ import { stripe } from "@/lib/stripe";
  * leur part, elle est libérée d'office 48 heures après le retour. À la prolongation (étape 5) :
  * une nouvelle empreinte est posée au paiement du supplément, puis l'ancienne libérée.
  *
- * Pas encore là : le client qui valide lui-même une empreinte refusée, « Redemander l'empreinte »
- * et le blocage de « Set remis » (étape 3).
+ * Empreinte refusée (étape 3) : e-mail au client, qui enregistre une autre carte (ou la même,
+ * validée par sa banque) depuis son espace (`createDepositCardCheckout`, `lib/payments.ts`),
+ * l'empreinte étant alors reposée aussitôt ; les gérants ont « Redemander l'empreinte » sur la
+ * fiche, et « Set remis » reste bloqué tant qu'elle n'est pas en place (décision d'Alexis).
  *
  * Seules une carte ou Link acceptent une empreinte : les pages de paiement n'offrent qu'eux, et
  * `lib/payments.ts` ne garde que ces moyens dans `stripe_payment_method_id`.
@@ -112,8 +114,10 @@ export async function placeDepositHold(bookingId: string, opts: { renew?: boolea
         await tx.update(schema.bookings).set({ depositError: reason }).where(eq(schema.bookings.id, bookingId));
         return { result: "failed" as const };
       }
-      // Même refus déjà noté (la tâche repasse chaque jour) : pas de nouvelle ligne d'historique.
-      if (!(booking!.depositStatus === "failed" && booking!.depositError === reason)) {
+      // Même refus déjà noté (la tâche repasse chaque jour) : pas de nouvelle ligne d'historique,
+      // pas de nouvel e-mail au client.
+      const alreadyNoted = booking!.depositStatus === "failed" && booking!.depositError === reason;
+      if (!alreadyNoted) {
         await tx.insert(schema.bookingEvents).values({
           bookingId,
           actor: "system",
@@ -121,7 +125,7 @@ export async function placeDepositHold(bookingId: string, opts: { renew?: boolea
         });
       }
       await tx.update(schema.bookings).set({ depositStatus: "failed", depositError: reason }).where(eq(schema.bookings.id, bookingId));
-      return { result: "failed" as const };
+      return { result: "failed" as const, notify: !alreadyNoted };
     }
 
     if (!booking.stripePaymentMethodId || !booking.customer.stripeCustomerId) {
@@ -181,6 +185,12 @@ export async function placeDepositHold(bookingId: string, opts: { renew?: boolea
     return { result: "held" as const, intentId: intent.id, previousIntentId, firstHold: !previousIntentId && out };
   });
 
+  if (outcome.result === "failed") {
+    // Le client peut lever le refus lui-même (autre carte, validation par sa banque) depuis son
+    // espace : l'e-mail le lui dit, une fois par motif. Les gérants ont la pastille et la fiche.
+    if (outcome.notify) queueBookingEmails("deposit_failed", bookingId);
+    return "failed";
+  }
   if (outcome.result !== "held") return outcome.result;
   // La nouvelle empreinte est en place : l'ancienne peut être libérée.
   if (outcome.previousIntentId && outcome.previousIntentId !== outcome.intentId) {

@@ -7,7 +7,7 @@ import { daysLate, todayIso } from "@/lib/availability";
 import { paymentDeadline } from "@/lib/bookings";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { db, schema } from "@/lib/db";
-import { DepositError, captureDeposit, queueDepositRenewal, releaseDepositHold } from "@/lib/deposits";
+import { DepositError, captureDeposit, placeDepositHold, queueDepositRenewal, releaseDepositHold } from "@/lib/deposits";
 import { formatCents } from "@/lib/format";
 import { queueBookingEmails, queueExtensionEmails, type ExtensionEmailEvent } from "@/lib/email/booking-emails";
 import { ExtensionError, acceptExtension, markExtensionPaid, refuseExtension } from "@/lib/extensions";
@@ -89,6 +89,15 @@ export async function markPaid(_: ActionState, formData: FormData): Promise<Acti
   await transition(id, r.booking.status, "confirmed", `Paiement reçu (${method})${note ? `. ${note}` : ""}`, {
     paymentDueAt: null,
   });
+  // Réglé hors ligne : aucune carte connue pour la caution. L'e-mail « paiement reçu » demande au
+  // client d'en enregistrer une depuis son espace ; sans elle, l'empreinte du jour de remise échouera.
+  if (r.booking.depositCents > 0 && !r.booking.stripePaymentMethodId) {
+    await db.insert(schema.bookingEvents).values({
+      bookingId: id,
+      actor: "system",
+      message: "Aucune carte enregistrée pour la caution : le client est invité à en enregistrer une depuis son espace avant la remise",
+    });
+  }
   queueBookingEmails("paid", id);
   revalidate(id);
   return { ok: `Paiement enregistré (${method}). La réservation est confirmée.` };
@@ -253,9 +262,25 @@ export async function markPickedUp(_: ActionState, formData: FormData): Promise<
   if ("error" in r) return { error: r.error };
   if (parsed.data.date > todayIso()) return { error: "La date de remise ne peut pas être dans le futur." };
   if (!r.booking.copyId) return { error: "Aucun exemplaire attribué à cette réservation." };
+  // Sans empreinte en place, le set n'est pas remis (décision d'Alexis, 13 octobre 2026), sauf
+  // choix explicite des gérants, gardé dans l'historique.
+  const unguarded = r.booking.depositCents > 0 && r.booking.depositStatus !== "held";
+  if (unguarded && !parsed.data.withoutDeposit) {
+    return {
+      error:
+        "La caution n'est pas garantie : aucune empreinte en place. Redemandez l'empreinte, ou faites enregistrer une carte au client depuis son espace, avant de remettre le set.",
+    };
+  }
 
   const note = parsed.data.note;
-  await transition(id, r.booking.status, "picked_up", note ? `Set remis au client. ${note}` : "Set remis au client", {
+  const message = [
+    "Set remis au client",
+    unguarded ? "sans empreinte de caution, sur décision des gérants" : null,
+    note,
+  ]
+    .filter(Boolean)
+    .join(". ");
+  await transition(id, r.booking.status, "picked_up", message, {
     pickedUpAt: atDay(parsed.data.date),
   });
   queueBookingEmails("picked_up", id);
@@ -285,6 +310,30 @@ export async function markReturned(_: ActionState, formData: FormData): Promise<
   queueBookingEmails("returned", id);
   revalidate(id);
   return { ok: late > 0 ? `Retour enregistré, ${late} jour${late > 1 ? "s" : ""} de retard.` : "Retour enregistré." };
+}
+
+/**
+ * « Redemander l'empreinte » : nouvelle tentative sur la carte enregistrée, après un refus ou
+ * quand l'empreinte n'a pas encore été tentée. Le résultat est écrit par `placeDepositHold`.
+ */
+export async function requestDepositHold(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const r = await loadBooking(id, ["confirmed", "picked_up"]);
+  if ("error" in r) return { error: r.error };
+  if (r.booking.depositStatus === "held") return { error: "L'empreinte est déjà en place." };
+  try {
+    const result = await placeDepositHold(id);
+    revalidate(id);
+    if (result === "held") return { ok: "Empreinte posée : la caution est garantie. Le client est prévenu par e-mail." };
+    const fresh = await db.query.bookings.findFirst({ where: eq(schema.bookings.id, id), columns: { depositError: true } });
+    return result === "failed"
+      ? { error: `Empreinte refusée${fresh?.depositError ? ` : ${fresh.depositError}` : ""}. Le client peut enregistrer une autre carte depuis son espace.` }
+      : { error: "Rien à faire sur cette réservation." };
+  } catch (e) {
+    console.error("[stripe] empreinte redemandée", id, e);
+    return { error: "Stripe n'a pas répondu. Réessayez dans un instant." };
+  }
 }
 
 /** Libérer l'empreinte de caution après contrôle du set : rien n'est débité. */

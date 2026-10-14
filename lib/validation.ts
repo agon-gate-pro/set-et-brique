@@ -268,6 +268,8 @@ export const markPaidSchema = z.object({
 export const pickupSchema = z.object({
   date: isoDate,
   note: optionalText,
+  /** Remise sans empreinte de caution en place, décision explicite des gérants (étape 3 de la caution). */
+  withoutDeposit: z.literal("on").optional(),
 });
 
 /** Retour du set, avec l'état des lieux en commentaire libre (module 9). */

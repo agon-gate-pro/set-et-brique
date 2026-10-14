@@ -10,6 +10,7 @@ import type { CustomerBooking } from "@/lib/bookings";
 import type { CustomerExtensionView } from "@/lib/extensions";
 import { hasUnseenHandoverChange } from "@/lib/handover";
 import { acknowledgeHandoverChange, acceptProposedDate, cancelRequest } from "./actions";
+import { DepositCardButton } from "./deposit-card-button";
 import { ExtensionRequest } from "./extension-request";
 import { PaymentSummary } from "./payment-summary";
 
@@ -31,6 +32,7 @@ export function BookingCard({
   previousPickupPoint = null,
   openPayment = false,
   extension = null,
+  depositCardMissing = false,
 }: {
   booking: CustomerBooking;
   setName: string;
@@ -42,6 +44,8 @@ export function BookingCard({
   openPayment?: boolean;
   /** Prolongation : état du bouton, dates possibles et demande en cours. Absent dans l'historique. */
   extension?: CustomerExtensionView | null;
+  /** Aucune carte connue pour la caution (loyer réglé hors ligne) : le client doit en enregistrer une. */
+  depositCardMissing?: boolean;
 }) {
   const [acceptState, acceptAction] = useActionState(acceptProposedDate, null);
   const [cancelState, cancelAction] = useActionState(cancelRequest, null);
@@ -65,7 +69,7 @@ export function BookingCard({
       : booking.depositStatus === "held"
         ? `Caution : une empreinte de ${deposit} est en place sur votre carte. Elle n'est pas débitée.`
         : booking.depositStatus === "failed" && (booking.status === "confirmed" || booking.status === "picked_up")
-          ? `Caution : l'empreinte de ${deposit} n'a pas pu être posée sur votre carte. Contactez-nous avant la remise du set.`
+          ? `Caution : l'empreinte de ${deposit} n'a pas pu être posée sur votre carte. Le set ne peut être remis qu'une fois la caution garantie : enregistrez une carte ci-dessous (la même, validée par votre banque, ou une autre).`
           : booking.depositStatus === "released"
             ? `Caution : l'empreinte de ${deposit} est libérée, rien n'a été débité.`
             : booking.depositStatus === "captured"
@@ -73,8 +77,15 @@ export function BookingCard({
                   booking.depositCaptureReason ? ` (${booking.depositCaptureReason})` : ""
                 }. Le reste est libéré.`
             : booking.depositStatus === "none" && booking.status === "confirmed"
-              ? `Caution : une empreinte de ${deposit} sera posée sur votre carte le jour de la remise, sans débit.`
+              ? depositCardMissing
+                ? `Caution : aucune carte n'est encore enregistrée. Avant la remise, enregistrez-en une ci-dessous : une empreinte de ${deposit} y sera posée le jour de la remise, sans débit.`
+                : `Caution : une empreinte de ${deposit} sera posée sur votre carte le jour de la remise, sans débit.`
               : null;
+  // Bouton « enregistrer une carte » : empreinte refusée, ou aucune carte connue (règlement hors ligne).
+  const needsCard =
+    booking.depositCents > 0 &&
+    (booking.status === "confirmed" || booking.status === "picked_up") &&
+    (booking.depositStatus === "failed" || (booking.depositStatus === "none" && depositCardMissing));
   // Une prolongation en cours prime sur « En cours de location » : c'est elle qui attend quelque chose.
   const extensionStatus = extension?.current?.status ?? null;
   const statusBadge =
@@ -183,7 +194,15 @@ export function BookingCard({
       ) : null}
 
       {depositNote ? (
-        <p className={`mt-3 text-sm ${booking.depositStatus === "failed" ? "font-semibold text-brick-deep" : "text-slate-ink"}`}>{depositNote}</p>
+        <p className={`mt-3 text-sm ${booking.depositStatus === "failed" || needsCard ? "font-semibold text-brick-deep" : "text-slate-ink"}`}>
+          {depositNote}
+        </p>
+      ) : null}
+      {needsCard ? (
+        <DepositCardButton
+          bookingId={booking.id}
+          label={booking.depositStatus === "failed" ? "Enregistrer une carte pour la caution" : "Enregistrer ma carte pour la caution"}
+        />
       ) : null}
 
       {booking.status === "picked_up" ? (

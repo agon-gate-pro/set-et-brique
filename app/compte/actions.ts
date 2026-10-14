@@ -9,7 +9,13 @@ import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
 import { ExtensionError, cancelExtensionRequest, createExtensionRequest } from "@/lib/extensions";
 import { hasUnseenHandoverChange } from "@/lib/handover";
-import { createBookingCheckout, createExtensionCheckout, lookupGiftVoucher, type BookingCheckoutResult } from "@/lib/payments";
+import {
+  createBookingCheckout,
+  createDepositCardCheckout,
+  createExtensionCheckout,
+  lookupGiftVoucher,
+  type BookingCheckoutResult,
+} from "@/lib/payments";
 import { site } from "@/lib/site";
 import type { ActionState } from "@/components/admin/form";
 
@@ -95,6 +101,16 @@ export async function startExtensionPayment(extensionId: string, voucherCode: st
   const result = await createExtensionCheckout({ extensionId, customerId: customer.id, voucherCode, origin: await requestOrigin() });
   if ("confirmed" in result) revalidate();
   return result;
+}
+
+/**
+ * « Enregistrer une carte pour la caution » (étape 3 de la caution) : page Stripe sans paiement,
+ * après une empreinte refusée ou un loyer réglé hors ligne. Retour sur `/compte?carte=<référence>`.
+ */
+export async function startDepositCard(bookingId: string): Promise<BookingCheckoutResult> {
+  const customer = await currentCustomer();
+  if (!customer) return { error: "Connectez-vous pour enregistrer une carte." };
+  return createDepositCardCheckout({ bookingId, customerId: customer.id, origin: await requestOrigin() });
 }
 
 /** Le client accepte la date proposée par les gérants : elle remplace la sienne. */

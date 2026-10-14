@@ -2,9 +2,10 @@ import "server-only";
 
 import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import StripeSdk, { type Stripe } from "stripe";
+import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { queueBookingEmails, queueExtensionEmails } from "@/lib/email/booking-emails";
-import { queueDepositHoldIfDue, queueDepositRenewal } from "@/lib/deposits";
+import { placeDepositHold, queueDepositHoldIfDue, queueDepositRenewal, type DepositResult } from "@/lib/deposits";
 import { ExtensionError, markExtensionPaid } from "@/lib/extensions";
 import { formatCents } from "@/lib/format";
 import { queueGiftVoucherEmail } from "@/lib/email/gift-voucher-emails";
@@ -37,10 +38,12 @@ const INTEGRATION_IDS = {
   booking: "set-et-brique-location-QKZPMWTR",
   gift_voucher: "set-et-brique-bon-cadeau-HJVXNDLB",
   extension: "set-et-brique-prolongation-TBWFRKSC",
+  deposit_card: "set-et-brique-caution-carte-RNQXDMWP",
 };
 
 type CheckoutMetadata = {
-  kind: "booking" | "gift_voucher" | "extension";
+  /** `deposit_card` : carte enregistrée par le client pour la caution, hors paiement (étape 3). */
+  kind: "booking" | "gift_voucher" | "extension" | "deposit_card";
   booking_id?: string;
   extension_id?: string;
   voucher_code?: string;
@@ -167,9 +170,9 @@ function createRentalCheckoutSession(customerId: string, depositCents: number, p
 function createCardOnlyCheckoutSession(
   customerId: string,
   depositCents: number,
-  params: Omit<RentalSessionParams, "line_items" | "payment_intent_data"> & { description: string },
+  params: Omit<RentalSessionParams, "line_items" | "payment_intent_data"> & { description: string; submitMessage?: string },
 ) {
-  const { description, ...rest } = params;
+  const { description, submitMessage, ...rest } = params;
   return createCustomerSession(customerId, (customer) => ({
     ...rest,
     mode: "setup",
@@ -180,7 +183,9 @@ function createCardOnlyCheckoutSession(
     setup_intent_data: { description, metadata: rest.metadata ?? undefined },
     custom_text: {
       submit: {
-        message: `Rien n'est débité : votre bon cadeau règle la location. Votre carte est seulement enregistrée par Stripe pour ${guaranteeText(depositCents)}`,
+        message:
+          submitMessage ??
+          `Rien n'est débité : votre bon cadeau règle la location. Votre carte est seulement enregistrée par Stripe pour ${guaranteeText(depositCents)}`,
       },
     },
     expires_at: expiresAt(),
@@ -697,7 +702,79 @@ export type FulfillmentResult =
   | { status: "unknown" }
   | { status: "booking"; bookingId: string; outcome: "confirmed" | "skipped" }
   | { status: "extension"; extensionId: string; outcome: "confirmed" | "skipped" }
-  | { status: "gift_voucher"; voucher: PurchasedVoucher };
+  | { status: "gift_voucher"; voucher: PurchasedVoucher }
+  /** Carte enregistrée pour la caution ; `deposit` dit si l'empreinte a été posée dans la foulée. */
+  | { status: "deposit_card"; bookingId: string; deposit: DepositResult };
+
+/* -------------------------------------------------------------------------- */
+/* Caution : carte enregistrée par le client (étape 3)                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * « Enregistrer une carte pour la caution », depuis l'espace client : réservation payée (ou set
+ * déjà chez le client) dont l'empreinte a été refusée, ou sans carte (loyer réglé hors ligne,
+ * « Paiement reçu » des gérants). Page Stripe en mode `setup`, rien n'est débité ; Stripe fait
+ * valider la carte par la banque à ce moment-là (3-D Secure), ce qui lève le refus « validation
+ * exigée » pour l'empreinte posée ensuite sans le client. Au retour, `fulfillDepositCardSession`
+ * garde la carte et pose l'empreinte tout de suite si elle est due.
+ */
+export async function createDepositCardCheckout(opts: { bookingId: string; customerId: string; origin: string }): Promise<BookingCheckoutResult> {
+  const booking = await db.query.bookings.findFirst({
+    where: and(eq(schema.bookings.id, opts.bookingId), eq(schema.bookings.customerId, opts.customerId)),
+    with: { set: { columns: { name: true } } },
+  });
+  if (!booking || !(booking.status === "confirmed" || booking.status === "picked_up") || booking.depositCents <= 0) {
+    return { error: "Cette réservation n'attend pas de carte pour la caution." };
+  }
+  if (booking.depositStatus === "held") return { error: "La caution de cette réservation est déjà garantie." };
+
+  const session = await createCardOnlyCheckoutSession(booking.customerId, booking.depositCents, {
+    client_reference_id: booking.id,
+    metadata: { kind: "deposit_card", booking_id: booking.id } satisfies CheckoutMetadata,
+    description: `Caution ${booking.set.name} (${booking.reference}) : carte enregistrée par le client`,
+    submitMessage: `Rien n'est débité aujourd'hui. Votre carte est enregistrée par Stripe pour ${guaranteeText(booking.depositCents)}`,
+    success_url: `${opts.origin}/compte?carte=${encodeURIComponent(booking.reference)}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${opts.origin}/compte`,
+    integration_identifier: INTEGRATION_IDS.deposit_card,
+  });
+  if (!session.url) return { error: "Stripe n'a pas renvoyé de page. Réessayez." };
+  return { url: session.url };
+}
+
+/**
+ * Retour de cette page : la carte remplace la précédente, et l'empreinte est posée dans la foulée
+ * si elle est due (jour de remise arrivé, ou set déjà chez le client) pour que le client voie le
+ * résultat en revenant. Sinon la tâche du matin s'en charge le jour de la remise. Idempotente :
+ * la même carte déjà en place avec une empreinte en cours ne fait rien.
+ */
+async function fulfillDepositCardSession(session: Stripe.Checkout.Session, meta: Partial<CheckoutMetadata>): Promise<FulfillmentResult> {
+  const bookingId = meta.booking_id;
+  if (!bookingId) {
+    console.error("[stripe] carte pour la caution sans réservation", session.id, meta);
+    return { status: "unknown" };
+  }
+  const booking = await db.query.bookings.findFirst({
+    where: eq(schema.bookings.id, bookingId),
+    columns: { status: true, startDate: true, depositStatus: true, depositCents: true, stripePaymentMethodId: true },
+  });
+  if (!booking || !(booking.status === "confirmed" || booking.status === "picked_up")) {
+    return { status: "deposit_card", bookingId, deposit: "skipped" };
+  }
+  const cardId = await savedCardOf(session, bookingId);
+  if (!cardId) return { status: "deposit_card", bookingId, deposit: "failed" };
+  if (cardId === booking.stripePaymentMethodId && booking.depositStatus === "held") {
+    return { status: "deposit_card", bookingId, deposit: "skipped" };
+  }
+  if (cardId !== booking.stripePaymentMethodId) {
+    await db.transaction(async (tx) => {
+      await tx.update(schema.bookings).set({ stripePaymentMethodId: cardId }).where(eq(schema.bookings.id, bookingId));
+      await tx.insert(schema.bookingEvents).values({ bookingId, actor: "customer", message: "Carte enregistrée par le client pour la caution" });
+    });
+  }
+  const due = booking.status === "picked_up" || booking.startDate <= todayIso();
+  const deposit: DepositResult = due && booking.depositStatus !== "held" ? await placeDepositHold(bookingId) : "skipped";
+  return { status: "deposit_card", bookingId, deposit };
+}
 
 export async function retrieveCheckoutSession(sessionId: string) {
   return stripe().checkout.sessions.retrieve(sessionId);
@@ -761,7 +838,9 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session): 
   if (session.status !== "complete" || session.payment_status === "unpaid") return { status: "unpaid" };
   const meta = (session.metadata ?? {}) as Partial<CheckoutMetadata>;
 
-  if (session.mode === "setup") return fulfillCardOnlySession(session, meta);
+  if (session.mode === "setup") {
+    return meta.kind === "deposit_card" ? fulfillDepositCardSession(session, meta) : fulfillCardOnlySession(session, meta);
+  }
 
   const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
 

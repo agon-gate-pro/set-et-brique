@@ -19,17 +19,20 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
   // `payer` : référence d'une réservation acceptée, dont le récapitulatif de paiement s'ouvre d'office.
   // `paye` + `session_id` : retour de la page de paiement Stripe pour une location ;
   // `prolongation` + `session_id` : le même retour pour le supplément d'une prolongation.
-  const { demande, payer, paye, prolongation, session_id } = await searchParams;
+  // `carte` + `session_id` : retour de la page Stripe où le client a enregistré une carte pour la caution.
+  const { demande, payer, paye, prolongation, carte, session_id } = await searchParams;
   // auth.protect() redirige vers /connexion en gardant le chemin courant en retour.
   const { userId } = await auth.protect();
 
   // Retour de Stripe : on livre nous-mêmes (le webhook l'a peut-être déjà fait, la livraison est
   // idempotente) pour que le client voie sa réservation confirmée sans attendre.
   let paymentPending = false;
+  let depositOutcome: "held" | "failed" | "skipped" | null = null;
   if (typeof session_id === "string" && session_id.startsWith("cs_")) {
     try {
       const result = await fulfillCheckoutSession(await retrieveCheckoutSession(session_id));
       paymentPending = result.status === "unpaid";
+      if (result.status === "deposit_card") depositOutcome = result.deposit;
     } catch (e) {
       console.error("[stripe] retour paiement", e);
     }
@@ -48,7 +51,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
 
   const bookings = customer
     ? await db.query.bookings.findMany({
-        columns: bookingCustomerColumns,
+        // La carte n'est lue que pour savoir s'il y en a une : son identifiant ne part pas au navigateur.
+        columns: { ...bookingCustomerColumns, stripePaymentMethodId: true },
         where: eq(schema.bookings.customerId, customer.id),
         with: {
           set: { columns: { name: true, slug: true } },
@@ -104,6 +108,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
   const paid = typeof paye === "string" ? bookings.find((b) => b.reference === paye) : undefined;
   // Prolongation réglée : plus aucune demande à payer sur la location, dont la date de retour a changé.
   const extended = typeof prolongation === "string" ? bookings.find((b) => b.reference === prolongation) : undefined;
+  const cardSaved = typeof carte === "string" ? bookings.find((b) => b.reference === carte) : undefined;
   const extensionStillDue = extended ? extensions.get(extended.id)?.current?.status === "pending_payment" : false;
 
   return (
@@ -153,15 +158,35 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         )
       ) : null}
 
+      {cardSaved ? (
+        cardSaved.depositStatus === "held" ? (
+          <p role="status" className="mt-6 brick-card bg-leaf/20 p-5 font-semibold text-ink-deep">
+            Carte enregistrée, merci ! La caution de votre location {cardSaved.reference} est garantie : l&apos;empreinte de{" "}
+            {formatCents(cardSaved.depositCents)} est en place, sans débit.
+          </p>
+        ) : depositOutcome === "failed" || cardSaved.depositStatus === "failed" ? (
+          <p role="status" className="mt-6 brick-card bg-sun/40 p-5 font-semibold text-ink-deep">
+            Carte enregistrée, mais l&apos;empreinte de caution de la location {cardSaved.reference} a encore été refusée. Essayez
+            une autre carte, ou contactez-nous.
+          </p>
+        ) : (
+          <p role="status" className="mt-6 brick-card bg-leaf/20 p-5 font-semibold text-ink-deep">
+            Carte enregistrée, merci ! L&apos;empreinte de caution de votre location {cardSaved.reference} sera posée le jour de
+            la remise, sans débit.
+          </p>
+        )
+      ) : null}
+
       <h2 className="mt-10 text-2xl font-semibold">Mes locations</h2>
       {current.length === 0 ? (
         <p className="mt-3 text-slate-ink max-w-xl">Aucune location en cours. Le catalogue vous attend.</p>
       ) : (
         <ul className="mt-4 space-y-4">
-          {current.map((b) => (
+          {current.map(({ stripePaymentMethodId, ...b }) => (
             <BookingCard
               key={b.id}
               booking={b}
+              depositCardMissing={!stripePaymentMethodId}
               setName={b.set.name}
               setSlug={b.set.slug}
               pickupPoint={b.pickupPoint?.name ?? null}
@@ -223,8 +248,15 @@ export default async function AccountPage({ searchParams }: PageProps<"/compte">
         <>
           <h2 className="mt-10 text-2xl font-semibold">Historique</h2>
           <ul className="mt-4 space-y-4">
-            {past.map((b) => (
-              <BookingCard key={b.id} booking={b} setName={b.set.name} setSlug={b.set.slug} pickupPoint={b.pickupPoint?.name ?? null} />
+            {past.map(({ stripePaymentMethodId, ...b }) => (
+              <BookingCard
+                key={b.id}
+                booking={b}
+                depositCardMissing={!stripePaymentMethodId}
+                setName={b.set.name}
+                setSlug={b.set.slug}
+                pickupPoint={b.pickupPoint?.name ?? null}
+              />
             ))}
           </ul>
         </>

@@ -30,6 +30,7 @@ export type BookingEmailEvent =
   | "paid_online"
   /** Empreinte de caution (`lib/deposits.ts`) : posée le jour de la remise, libérée sans débit, ou somme retenue. */
   | "deposit_held"
+  | "deposit_failed"
   | "deposit_released"
   | "deposit_captured";
 
@@ -221,6 +222,15 @@ function paid(b: BookingWithDetails) {
       p(
         `Rendez-vous le ${longDate(b.startDate)}${time ? ` vers ${time}` : ""} : ${place(b)}. Le set vous est remis démonté, pièces triées en sachets, notice comprise.`,
       ),
+      // Règlement hors ligne (virement, espèces) : aucune carte connue, la caution ne peut pas être
+      // garantie sans elle. Un paiement en ligne l'a déjà enregistrée.
+      ...(b.depositCents > 0 && !b.stripePaymentMethodId
+        ? [
+            p(
+              `Avant la remise, enregistrez une carte depuis votre compte pour la caution de ${formatCents(b.depositCents)} : une empreinte y sera posée le jour de la remise, sans débit (conditions de location, article 6).`,
+            ),
+          ]
+        : []),
       p(`Un empêchement ? Prévenez-nous le plus tôt possible : répondez à cet e-mail ou ${callUs}.`),
     ],
     button: { label: "Voir ma réservation", href: siteLink("/compte") },
@@ -368,6 +378,24 @@ function depositHeld(b: BookingWithDetails) {
       p(`Une question ? Répondez à cet e-mail ou ${callUs}.`),
     ],
     button: { label: "Voir ma location", href: siteLink("/compte") },
+  });
+}
+
+/** E0 bis. Empreinte refusée, au client : sans elle le set ne peut pas être remis, à lui d'agir. */
+function depositFailed(b: BookingWithDetails) {
+  return customerMail("deposit_failed", b, {
+    subject: `Caution : une action est nécessaire (${b.set.name}, ${b.reference})`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Nous n'avons pas pu poser l'empreinte de ${formatCents(b.depositCents)} prévue pour la caution de votre location de ${b.set.name}${b.depositError ? ` (${b.depositError})` : ""}. Rien n'a été débité.`,
+      ),
+      p(
+        "Le set ne peut être remis qu'une fois la caution garantie. Depuis votre compte, enregistrez une carte (la même, validée par votre banque, ou une autre) : l'empreinte est reposée aussitôt, sans débit.",
+      ),
+      p(`Une difficulté ? Répondez à cet e-mail ou ${callUs}.`),
+    ],
+    button: { label: "Enregistrer une carte", href: siteLink("/compte") },
   });
 }
 
@@ -685,6 +713,7 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   paid: (b) => [paid(b)],
   paid_online: (b) => [paid(b), paidAdmin(b)],
   deposit_held: (b) => [depositHeld(b)],
+  deposit_failed: (b) => [depositFailed(b)],
   deposit_released: (b) => [depositReleased(b)],
   deposit_captured: (b) => [depositCaptured(b)],
 };

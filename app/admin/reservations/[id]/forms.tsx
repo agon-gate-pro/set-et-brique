@@ -19,6 +19,7 @@ import {
   refuseBooking,
   refuseBookingExtension,
   releaseDeposit,
+  requestDepositHold,
   retainDeposit,
   saveAdminNote,
   toggleCustomerBlock,
@@ -94,9 +95,13 @@ export function PaymentActions({ booking, delayHours }: { booking: Booking; dela
 export function HandoverActions({ booking }: { booking: Booking }) {
   const [pickupState, pickupAction] = useActionState(markPickedUp, null);
   const [returnState, returnAction] = useActionState(markReturned, null);
+  const [holdState, holdAction] = useActionState(requestDepositHold, null);
+  // Remise sans empreinte : choix explicite des gérants, coché sur place (étape 3 de la caution).
+  const [withoutDeposit, setWithoutDeposit] = useState(false);
   const today = todayIso();
 
   if (booking.status === "pending_payment" || booking.status === "confirmed") {
+    const guarded = booking.depositCents <= 0 || booking.depositStatus === "held";
     return (
       <section className="mt-8 brick-card p-6 bg-sky">
         <h2 className="text-2xl font-semibold">Remise du set</h2>
@@ -104,20 +109,34 @@ export function HandoverActions({ booking }: { booking: Booking }) {
           À enregistrer une fois le set remis en main propre, remise prévue le {formatDate(booking.startDate)}.
         </p>
         {/* Caution : l'empreinte se pose toute seule le matin du jour de remise (`lib/deposits.ts`). */}
-        {booking.status === "confirmed" && booking.depositCents > 0 ? (
+        {booking.depositCents > 0 ? (
           booking.depositStatus === "held" ? (
             <p className="mt-2 font-semibold text-leaf-deep">
               Caution de {formatCents(booking.depositCents)} : {depositStateLabel(booking)?.toLowerCase()}.
             </p>
-          ) : booking.depositStatus === "failed" ? (
-            <p className="mt-2 rounded-xl border border-brick/30 bg-red-50 px-4 py-3 font-semibold text-brick-deep">
-              Caution de {formatCents(booking.depositCents)} non garantie. {depositStateLabel(booking)}. Voyez avec le client
-              avant de remettre le set.
-            </p>
           ) : (
-            <p className="mt-2 text-sm text-slate-ink">
-              Caution de {formatCents(booking.depositCents)} : {depositStateLabel(booking)?.toLowerCase()}.
-            </p>
+            <div
+              className={`mt-2 rounded-xl border px-4 py-3 ${
+                booking.depositStatus === "failed" ? "border-brick/30 bg-red-50" : "border-ink/10 bg-paper"
+              }`}
+            >
+              <p className={`font-semibold ${booking.depositStatus === "failed" ? "text-brick-deep" : "text-ink-deep"}`}>
+                Caution de {formatCents(booking.depositCents)} non garantie
+                {booking.depositStatus === "failed" ? ` : ${depositStateLabel(booking)?.toLowerCase()}` : " : empreinte pas encore posée"}.
+              </p>
+              <p className="mt-1 text-sm text-slate-ink">
+                Le set n&apos;est remis qu&apos;une fois l&apos;empreinte en place. Le client peut enregistrer une carte depuis son
+                espace (il a reçu un e-mail si l&apos;empreinte a été refusée) ; vous pouvez aussi la redemander sur la carte
+                connue.
+              </p>
+              {booking.status === "confirmed" ? (
+                <form action={holdAction} className="mt-3 flex flex-wrap items-center gap-3">
+                  <input type="hidden" name="id" value={booking.id} />
+                  <SubmitButton variant="sea">Redemander l&apos;empreinte</SubmitButton>
+                  <FormMessage state={holdState} />
+                </form>
+              ) : null}
+            </div>
           )
         ) : null}
         <form action={pickupAction} className="mt-4 grid gap-4 sm:grid-cols-[10rem_1fr_auto] items-end">
@@ -126,9 +145,26 @@ export function HandoverActions({ booking }: { booking: Booking }) {
             <input name="date" type="date" required max={today} defaultValue={today} className={inputClass} />
           </Field>
           <Field label="Précision" hint="Facultatif, pour l'historique">
-            <input name="note" className={inputClass} placeholder="Loyer encaissé par TPE" />
+            <input name="note" className={inputClass} placeholder="Set vérifié ensemble" />
           </Field>
-          <SubmitButton variant="leaf">Set remis</SubmitButton>
+          <SubmitButton variant="leaf" disabled={!guarded && !withoutDeposit}>
+            Set remis
+          </SubmitButton>
+          {!guarded ? (
+            <label className="sm:col-span-3 flex items-start gap-2 text-sm text-ink-deep">
+              <input
+                type="checkbox"
+                name="withoutDeposit"
+                checked={withoutDeposit}
+                onChange={(e) => setWithoutDeposit(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                Remettre quand même, sans empreinte de caution (la caution est garantie autrement). Ce choix est inscrit
+                dans l&apos;historique.
+              </span>
+            </label>
+          ) : null}
           <div className="sm:col-span-3">
             <FormMessage state={pickupState} />
           </div>
