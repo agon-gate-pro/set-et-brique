@@ -183,6 +183,28 @@ export function HandoverActions({ booking }: { booking: Booking }) {
             ? `En retard de ${late} jour${late > 1 ? "s" : ""} : retour attendu le ${formatDate(booking.endDate)}.`
             : `Retour attendu le ${formatDate(booking.endDate)}.`}
         </p>
+        {/* Set chez le client sans empreinte (remise forcée, ou empreinte expirée et refusée) : la redemander ici aussi. */}
+        {booking.depositCents > 0 && booking.depositStatus !== "held" ? (
+          <div
+            className={`mt-2 rounded-xl border px-4 py-3 ${
+              booking.depositStatus === "failed" ? "border-brick/30 bg-red-50" : "border-ink/10 bg-paper"
+            }`}
+          >
+            <p className={`font-semibold ${booking.depositStatus === "failed" ? "text-brick-deep" : "text-ink-deep"}`}>
+              Caution de {formatCents(booking.depositCents)} non garantie
+              {booking.depositStatus === "failed" ? ` : ${depositStateLabel(booking)?.toLowerCase()}` : " : empreinte pas encore posée"}.
+            </p>
+            <p className="mt-1 text-sm text-slate-ink">
+              Le set est chez le client sans empreinte. Il peut enregistrer une carte depuis son espace ; vous pouvez aussi
+              redemander l&apos;empreinte sur la carte connue.
+            </p>
+            <form action={holdAction} className="mt-3 flex flex-wrap items-center gap-3">
+              <input type="hidden" name="id" value={booking.id} />
+              <SubmitButton variant="sea">Redemander l&apos;empreinte</SubmitButton>
+              <FormMessage state={holdState} />
+            </form>
+          </div>
+        ) : null}
         <form action={returnAction} className="mt-4 grid gap-4">
           <input type="hidden" name="id" value={booking.id} />
           <div className="grid gap-4 sm:grid-cols-[10rem_1fr] items-end">
