@@ -57,7 +57,27 @@ const groups: Group[] = [
 function groupKeysOf(r: BookingRow): string[] {
   const keys = groups.filter((g) => g.statuses.includes(r.status)).map((g) => g.key);
   if (r.extension === "pending_review" && !keys.includes("pending_review")) keys.push("pending_review");
+  if (depositToRedo(r) && !keys.includes("pending_review")) keys.push("pending_review");
   return keys;
+}
+
+/**
+ * Empreinte de caution refusée alors que le set est dû (à remettre ou chez le client) : les gérants
+ * doivent la redemander ou faire enregistrer une carte (demande d'Alexis, 14 octobre 2026 : la liste
+ * ne le disait pas, seule la fiche et le compteur du menu). Seconde pastille rouge sous l'état, et
+ * ligne comptée « À traiter ».
+ */
+function depositToRedo(r: BookingRow) {
+  return r.depositMissing && (r.status === "confirmed" || r.status === "picked_up");
+}
+
+function DepositBadge({ row, className = "" }: { row: BookingRow; className?: string }) {
+  if (!depositToRedo(row)) return null;
+  return (
+    <span className={`text-xs font-bold px-2 py-1 rounded-md border whitespace-nowrap border-brick bg-red-100 text-brick-deep ${className}`}>
+      Caution refusée
+    </span>
+  );
 }
 
 /**
@@ -270,10 +290,11 @@ export function BookingsTable({
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="text-xs font-bold text-slate-ink">{r.reference}</span>
-                    <span
-                      className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md border whitespace-nowrap ${display.badge}`}
-                    >
-                      {display.label}
+                    <span className="shrink-0 flex flex-col items-end gap-1">
+                      <span className={`text-xs font-bold px-2 py-1 rounded-md border whitespace-nowrap ${display.badge}`}>
+                        {display.label}
+                      </span>
+                      <DepositBadge row={r} />
                     </span>
                   </span>
                   <span className="mt-1 display font-semibold text-lg leading-snug block break-words text-ink-deep">{r.setName}</span>
@@ -360,6 +381,7 @@ export function BookingsTable({
                       >
                         {display.label}
                       </span>
+                      <DepositBadge row={r} className="mt-1 inline-block" />
                     </td>
                   </tr>
                 );
