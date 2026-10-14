@@ -68,6 +68,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/r
       depositCents: b.depositCents,
       depositLabel: depositStateLabel(b),
       depositMissing: b.depositStatus === "failed",
+      depositCaptured: b.depositStatus === "captured",
       pickupTime: b.pickupTime,
       setName: b.set.name,
       pickupPointId: b.pickupPointId,

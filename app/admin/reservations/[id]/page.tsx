@@ -137,9 +137,18 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                       {b.disassemblyCents != null ? `+ ${formatCents(b.disassemblyCents)} rendu monté` : "Rendu monté : non"}
                     </span>
                     <span className="block text-sm text-slate-ink">Caution {formatCents(b.depositCents)}</span>
-                    {/* État de l'empreinte de caution (`lib/deposits.ts`) ; en rouge quand elle manque alors que le set est dû. */}
+                    {/* État de l'empreinte de caution (`lib/deposits.ts`) : rouge quand elle est refusée, orange quand une somme
+                        est retenue (demande d'Agon-Gate, 14 octobre 2026 : la retenue passait inaperçue). */}
                     {depositStateLabel(b) ? (
-                      <span className={`block text-sm ${b.depositStatus === "failed" ? "font-bold text-brick-deep" : "text-slate-ink"}`}>
+                      <span
+                        className={`block text-sm ${
+                          b.depositStatus === "failed"
+                            ? "font-bold text-brick-deep"
+                            : b.depositStatus === "captured"
+                              ? "font-bold text-orange-700"
+                              : "text-slate-ink"
+                        }`}
+                      >
                         {depositStateLabel(b)}
                       </span>
                     ) : null}

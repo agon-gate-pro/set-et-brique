@@ -83,7 +83,13 @@ export function BookingDialog({ row, today, onClose }: { row: BookingRow; today:
             {/* Comme sur la fiche : la caution du set, puis où en est son empreinte. */}
             <span className="block text-sm text-slate-ink">Caution {formatCents(row.depositCents)}</span>
             {row.depositLabel ? (
-              <span className={`block text-sm ${row.depositMissing ? "font-bold text-brick-deep" : "text-slate-ink"}`}>{row.depositLabel}</span>
+              <span
+                className={`block text-sm ${
+                  row.depositMissing ? "font-bold text-brick-deep" : row.depositCaptured ? "font-bold text-orange-700" : "text-slate-ink"
+                }`}
+              >
+                {row.depositLabel}
+              </span>
             ) : null}
           </Block>
           <Block label="Remise">

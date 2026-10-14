@@ -23,6 +23,8 @@ export type BookingRow = {
   depositCents: number;
   depositLabel: string | null;
   depositMissing: boolean;
+  /** Une somme a été retenue sur la caution : affichée en orange dans l'aperçu. */
+  depositCaptured: boolean;
   pickupTime: string | null;
   setName: string;
   pickupPointId: string | null;
