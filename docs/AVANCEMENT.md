@@ -105,13 +105,33 @@ Mise à jour du 13 octobre 2026, après la revue de `lib/deposits.ts` et `lib/pa
 1. ~~**Caution (module 4), corrections de la revue**~~ : **faites le 13 octobre 2026** (voir le journal), sauf un point laissé à l'étape 3 : garder l'identifiant du paiement en « validation exigée par la banque » au lieu de l'annuler.
 2. ~~**Caution, étape 3**~~ : **faite le 14 octobre 2026** (voir le journal), à tester.
 3. ~~**Tests en mode test**~~ : **faits le 14 octobre 2026** (voir le journal ; carte de test pour un refus hors session : `4000 0027 6000 3184`). Restent : empreinte renouvelée (SB-M65FS vers le 18 octobre) et libération d'office à 48 h, tous deux par la tâche du matin ; puis nettoyage des réservations de test.
-4. **Remboursement** d'une réservation payée puis annulée.
-5. **Stripe en production** : clé restreinte live et webhook live sur le domaine final, moyens de paiement du Dashboard limités à la carte, remplacement de la clé `sk_test_` locale par une clé restreinte, rôle d'Agon-Gate sur le compte Set et Brique ramené à Développeur.
-6. **Clerk en production** et domaine final (procédure ci-dessous).
+4. ~~**Remboursement** d'une réservation payée puis annulée~~ : **fait le 14 octobre 2026** (voir le journal), à tester à l'écran.
+5. **Mise en production** : check-list ci-dessous (Stripe live, Clerk production, domaine, variables, nettoyage).
+6. ~~Clerk en production et domaine final~~ : repris dans la check-list.
 7. **E-mails** : envois réels de test sur le domaine, relecture par Marion des textes de la caution (E1, E2) et de la prolongation (D7), puis textes modifiables par les gérants (module 10).
 8. Contenus du site dans l'admin (avis, presse, textes).
 9. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF et version des CG acceptée (7), exports des ventes et des notes (11).
 10. Purge des données clients au bout de 3 ans, planning propre à chaque lieu (module 2).
+
+### Check-list de mise en production (écrite le 14 octobre 2026)
+
+État au 14 octobre : le domaine `set-et-brique.com` est dans l'équipe Vercel (DNS chez Cloudflare), rattaché au projet **`set-et-brique-vitrine`** : basculer l'application dessus retire le site vitrine. Resend est prêt (domaine vérifié). Stripe tourne sur le compte Set et Brique en mode test, Clerk sur une instance de développement.
+
+**À préparer avant le jour J, dans les tableaux de bord (Alexis ou Agon-Gate)**
+
+1. Stripe, mode live : créer une clé restreinte `rk_live_` (Développeurs → Clés API → clé restreinte, modèle « Paiements ponctuels », en plus : écriture sur Refunds et PaymentIntents pour la caution et les remboursements) et relever la clé publiable `pk_live_`. Laisser le compte en live : les moyens de paiement du Dashboard n'ont pas à être limités, le code n'offre que la carte et Link pour les locations.
+2. Clerk : procédure « Passage de Clerk en production » ci-dessous, étapes 2 à 4 (instance de production sur `set-et-brique.com`, cinq CNAME chez Cloudflare, identifiants Google OAuth). La validation des CNAME prend quelques heures : à lancer en premier.
+3. Marion : relire les e-mails E0, E0 bis, E1, E2, D7 et A4 bis (annulation remboursée).
+
+**Jour J, dans l'ordre (commandes depuis le dépôt ; les écritures de secrets se font à la main, pas par Claude)**
+
+1. Libérer les empreintes de caution encore en place (fiche de chaque réservation), puis nettoyer la base : `pnpm tsx --env-file=.env.local scripts/cleanup-test-data.ts` (compte seulement), puis `--yes`. Tout part : réservations, bons, clients, journaux. Sets, lieux, forfaits, réglages et contenus restent.
+2. Domaine : dans Vercel, projet `set-et-brique` → Settings → Domains, ajouter `set-et-brique.com` et `www.set-et-brique.com` (Vercel propose de les déplacer depuis `set-et-brique-vitrine`). Le DNS Cloudflare pointe déjà vers Vercel, rien à y changer.
+3. Variables Vercel (Production) : `vercel env add NEXT_PUBLIC_SITE_URL production` → `https://set-et-brique.com` ; `vercel env rm STRIPE_SECRET_KEY production` puis `vercel env add STRIPE_SECRET_KEY production` → `rk_live_…` ; même chose pour `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` → `pk_live_…`. Clerk : `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` → clés de l'instance de production.
+4. Webhook Stripe live : `stripe webhook_endpoints create --live --project-name set-et-brique --url https://set-et-brique.com/api/stripe/webhook --enabled-events checkout.session.completed --enabled-events checkout.session.async_payment_succeeded --enabled-events checkout.session.async_payment_failed`, puis `STRIPE_WEBHOOK_SECRET` (Production) avec le `whsec_` renvoyé.
+5. Redéployer : `vercel deploy --prod` (ou un push sur `main`).
+6. Vérifier : bandeau « mode test » absent de l'espace de gestion ; comptes de Marion, Gaëtan et Agon-Gate recréés sur l'instance de production, rôles posés (`pnpm role <email> admin`, `superadmin` pour Agon-Gate) ; un vrai paiement de 2 € (set à 2 € par jour, 1 jour) depuis un compte client, suivi de « Annuler la réservation payée » avec remboursement intégral ; un e-mail reçu depuis `bonjour@set-et-brique.com`.
+7. Après coup : rôle d'Agon-Gate chez Stripe ramené à Développeur ; clé `sk_test_` de `.env.local` remplacée par une clé restreinte de test ; webhook et clés de test conservés pour le développement local.
 
 ### Passage de Clerk en production (module 12)
 
@@ -127,6 +147,9 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 ## 5. Journal
 
 ### 14 octobre 2026
+
+- **Annulation d'une réservation payée, avec remboursement** (`app/admin/reservations/actions.ts` et `[id]/forms.tsx`, `[id]/page.tsx`, `lib/payments.ts`, `lib/validation.ts`, `lib/bookings.ts`, `lib/email/booking-emails.ts`, `app/compte/booking-card.tsx`, migration 0027 ; par Agon-Gate). Point 4 des prochaines étapes, dernier manque avant la mise en production. Lien « Annuler la réservation payée » sur une fiche `confirmed` : motif visible du client, somme remboursée sur la carte (tout par défaut ; le barème de l'article 12 des CGL est rappelé avec le délai avant la remise et la somme correspondante), bon cadeau remis en valide, empreinte libérée, e-mail A4 bis au client (nouveau, non relu par Marion), ligne d'historique complète, compte client renseigné. Remboursement Stripe avant toute écriture : si Stripe refuse, rien n'est annulé. Migration **`0027_booking_refund`** appliquée à la base (trois colonnes vides). Détail dans `FONCTIONNEMENT.md`, §7. **Choix** : le bon cadeau redevient toujours valable, même si une part du loyer est conservée (le barème porte sur le loyer, pas sur le bon) ; à confirmer par Alexis. Vérifié : typage, lint, `pnpm build`. **Pas testé à l'écran** : SB-SMGY8 (Alexis, payée 6 €, empreinte en place) s'y prête.
+- **Préparation de la mise en production** (`lib/site.ts`, `scripts/cleanup-test-data.ts`, cette section). Demande d'Agon-Gate : aller au plus vite. `site.url` lit `NEXT_PUBLIC_SITE_URL` ; script de nettoyage de la base (compte d'abord, `--yes` pour effacer, refuse tant qu'une empreinte est en place) ; check-list de mise en production en §4 avec les commandes, et constat que le domaine est aujourd'hui sur le projet vitrine.
 
 - **Bon cadeau partiel et prolongation en ligne : testés** (Agon-Gate au clavier, compte « Jo »). Bon de 10 € acheté en ligne (SB-89QTM2SB, page Stripe avec tous les moyens de paiement, rattaché au compte, visible dans « Mes bons cadeaux »). Réservation SB-M65FS (Ninjago, 8 jours, 16 €) : bon appliqué dans le récapitulatif, reste 6 € payé par carte ; Stripe propose la carte 4242 déjà connue du client sans la ressaisir ; bon « utilisé le 14 octobre 2026 pour la location de Ninjago », historique « Paiement en ligne reçu… Bon cadeau SB-89QTM2SB utilisé », e-mails client et gérants. Set remis par Alexis-Agon-Gate sans empreinte (case « Remettre quand même »). Prolongation demandée depuis le compte (22 → 24 octobre, 2 jours, 4 €), acceptée depuis la fiche, payée en ligne avec la carte connue : date de retour repoussée, montant à 20 €, historique, e-mails « prolongation acceptée », D7 client et gérants. **Observé** : le paiement de la prolongation a posé l'empreinte de 200 € alors que le set était parti sans (`queueDepositRenewal` accepte l'état `none`) ; c'est le comportement du code et il est souhaitable, un set dehors sans caution en retrouve une dès que le client repasse par Stripe. **Tous les tests prévus en §4, point 3, sont faits**, sauf ceux qui dépendent de la tâche du matin (renouvellement, libération d'office à 48 h : SB-M65FS, empreinte jusqu'au 19 octobre et set dû jusqu'au 24, servira au renouvellement vers le 18 octobre).
 

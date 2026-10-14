@@ -6,8 +6,9 @@ import { Bot, Store, User } from "lucide-react";
 import { db, schema } from "@/lib/db";
 import { adminBookingStatusLabels, depositStateLabel, formatCents, formatDate, formatPhone, formatTime, phoneHref } from "@/lib/format";
 import { placeDepositHoldIfDue } from "@/lib/deposits";
+import { cardPaidCents } from "@/lib/payments";
 import { daysLate, todayIso } from "@/lib/dates";
-import { AdminNoteForm, CustomerBlockForm, DepositActions, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
+import { AdminNoteForm, CancelPaidActions, CustomerBlockForm, DepositActions, ExtensionActions, HandoverActions, PaymentActions, ReviewActions } from "./forms";
 import { expireStaleExtensions } from "@/lib/extensions";
 import { getSetting } from "@/lib/settings";
 import { BookingTabs } from "./tabs";
@@ -75,6 +76,14 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
   const extensionLabel =
     extension?.status === "pending_review" ? "Prolongation demandée" : extension?.status === "pending_payment" ? "Prolongation à payer" : null;
   const late = b.status === "picked_up" ? daysLate(b.endDate, todayIso()) : 0;
+  // Réservation payée : ce que le client a réglé par carte, pour proposer le remboursement en cas d'annulation.
+  const cardPaid =
+    b.status === "confirmed"
+      ? await cardPaidCents(b).catch((e) => {
+          console.error("[stripe] paiement de la réservation", id, e);
+          return 0;
+        })
+      : 0;
 
   return (
     <>
@@ -110,6 +119,7 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
       <ExtensionActions extension={extension} endDate={b.endDate} />
       <HandoverActions booking={b} />
       <DepositActions booking={b} />
+      <CancelPaidActions booking={b} cardPaidCents={cardPaid} />
 
       <BookingTabs
         tabs={[

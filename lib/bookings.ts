@@ -123,6 +123,8 @@ export const bookingCustomerColumns = {
   proposedEndDate: true,
   customerNote: true,
   cancelReason: true,
+  refundCents: true,
+  refundedVoucherCode: true,
   pickedUpAt: true,
   returnedAt: true,
   paymentDueAt: true,

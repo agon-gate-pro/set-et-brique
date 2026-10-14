@@ -21,6 +21,8 @@ export type BookingEmailEvent =
   | "accepted"
   | "refused"
   | "cancelled_by_customer"
+  /** Réservation payée annulée par les gérants, avec remboursement (`cancelPaidBooking`). */
+  | "cancelled_refund"
   | "handover_changed"
   | "picked_up"
   | "returned"
@@ -289,6 +291,30 @@ function cancelledCustomer(b: BookingWithDetails) {
         `C'est noté : votre réservation de ${b.set.name} du ${longDate(b.startDate)} au ${longDate(b.endDate)} est annulée. Rien n'a été débité.`,
       ),
       p("Vous êtes les bienvenus quand vous voulez, le catalogue est toujours là."),
+    ],
+    button: { label: "Voir le catalogue", href: siteLink("/catalogue") },
+  });
+}
+
+/** A4 bis. Réservation payée annulée par les gérants : motif, remboursement, bon et caution. */
+function cancelledRefund(b: BookingWithDetails) {
+  const reason = visibleReason(b);
+  const refund = b.refundCents ?? 0;
+  return customerMail("cancelled_refund", b, {
+    subject: `Votre réservation ${b.reference} est annulée`,
+    blocks: [
+      p(hello(b)),
+      p(
+        `Votre réservation de ${b.set.name} du ${longDate(b.startDate)} au ${longDate(b.endDate)} est annulée${reason ? ` : ${reason}` : ""}.`,
+      ),
+      p(
+        refund > 0
+          ? `${formatCents(refund)} vous sont remboursés sur la carte utilisée pour le paiement. La somme apparaît sur votre compte sous quelques jours, selon votre banque.`
+          : "Aucun remboursement n'est dû sur cette réservation.",
+      ),
+      ...(b.refundedVoucherCode ? [p(`Votre bon cadeau ${b.refundedVoucherCode} est de nouveau valable, pour une autre location.`)] : []),
+      ...(b.depositCents > 0 ? [p("Si une empreinte de caution était en place sur votre carte, elle est libérée : rien n'a été débité.")] : []),
+      p(`D'autres dates ou un autre set sont sans doute possibles, et nous sommes joignables au ${site.phone} pour en parler.`),
     ],
     button: { label: "Voir le catalogue", href: siteLink("/catalogue") },
   });
@@ -706,6 +732,7 @@ export const eventMails: Record<BookingEmailEvent, (b: BookingWithDetails) => Ma
   accepted: (b) => [accepted(b)],
   refused: (b) => [refused(b)],
   cancelled_by_customer: (b) => [cancelledAdmin(b), cancelledCustomer(b)],
+  cancelled_refund: (b) => [cancelledRefund(b)],
   handover_changed: (b) => [handoverChanged(b)],
   picked_up: (b) => [pickedUp(b)],
   returned: (b) => [returned(b)],

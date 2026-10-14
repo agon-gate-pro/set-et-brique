@@ -4,13 +4,14 @@ import { useActionState, useState } from "react";
 import { useFormDirty } from "@/lib/use-form-dirty";
 import { ConfirmButton, Field, FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
 import type { Booking, BookingExtension, Customer } from "@/lib/db/schema";
-import { daysLate, todayIso } from "@/lib/dates";
+import { daysBetween, daysLate, todayIso } from "@/lib/dates";
 import { depositStateLabel, formatCents, formatDate, formatTime } from "@/lib/format";
 import { paymentMethods } from "@/lib/validation";
 import {
   acceptBooking,
   acceptBookingExtension,
   cancelAcceptedBooking,
+  cancelPaidBooking,
   extendPaymentDeadline,
   markBookingExtensionPaid,
   markPaid,
@@ -236,6 +237,69 @@ export function HandoverActions({ booking }: { booking: Booking }) {
   }
 
   return null;
+}
+
+/**
+ * Annulation d'une réservation payée, par les gérants (`cancelPaidBooking`) : motif visible du
+ * client et somme remboursée sur la carte. Tout est proposé par défaut ; le barème de l'article 12
+ * des CGL (0 %, 50 %, 100 % conservés selon le délai avant la remise) est rappelé pour une
+ * annulation demandée par le client. Un bon cadeau utilisé redevient valable quoi qu'il arrive.
+ */
+export function CancelPaidActions({ booking, cardPaidCents }: { booking: Booking; cardPaidCents: number }) {
+  const [state, action] = useActionState(cancelPaidBooking, null);
+  if (booking.status !== "confirmed") return null;
+  const daysBefore = daysBetween(todayIso(), booking.startDate);
+  const keptShare = daysBefore >= 7 ? 0 : daysBefore >= 2 ? 50 : 100;
+  const suggested = Math.round((cardPaidCents * (100 - keptShare)) / 100);
+  const euros = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
+  return (
+    <section className="mt-8 text-right">
+      <form action={action}>
+        <input type="hidden" name="id" value={booking.id} />
+        <ConfirmButton
+          asDialog
+          state={state}
+          confirmLabel="Oui, annuler et rembourser"
+          pendingLabel="Annulation…"
+          className="text-sm"
+          details={
+            <>
+              <p className="text-sm text-slate-ink">
+                Le client a payé <strong className="text-ink-deep">{formatCents(cardPaidCents)}</strong> par carte
+                {cardPaidCents === 0 ? " (bon cadeau ou paiement hors ligne : rien à rembourser par Stripe)" : ""}.
+                {booking.depositStatus === "held" ? " L'empreinte de caution sera libérée." : ""} Un bon cadeau utilisé
+                redevient valable.
+              </p>
+              <p className="mt-2 text-sm text-slate-ink">
+                Annulation demandée par le client : remise dans {daysBefore} jour{daysBefore > 1 ? "s" : ""}, les
+                conditions générales (article 12) permettent de conserver {keptShare} % du loyer, soit un remboursement de{" "}
+                {formatCents(suggested)}. Annulation de votre fait (article 13) : remboursement intégral.
+              </p>
+              <div className="mt-3 grid gap-3">
+                <Field label="Motif, visible du client">
+                  <input name="reason" required className={inputClass} placeholder="Le set revenu de location est incomplet" />
+                </Field>
+                <Field label="Somme remboursée sur la carte, en euros">
+                  <input
+                    name="refundEuros"
+                    required
+                    inputMode="decimal"
+                    defaultValue={euros(cardPaidCents)}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+            </>
+          }
+        >
+          Annuler la réservation payée
+        </ConfirmButton>
+      </form>
+      <div className="mt-3">
+        <FormMessage state={state} />
+      </div>
+    </section>
+  );
 }
 
 const releaseFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" });

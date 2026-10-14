@@ -355,6 +355,33 @@ export async function createBookingCheckout(opts: {
  * `skipped` si elle n'est plus en attente de paiement (déjà confirmée, annulée entre-temps…) :
  * c'est ce qui rend la livraison rejouable sans risque.
  */
+/**
+ * Ce que le client a réellement payé par carte pour la location (loyer et option, bon cadeau déduit),
+ * lu chez Stripe sur le paiement de la réservation ; 0 sans paiement en ligne (bon qui couvre tout,
+ * « Paiement reçu » hors ligne). Les remboursements déjà faits sont retranchés.
+ */
+export async function cardPaidCents(booking: { stripePaymentIntentId: string | null }): Promise<number> {
+  if (!booking.stripePaymentIntentId) return 0;
+  const intent = await stripe().paymentIntents.retrieve(booking.stripePaymentIntentId, { expand: ["latest_charge"] });
+  const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+  if (!charge) return 0;
+  return Math.max(0, charge.amount_captured - charge.amount_refunded);
+}
+
+/**
+ * Rembourse une partie ou la totalité du paiement de la location sur la carte du client (CGL,
+ * articles 12 à 14). Le montant est borné à ce qui reste remboursable chez Stripe. Rend
+ * l'identifiant du remboursement, ou null si rien n'a été remboursé.
+ */
+export async function refundBookingPayment(booking: { id: string; stripePaymentIntentId: string | null }, amountCents: number) {
+  if (!booking.stripePaymentIntentId || amountCents <= 0) return null;
+  const refund = await stripe().refunds.create(
+    { payment_intent: booking.stripePaymentIntentId, amount: amountCents, metadata: { kind: "booking_cancel", booking_id: booking.id } },
+    { idempotencyKey: `refund-${booking.id}-${amountCents}` },
+  );
+  return refund.id;
+}
+
 export async function confirmBookingPayment(opts: {
   bookingId: string;
   voucherCode: string | null;

@@ -9,12 +9,14 @@ import { hasUnseenHandoverChange } from "@/lib/handover";
 import { db, schema } from "@/lib/db";
 import { DepositError, captureDeposit, placeDepositHold, queueDepositRenewal, releaseDepositHold } from "@/lib/deposits";
 import { formatCents } from "@/lib/format";
+import { cardPaidCents, refundBookingPayment } from "@/lib/payments";
 import { queueBookingEmails, queueExtensionEmails, type ExtensionEmailEvent } from "@/lib/email/booking-emails";
 import { ExtensionError, acceptExtension, markExtensionPaid, refuseExtension } from "@/lib/extensions";
 import {
   firstError,
   formToObject,
   cancelBookingSchema,
+  cancelPaidBookingSchema,
   handoverSchema,
   markPaidSchema,
   paymentMethods,
@@ -157,6 +159,88 @@ export async function cancelAcceptedBooking(_: ActionState, formData: FormData):
   queueBookingEmails("refused", id);
   revalidate(id);
   return { ok: "Réservation annulée. Le client est prévenu par e-mail." };
+}
+
+/**
+ * Annuler une réservation payée (`confirmed`), à l'initiative de Set et Brique ou à la demande du
+ * client (CGL, articles 12 à 14). Les gérants choisissent la somme remboursée sur la carte (tout par
+ * défaut, ou la part du barème de l'article 12), bornée à ce qui a été payé par carte. Un bon cadeau
+ * utilisé au paiement redevient valable, l'empreinte de caution éventuelle est libérée, et le client
+ * reçoit un e-mail avec le motif et le montant. Le set n'est jamais parti : rien d'autre à solder.
+ */
+export async function cancelPaidBooking(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireRole("admin");
+  const id = String(formData.get("id") ?? "");
+  const parsed = cancelPaidBookingSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const r = await loadBooking(id, ["confirmed"]);
+  if ("error" in r) return { error: r.error };
+  const b = r.booking;
+
+  let paid = 0;
+  try {
+    paid = await cardPaidCents(b);
+  } catch (e) {
+    console.error("[stripe] paiement de la réservation introuvable", id, e);
+    return { error: "Stripe n'a pas répondu. Réessayez dans un instant." };
+  }
+  const refund = Math.min(parsed.data.refundEuros, paid);
+  if (parsed.data.refundEuros > paid) {
+    return { error: `Le client a payé ${formatCents(paid)} par carte : impossible de rembourser davantage.` };
+  }
+
+  // Bon cadeau consommé à ce paiement : retrouvé par la ligne d'historique écrite à ce moment-là
+  // (`confirmBookingPayment`), le bon ne gardant pas la réservation qu'il a réglée.
+  const events = await db.query.bookingEvents.findMany({ where: eq(schema.bookingEvents.bookingId, id), columns: { message: true } });
+  const voucherCode = events.map((e) => /Bon cadeau (SB-[A-Z0-9]+) utilisé/.exec(e.message ?? "")?.[1]).find(Boolean) ?? null;
+
+  let refundId: string | null = null;
+  try {
+    refundId = await refundBookingPayment(b, refund);
+  } catch (e) {
+    console.error("[stripe] remboursement", id, e);
+    return { error: "Stripe a refusé le remboursement. Rien n'est annulé : réessayez, ou remboursez depuis le Dashboard Stripe." };
+  }
+
+  await db.transaction(async (tx) => {
+    let restored: string | null = null;
+    if (voucherCode) {
+      const [row] = await tx
+        .update(schema.giftVouchers)
+        .set({ status: "valid", usedAt: null })
+        .where(and(eq(schema.giftVouchers.code, voucherCode), eq(schema.giftVouchers.status, "used")))
+        .returning({ code: schema.giftVouchers.code });
+      restored = row?.code ?? null;
+    }
+    await tx
+      .update(schema.bookings)
+      .set({
+        status: "cancelled",
+        reviewedAt: new Date(),
+        cancelledAt: new Date(),
+        cancelReason: parsed.data.reason,
+        paymentDueAt: null,
+        refundCents: refund,
+        stripeRefundId: refundId,
+        refundedVoucherCode: restored,
+      })
+      .where(eq(schema.bookings.id, id));
+    const parts = [
+      `Annulée par Set et Brique : ${parsed.data.reason}`,
+      refund > 0 ? `${formatCents(refund)} remboursés sur la carte` : paid > 0 ? "aucun remboursement" : null,
+      restored ? `bon cadeau ${restored} de nouveau valable` : null,
+    ].filter(Boolean);
+    await tx.insert(schema.bookingEvents).values({ bookingId: id, actor: "admin", fromStatus: "confirmed", toStatus: "cancelled", message: parts.join(". ") });
+  });
+
+  if (b.depositStatus === "held") {
+    await releaseDepositHold(id, "admin").catch((e) => console.error("[stripe] empreinte d'une réservation annulée", id, e));
+  }
+  queueBookingEmails("cancelled_refund", id);
+  revalidate(id);
+  return {
+    ok: `Réservation annulée${refund > 0 ? `, ${formatCents(refund)} remboursés` : ""}${voucherCode ? ", bon cadeau de nouveau valable" : ""}. Le client est prévenu par e-mail.`,
+  };
 }
 
 /** Refuser la demande, avec un motif visible du client. */

@@ -249,6 +249,14 @@ export const cancelBookingSchema = z.object({
   reason: z.string({ error: "Indiquez le motif, le client le verra." }).trim().min(1, "Indiquez le motif, le client le verra."),
 });
 
+/**
+ * Annulation par Set et Brique d'une réservation payée : motif obligatoire, et somme à rembourser sur
+ * la carte en euros (« 12 », « 12,50 »), bornée à ce qui a été payé par carte dans l'action.
+ */
+export const cancelPaidBookingSchema = cancelBookingSchema.extend({
+  refundEuros: eurosToCents,
+});
+
 /** Moyens de paiement saisis par les gérants au bouton « Paiement reçu » (libellé dans l'historique). */
 export const paymentMethods = {
   cash: "espèces",

@@ -337,6 +337,13 @@ export const bookings = pgTable(
     depositCaptureReason: text("deposit_capture_reason"),
     /** Fin de vie de l'empreinte : libérée ou prélevée. */
     depositSettledAt: timestamp("deposit_settled_at", { withTimezone: true }),
+    /**
+     * Annulation par les gérants d'une réservation payée (migration 0027) : somme remboursée sur la
+     * carte (0 si rien), identifiant du remboursement Stripe, et code du bon cadeau remis en valide.
+     */
+    refundCents: integer("refund_cents"),
+    stripeRefundId: text("stripe_refund_id"),
+    refundedVoucherCode: text("refunded_voucher_code"),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
     /** Motif communiqué au client en cas de refus ou d'annulation. */

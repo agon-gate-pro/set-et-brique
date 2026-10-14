@@ -2,11 +2,12 @@ export const site = {
   name: "Set et Brique",
   tagline: "Location de sets de briques à Lorient",
   /**
-   * Domaine final pas encore choisi (voir `docs/AVANCEMENT.md`, §3) : alias Vercel stable en
-   * attendant, à remplacer ici une fois le domaine définitif connu — un seul endroit à changer,
-   * y compris pour le QR code des bons cadeaux imprimés.
+   * Adresse publique du site : liens des e-mails, QR code des bons cadeaux imprimés, retours de
+   * Stripe quand l'origine de la requête manque. `NEXT_PUBLIC_SITE_URL` la fixe par environnement
+   * (`https://set-et-brique.com` en production une fois le domaine basculé, voir la check-list de
+   * mise en production dans `docs/AVANCEMENT.md`) ; à défaut, l'alias Vercel de la démo.
    */
-  url: "https://set-et-brique.vercel.app",
+  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://set-et-brique.vercel.app").replace(/\/$/, ""),
   description:
     "Louez, construisez, rapportez. Set et Brique loue de grands sets de briques de construction aux familles, écoles et structures du pays de Lorient.",
   phone: "07 83 73 70 20",
