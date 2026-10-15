@@ -125,7 +125,7 @@ Mise à jour du 13 octobre 2026, après la revue de `lib/deposits.ts` et `lib/pa
 2. Clerk : procédure « Passage de Clerk en production » ci-dessous, étapes 2 à 4 (instance de production sur `set-et-brique.com`, cinq CNAME chez Cloudflare, identifiants Google OAuth). La validation des CNAME prend quelques heures : à lancer en premier.
 3. Marion : relire les e-mails E0, E0 bis, E1, E2, D7 et A4 bis (annulation remboursée).
 
-**Jour J, dans l'ordre (commandes depuis le dépôt ; les écritures de secrets se font à la main, pas par Claude)**
+**Jour J, dans l'ordre (commandes depuis le dépôt ; les écritures de secrets se font à la main, pas par Claude)** — *déroulé le 14 octobre, paiement de 2 € et remboursement validés le 15 (journal).*
 
 1. Libérer les empreintes de caution encore en place (fiche de chaque réservation), puis nettoyer la base : `pnpm tsx --env-file=.env.local scripts/cleanup-test-data.ts` (compte seulement), puis `--yes`. Tout part : réservations, bons, clients, journaux. Sets, lieux, forfaits, réglages et contenus restent.
 2. Domaine : dans Vercel, projet `set-et-brique` → Settings → Domains, ajouter `set-et-brique.com` et `www.set-et-brique.com` (Vercel propose de les déplacer depuis `set-et-brique-vitrine`). Le DNS Cloudflare pointe déjà vers Vercel, rien à y changer.
@@ -147,6 +147,10 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 15 octobre 2026
+
+- **Premier paiement réel validé de bout en bout** (Marion, le matin, sur `set-et-brique.com`). SB-7AC7C : demande d'une cliente (Edwige collector, 1 jour, 2 €), remise modifiée puis vue par la cliente, demande acceptée, **paiement reçu par le webhook live** à 06:58 UTC (`pi_3UQic3DBYWQMwdq81Ywz3dk4`, e-mail Stripe « premier paiement » reçu), puis « Annuler la réservation payée » avec **remboursement intégral** (`re_3UQic3DBYWQMwdq810XgnxnI`, 2 €). Huit e-mails partis par Resend, tous `sent` (demande reçue et admin, rendez-vous modifié, confirmation, paiement reçu et admin, annulation remboursée). La clé restreinte `rk_live` a suffi à tous ces appels. SB-QGJ5J (Gaëtan, 16-17 octobre, 4 €, caution 650 €) reste en attente : s'il n'est pas un vrai test, à annuler avant le 16 au matin, sinon l'empreinte de 650 € se pose sur sa carte le jour de la remise.
 
 ### 14 octobre 2026
 
