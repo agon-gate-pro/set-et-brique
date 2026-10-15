@@ -109,9 +109,10 @@ Mise à jour du 13 octobre 2026, après la revue de `lib/deposits.ts` et `lib/pa
 5. **Mise en production** : check-list ci-dessous (Stripe live, Clerk production, domaine, variables, nettoyage).
 6. ~~Clerk en production et domaine final~~ : repris dans la check-list.
 7. **E-mails** : envois réels de test sur le domaine, relecture par Marion des textes de la caution (E1, E2) et de la prolongation (D7), puis textes modifiables par les gérants (module 10).
-8. Contenus du site dans l'admin (avis, presse, textes).
-9. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF et version des CG acceptée (7), exports des ventes et des notes (11).
-10. Purge des données clients au bout de 3 ans, planning propre à chaque lieu (module 2).
+8. **Référencement** (audit du 15 octobre, journal) : `app/robots.ts` et `app/sitemap.ts` (accueil, catalogue, fiches de sets, bons cadeaux, pages légales ; `/admin`, `/compte`, `/connexion`, `/inscription`, `/catalogue/*/reserver`, `/bons-cadeaux/merci` exclus) ; `metadataBase` + `alternates.canonical` sur chaque page, canonique de `/catalogue?gamme=…` vers `/catalogue` ; redirection 308 de `set-et-brique.vercel.app` vers le domaine ; `opengraph-image` (logo sur fond jaune) et `og:title`/`og:description`/`og:image` par fiche de set, description tronquée au mot et nettoyée ; JSON-LD `LocalBusiness` (accueil : nom, Lorient, téléphone, e-mail, horaires de remise, lien Maps) et `Product` + `Offer` (fiche : nom, image, prix par jour, disponibilité) ; un seul `<h1>` par page ; `alt` sur toutes les images ; `llms.txt` (présentation, fonctionnement, liens) ; Search Console : revalider la propriété et soumettre le sitemap ; fiche Google Business à relier au nouveau site.
+9. Contenus du site dans l'admin (avis, presse, textes).
+10. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF et version des CG acceptée (7), exports des ventes et des notes (11).
+11. Purge des données clients au bout de 3 ans, planning propre à chaque lieu (module 2).
 
 ### Check-list de mise en production (écrite le 14 octobre 2026)
 
@@ -149,6 +150,8 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 ## 5. Journal
 
 ### 15 octobre 2026
+
+- **Audit du référencement** (moteurs et moteurs de réponse par IA), le lendemain de la bascule. Constaté sur `set-et-brique.com` : pas de `robots.txt`, pas de `sitemap.xml`, pas de `llms.txt` (404 en HTML) ; pas de balise canonique ; pas de données structurées (JSON-LD `LocalBusiness` / `Product` / `Offer`) ; pas d'image Open Graph (`og:image` absent, carte Twitter `summary`) ; `og:title` et `og:description` identiques sur toutes les pages (le `generateMetadata` des fiches ne surcharge que `title` et `description`) ; description des fiches coupée à 160 caractères au milieu d'un mot, avec des `\r\n` ; deux `<h1>` sur chaque fiche de set (« Le catalogue » du layout + nom du set) ; deux images sans `alt` par fiche ; `set-et-brique.vercel.app` répond encore en 200 sans redirection (contenu dupliqué) ; les variantes `/catalogue?gamme=…` n'ont pas de canonique vers `/catalogue`. Points positifs : tout est rendu côté serveur (8 000 mots lisibles sur l'accueil sans JavaScript), titres et descriptions présents partout, `lang="fr"`, `www` en 308 vers l'apex, fiche Google Maps existante, trois articles de presse liés. Google n'indexe encore que l'ancienne vitrine (extrait obsolète). Plan en §4.
 
 - **Premier paiement réel validé de bout en bout** (Marion, le matin, sur `set-et-brique.com`). SB-7AC7C : demande d'une cliente (Edwige collector, 1 jour, 2 €), remise modifiée puis vue par la cliente, demande acceptée, **paiement reçu par le webhook live** à 06:58 UTC (`pi_3UQic3DBYWQMwdq81Ywz3dk4`, e-mail Stripe « premier paiement » reçu), puis « Annuler la réservation payée » avec **remboursement intégral** (`re_3UQic3DBYWQMwdq810XgnxnI`, 2 €). Huit e-mails partis par Resend, tous `sent` (demande reçue et admin, rendez-vous modifié, confirmation, paiement reçu et admin, annulation remboursée). La clé restreinte `rk_live` a suffi à tous ces appels. SB-QGJ5J (Gaëtan, 16-17 octobre, 4 €, caution 650 €) reste en attente : s'il n'est pas un vrai test, à annuler avant le 16 au matin, sinon l'empreinte de 650 € se pose sur sa carte le jour de la remise.
 
