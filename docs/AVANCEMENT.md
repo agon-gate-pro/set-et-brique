@@ -37,6 +37,11 @@ Dernière mise à jour : 14 octobre 2026.
 
 ## 3. Questions ouvertes avec la cliente
 
+**Retours de Marion du 15 octobre 2026, à trancher avec elle :**
+- **Un e-mail sur deux en spam** (confirmations de location et de paiement surtout). Rien dans le code : DMARC strict (`p=reject; adkim=s; aspf=s`) alors que Resend envoie avec un chemin de retour `send.set-et-brique.com` (SPF non aligné en mode strict, seul DKIM sauve) ; domaine neuf sans réputation ; codes de connexion envoyés par Clerk depuis son propre domaine. À faire chez Cloudflare (DNS pas chez Vercel) : passer `aspf=s` en `aspf=r`, et envisager l'envoi des e-mails Clerk depuis `set-et-brique.com`. Demander à Marion quelles messageries sont touchées.
+- **Rembourser en bon cadeau** plutôt que sur la carte à l'annulation d'une réservation payée. Aujourd'hui : remboursement carte et réactivation d'un bon déjà consommé. À décider : montant (égal au remboursement ou libre), validité, choix laissé au client ou non.
+- **Le client ne peut pas contre-proposer** après une modification de lieu ou d'heure par Set et Brique (il prend note seulement) ni après une autre date proposée (accepter ou annuler). Flux à définir : contre-proposition de créneau validée par les gérants, ou simple message libre.
+
 Deux points en attente dans la spécification portaient sur le module 4 :
 
 1. ~~Le paiement est-il pris **avant ou après** la validation manuelle ?~~ Tranché par la pratique (délai de 24 h après acceptation, 7 octobre 2026) et construit le 12 octobre 2026 : le paiement se fait **après** l'acceptation. Reste : en cas d'annulation par Set et Brique d'une réservation déjà payée, le remboursement se fait à la main dans le Dashboard Stripe (pas de bouton dans l'espace de gestion pour l'instant).
@@ -150,6 +155,8 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 ## 5. Journal
 
 ### 15 octobre 2026
+
+- **Premiers retours de Marion sur la production**, cinq points. Deux corrigés : (1) **refus d'une demande impossible depuis la liste des réservations** (« reason : Invalid input: expected string, received undefined ») : la fenêtre de la liste n'avait pas de champ motif alors que `optionalText` (`lib/validation.ts`) exigeait une chaîne ; `optionalText` accepte maintenant un champ absent (`nullish`), et la fenêtre de la liste (`list-actions.tsx`) reçoit le même champ motif facultatif que la fiche ; (2) **page vide à la première connexion après création d'un compte** : `ClerkMountGuard` recharge la page une fois tout seul au bout de 4 s (voir `FONCTIONNEMENT.md` §4). Vérifié : typage, lint. Trois points pour la cliente, notés en §3 : e-mails en spam, remboursement en bon cadeau, contre-proposition du client après une modification.
 
 - **Référencement, mise en place** (même jour que l'audit ; détail en `FONCTIONNEMENT.md` §8 bis). `app/robots.ts`, `app/sitemap.ts` (sets publiés, invalidé par `revalidateSet()`), `app/llms.txt/route.ts`, `app/opengraph-image.tsx` (logo, nom, accroche, Poppins), `lib/seo.tsx` (`metaDescription`, JSON-LD `LocalBusiness` et `Product`/`Offer`, composant `JsonLd`), `metadataBase` et carte Twitter dans le layout, canonique sur chaque page publique (celle du catalogue sans les filtres), Open Graph propre et photo du set sur les fiches, description coupée au mot, silhouette du catalogue sans `<h1>`, redirection 308 de `set-et-brique.vercel.app` vers le domaine (`/api/` exclu). Vérifié : typage, lint, `pnpm build`, et en local robots, sitemap, llms.txt, image OG (rendu regardé), balises et JSON-LD de l'accueil, du catalogue filtré et d'une fiche. **À vérifier en production après déploiement** : `/robots.txt`, `/sitemap.xml`, `/opengraph-image`, la redirection de l'ancienne adresse, puis test de partage (Facebook Sharing Debugger ou WhatsApp) et Rich Results Test de Google sur une fiche. **Reste hors code** : Search Console et fiche Google Business (compte `setetbrique@gmail.com`).
 

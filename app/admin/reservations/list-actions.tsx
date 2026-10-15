@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { ConfirmButton, FormMessage, SubmitButton } from "@/components/admin/form";
+import { ConfirmButton, Field, FormMessage, inputClass, SubmitButton } from "@/components/admin/form";
 import { acceptBooking, refuseBooking } from "./actions";
 
 /** Boutons de décision sur une demande à traiter (dans la pop-up de détail). */
@@ -36,7 +36,13 @@ export function ListActions({ bookingId, onSuccess }: { bookingId: string; onSuc
           asDialog
           state={refuseState}
           confirmLabel="Oui, refuser"
+          pendingLabel="Envoi…"
           className="btn btn-brick text-paper no-underline"
+          details={
+            <Field label="Motif du refus, visible du client" hint="Facultatif">
+              <input name="reason" className={inputClass} placeholder="Le set est immobilisé pour réparation" />
+            </Field>
+          }
         >
           Refuser
         </ConfirmButton>

@@ -31,8 +31,8 @@ const optionalEurosToCents = z
 const optionalText = z
   .string()
   .trim()
-  .transform((s) => (s === "" ? null : s))
-  .nullable();
+  .nullish()
+  .transform((s) => (s ? s : null));
 
 const optionalInt = z
   .string()
