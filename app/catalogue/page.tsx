@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   title: "Catalogue",
   description:
     "Le catalogue de sets à louer chez Set et Brique : disponibilité en temps réel et prix par jour de chaque set.",
+  // Les filtres (`?gamme=…`, `?pieces=…`) sont des vues de la même page.
+  alternates: { canonical: "/catalogue" },
 };
 export const dynamic = "force-dynamic";
 

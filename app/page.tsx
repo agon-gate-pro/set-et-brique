@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CroppedImage } from "@/components/cropped-image";
 import type { ImageCrop } from "@/lib/image-crop";
@@ -21,6 +22,7 @@ import { ReviewsCarousel } from "@/components/reviews-carousel";
 import { FacebookIcon, InstagramIcon } from "@/components/social-icons";
 import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { JsonLd, localBusinessJsonLd } from "@/lib/seo";
 import { slugify } from "@/lib/format";
 import { giftVoucherAmounts, press, reviews, site } from "@/lib/site";
 
@@ -61,6 +63,8 @@ const steps: { title: string; text: string; icon: LucideIcon; border: string }[]
 // `app/admin/sets/actions.ts`) ; l'heure est un filet de sécurité.
 export const revalidate = 3600;
 
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+
 /**
  * Une tuile par gamme du catalogue : photo du premier set de la gamme (coups de cœur d'abord,
  * puis ordre du catalogue) et nombre de sets. Les sets sans gamme n'ont pas de tuile.
@@ -95,6 +99,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd data={localBusinessJsonLd()} />
       <section className="relative overflow-hidden bg-sun/10 border-b border-slate-ink/10">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-24 -right-24 h-[28rem] w-[28rem] rounded-full bg-sun/40 blur-3xl animate-blob" />

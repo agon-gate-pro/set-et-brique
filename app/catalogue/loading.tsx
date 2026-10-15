@@ -7,7 +7,7 @@ export default function CatalogueLoading() {
       <LoadingLabel>Chargement du catalogue…</LoadingLabel>
       <section className="studs-sky border-b border-slate-ink/10">
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-5 md:py-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h1 className="text-2xl md:text-3xl font-bold">Le catalogue</h1>
+          <p className="text-2xl md:text-3xl font-bold">Le catalogue</p>
           <Skeleton className="h-4 w-64" />
         </div>
       </section>

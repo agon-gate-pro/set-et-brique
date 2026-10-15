@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   title: "Bons cadeaux",
   description:
     "Offrez la location d'un grand set de briques de construction autour de Lorient : bons cadeaux Set et Brique de 10 €, 20 € ou 30 €, valables un an sur tout le catalogue.",
+  alternates: { canonical: "/bons-cadeaux" },
 };
 
 // Statique ; régénérée quand le forfait par défaut change (`app/admin/forfaits/actions.ts`).

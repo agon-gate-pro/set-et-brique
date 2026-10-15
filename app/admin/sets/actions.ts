@@ -17,6 +17,8 @@ function revalidateSet(id?: string) {
   revalidatePath("/admin/sets");
   revalidatePath("/catalogue");
   revalidatePath("/"); // tuiles des gammes de l'accueil
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/llms.txt");
   if (id) revalidatePath(`/admin/sets/${id}`);
 }
 

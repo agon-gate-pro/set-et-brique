@@ -15,17 +15,21 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
+  // Base des URL absolues (canoniques, Open Graph) ; `app/opengraph-image.tsx` fournit l'image des partages.
+  metadataBase: new URL(site.url),
   title: {
     default: `${site.name} · ${site.tagline}`,
     template: `%s · ${site.name}`,
   },
   description: site.description,
   openGraph: {
+    siteName: site.name,
     title: `${site.name} · ${site.tagline}`,
     description: site.description,
     type: "website",
     locale: "fr_FR",
   },
+  twitter: { card: "summary_large_image" },
   icons: { icon: "/images/logo-set-et-brique.png" },
 };
 

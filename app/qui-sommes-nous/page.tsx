@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Qui sommes-nous",
   description:
     "Marion et Gaëtan, une famille de Lorient passionnée de briques de construction, à l'origine de Set et Brique.",
+  alternates: { canonical: "/qui-sommes-nous" },
 };
 
 export default function AboutPage() {

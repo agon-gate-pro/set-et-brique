@@ -9,6 +9,7 @@ import { ScrollToTop } from "@/components/scroll-to-top";
 import { isBookable, loadAvailability, loadDayAvailability } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
 import { formatBuildTime, formatCents, formatSetNumbers, instructionTypeLabels } from "@/lib/format";
+import { JsonLd, metaDescription, productJsonLd } from "@/lib/seo";
 import { site } from "@/lib/site";
 import { ImageCarousel } from "./image-carousel";
 
@@ -28,9 +29,20 @@ export async function generateMetadata({ params }: PageProps<"/catalogue/[slug]"
   const { slug } = await params;
   const set = await loadSet(slug);
   if (!set) return { title: "Set introuvable" };
+  const description = metaDescription(set.description, `${set.name}, à louer à la journée chez Set et Brique, à Lorient.`);
+  const photo = set.images[0]?.url;
   return {
     title: set.name,
-    description: set.description?.slice(0, 160) ?? `${set.name}, à louer chez Set et Brique.`,
+    description,
+    alternates: { canonical: `/catalogue/${set.slug}` },
+    openGraph: {
+      title: `${set.name} · ${site.name}`,
+      description,
+      type: "website",
+      url: `/catalogue/${set.slug}`,
+      ...(photo ? { images: [{ url: photo, alt: set.images[0]?.alt ?? set.name }] } : {}),
+    },
+    twitter: { card: photo ? "summary_large_image" : "summary" },
   };
 }
 
@@ -71,6 +83,20 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
 
   return (
     <>
+      <JsonLd
+        data={productJsonLd({
+          slug: set.slug,
+          name: set.name,
+          description: metaDescription(set.description, `${set.name}, à louer à la journée chez Set et Brique, à Lorient.`, 500),
+          brand: set.brand,
+          setNumbers: set.setNumbers,
+          theme: set.theme,
+          images: set.images.map((i) => i.url),
+          pricePerDayCents: pricePerDay,
+          depositCents: set.depositCents,
+          availability: bookableNow ? "now" : laterDate ? "later" : "none",
+        })}
+      />
       <ScrollToTop />
       <section className="studs-sky border-b border-slate-ink/10">
         <div className="mx-auto max-w-6xl px-5 md:px-8 py-10 md:py-14">
