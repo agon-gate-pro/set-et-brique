@@ -51,6 +51,10 @@ Scripts utiles :
 | `pnpm db:seed` | Amorce la base (avis, presse, lieu de remise, réglages, forfait par défaut). Sans effet si déjà fait |
 | `pnpm db:import-sets <fichier.csv> [--dry-run]` | Crée les sets à partir de la grille CSV remplie par la cliente. Ignore les numéros de boîte déjà en base |
 
+### Skills Claude Code
+
+`.claude/skills/` (suivi par `skills-lock.json`) contient les guides que Claude Code charge sur ce projet : Clerk (`clerk-setup`, `clerk-nextjs-patterns`, `clerk-webhooks`, `clerk-backend-api`, `clerk-custom-ui`, `clerk-orgs`), Neon (`neon`, `neon-postgres`), Stripe (`stripe-best-practices`) et `web-design-guidelines` (Vercel). Ils sont installés en copies réelles (`npx skills add <source> -s <skill> -a claude-code --copy -y`) : les liens symboliques créés par défaut vers `.agents/skills/` devenaient sous Windows des fichiers texte de quelques octets, et Claude Code ne trouvait aucun skill.
+
 ## 3. Organisation du code
 
 ```
