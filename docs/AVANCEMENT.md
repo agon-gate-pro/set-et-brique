@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 14 octobre 2026.
+Dernière mise à jour : 26 octobre 2026.
 
 ## 1. Où on en est
 
@@ -153,6 +153,11 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 26 octobre 2026
+
+- **Skills Claude Code réparés** (`.claude/skills/`, `skills-lock.json`, `FONCTIONNEMENT.md` §2 ; branche `outils-claude`). Les 9 skills installés en septembre étaient des liens symboliques vers `.agents/skills/`, que Git sous Windows avait remplacés par des fichiers texte de 25 à 42 octets : Claude Code n'en chargeait aucun. Liens et dossier `.agents/skills/` supprimés, les 9 skills réinstallés en copies réelles (versions à jour) avec la méthode du plugin maison Agon Gate, plus `web-design-guidelines`. Vérifié : chaque `SKILL.md` présent et complet (1 à 36 Ko). Aucun changement dans le code du site.
+- **Branche `semaine-42` fermée** : entièrement contenue dans `main` (vérifié, aucun commit propre), supprimée en local et sur GitHub.
 
 ### 15 octobre 2026
 
