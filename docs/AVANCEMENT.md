@@ -156,6 +156,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ### 26 octobre 2026
 
+- **Carrousel des avis Google à jour** (`lib/site.ts`, `FONCTIONNEMENT.md` §3). Deux nouveaux avis 5 étoiles ajoutés en tête, le plus récent d'abord : Kira Bzh (« Première expérience avec Set et Brique… ») et Julie Le Bihan (location de deux robots Ninjago gagnée à un concours). Les 5 avis précédents sont gardés : 7 avis en tout. Textes recopiés depuis la fiche Google, retours à la ligne remplacés par des espaces, quelques fautes de frappe corrigées (accords, espaces avant la ponctuation), noms mis en majuscules. Constat : la table `testimonials` n'est lue nulle part, l'accueil prend ses avis dans `lib/site.ts`.
 - **Skills Claude Code réparés** (`.claude/skills/`, `skills-lock.json`, `FONCTIONNEMENT.md` §2 ; branche `outils-claude`). Les 9 skills installés en septembre étaient des liens symboliques vers `.agents/skills/`, que Git sous Windows avait remplacés par des fichiers texte de 25 à 42 octets : Claude Code n'en chargeait aucun. Liens et dossier `.agents/skills/` supprimés, les 9 skills réinstallés en copies réelles (versions à jour) avec la méthode du plugin maison Agon Gate, plus `web-design-guidelines`. Vérifié : chaque `SKILL.md` présent et complet (1 à 36 Ko). Aucun changement dans le code du site.
 - **Branche `semaine-42` fermée** : entièrement contenue dans `main` (vérifié, aucun commit propre), supprimée en local et sur GitHub.
 

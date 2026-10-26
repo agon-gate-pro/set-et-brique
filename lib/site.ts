@@ -56,6 +56,16 @@ export const giftVoucherAmounts = [10, 20, 30];
 
 export const reviews = [
   {
+    name: "Kira Bzh",
+    avisCount: 18,
+    text: "Première expérience avec Set et Brique. Je recommande. La prise de rendez-vous est rapide et ils sont très arrangeants. Les sets sont top. (On a pris le bateau) Le prix est abordable. Les explications pour le retour sont simples et précises. Quel plaisir de construire avec toute la famille des sets Legos que nous ne pourrions pas nous acheter. On a déjà hâte à la prochaine fois. Aurélie 41 ans, Alicia 11 ans et Kelian 8 ans",
+  },
+  {
+    name: "Julie Le Bihan",
+    avisCount: 9,
+    text: "Nous avons eu la chance de découvrir ce principe de location de légos en gagnant à un concours sur internet et nous en revenons ravis. Mes enfants de 4 et 7 ans sont fans de légos. Nous avons emprunté pour une semaine 2 robots Ninjago. L'aîné, préposé au montage, a passé 2 jours pleins en construction du lever au coucher du soleil. Il fallait le forcer à faire des pauses y compris pour manger. J'appréhendais la perte de pièces ou le mélange avec des légos de la maison mais en dédiant une pièce de la maison à cela et en mettant en garde les enfants, il n'y a eu aucun problème. Ils ont pu y jouer en y prenant extrêmement soin. Gaëtan est très sympathique et arrangeant pour la passation et reste disponible sur le temps de la location si besoin. Merci encore d'avoir illuminé la semaine de mes enfants… même si un peu stressant tout de même pour moi de rendre le kit complet et de ne pas les mélanger aux leurs. Nous réitèrerons l'expérience avec plaisir lors de prochaines vacances chez les grands-parents. Bon à savoir : ils livrent d'Auray à Quimperlé. Bravo à vous pour ce concept innovant qui rend accessibles des sets, super activité qui plus est dans les collectivités ! Je veux bien l'exporter de Vannes à Nantes si un jour vous cherchez quelqu'un…",
+  },
+  {
     name: "Aurore Fsd",
     avisCount: 7,
     text: "J'adore !! Une super activité sur plusieurs jours partagée avec mon fils. Et parfois un moment calme pour lui seul. Il était fier de finir un si grand Lego ! Je reprendrai sur une période de vacances aussi, ce qui fait une bonne activité complémentaire. Très bon contact avec les gérants. Je recommande à tout le monde autour de moi maintenant !",

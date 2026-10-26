@@ -129,7 +129,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Contenu éditable**
 
-- `testimonials`, `press_articles` : avis clients et articles de presse affichés sur l'accueil.
+- `testimonials`, `press_articles` : avis clients et articles de presse, remplis par `pnpm db:seed` mais **lus nulle part** : l'accueil affiche les listes `reviews` (carrousel des avis Google, `components/reviews-carousel.tsx`) et `press` de `lib/site.ts`. Mettre à jour les avis, c'est donc modifier `reviews` dans `lib/site.ts`, recopiés à la main depuis la fiche Google (nom, nombre d'avis de l'auteur, texte ; le carrousel affiche toujours 5 étoiles). Dernière mise à jour : 26 octobre 2026, 7 avis.
 - `site_settings` : réglages modifiables en clé / valeur JSON. Clés actuelles : `turnaround_days` (battement par défaut, 4), `min_rental_days` (1, pas de maximum), `payment_delay_hours` (délai de paiement d'une demande acceptée, 24), `radius_km`, `contact_email`, `contact_phone`. Les valeurs par défaut sont dans `lib/settings.ts` (`getSetting`, et `setSetting` qui crée la ligne au premier enregistrement). Les trois premières se modifient dans l'admin, rubrique **Réglages** (`/admin/reglages`, 7 octobre 2026) : un formulaire, bornes contrôlées au serveur (`settingsSchema`, 1–168 h, 0–30 j, 1–60 j). Les pages publiques qui les lisent sont dynamiques : un changement s'applique tout de suite.
 
 ### Cycle de vie d'une réservation
