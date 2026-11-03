@@ -39,7 +39,9 @@ export default async function BlackoutsPage() {
         <BlackoutCreateDialog />
       </div>
       <p className="mt-3 text-sm text-slate-ink">
-        Vos congés et absences : aucune remise ni aucun retour n&apos;est possible à ces dates.
+        Vos congés et absences : aucune remise ni aucun retour n&apos;est possible à ces dates. Avec une heure, le
+        premier jour reste ouvert avant cette heure et le dernier jour à partir de cette heure ; le client voit seulement
+        les heures possibles, jamais le motif.
       </p>
 
       {upcoming.length === 0 ? (
@@ -58,7 +60,9 @@ export default async function BlackoutsPage() {
           <ul className="mt-3 space-y-1 text-slate-ink">
             {past.map(({ period }) => (
               <li key={period.id}>
-                Du {formatDate(period.startDate)} au {formatDate(period.endDate)}
+                Du {formatDate(period.startDate)}
+                {period.startTime ? ` à ${period.startTime.slice(0, 5)}` : ""} au {formatDate(period.endDate)}
+                {period.endTime ? ` à ${period.endTime.slice(0, 5)}` : ""}
                 {period.reason ? ` · ${period.reason}` : ""}
               </li>
             ))}

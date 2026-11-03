@@ -6,13 +6,16 @@ import { MapPin } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { addDays } from "@/lib/dates";
-import type { CopyInput, RangeBooking } from "@/lib/availability-core";
+import { closedTimeRanges, describeOpenHours, isTimeClosed, type BlackoutRange, type CopyInput, type RangeBooking } from "@/lib/availability-core";
 import { formatCents } from "@/lib/format";
 import { DateReadable } from "./date-readable";
 import { PhoneInput } from "@/components/phone-input";
 import type { Customer, PickupPoint } from "@/lib/db/schema";
 import { submitBookingRequest } from "./actions";
 import { BookingCalendar } from "./booking-calendar";
+
+/** « 00:00 » à « 23:45 », pas du champ d'heure (`step={900}`). */
+const QUARTER_HOURS = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`);
 
 type Props = {
   set: { id: string; slug: string; name: string; depositCents: number; disassemblyCents: number | null };
@@ -28,7 +31,7 @@ type Props = {
   calendar: {
     copies: CopyInput[];
     bookings: RangeBooking[];
-    blackouts: { startDate: string; endDate: string }[];
+    blackouts: BlackoutRange[];
     turnaroundDays: number;
   };
   /** Faux pour un visiteur non connecté : le planning reste visible, la connexion n'est demandée qu'à la validation des dates. */
@@ -63,9 +66,13 @@ export function BookingForm({
   const slots = point?.slots ?? [];
   const [pickupTime, setPickupTime] = useState("10:00");
   const [returnAssembled, setReturnAssembled] = useState(false);
-  // Heure ramenée au premier créneau du lieu choisi si elle ne tombe dans aucun.
-  const withinASlot = slots.length === 0 || slots.some((s) => s.from <= pickupTime && pickupTime <= s.until);
-  const clampedTime = withinASlot ? pickupTime : slots[0].from;
+  // Heures fermées du jour de remise (absence qui commence ou finit ce jour-là), en plus des créneaux du lieu.
+  const closed = startDate ? closedTimeRanges(startDate, calendar.blackouts) : [];
+  const allowed = (t: string) =>
+    (slots.length === 0 || slots.some((s) => s.from <= t && t <= s.until)) && !(startDate && isTimeClosed(startDate, t, calendar.blackouts));
+  // Heure ramenée au premier quart d'heure possible si celle choisie ne l'est pas.
+  const firstAllowed = QUARTER_HOURS.find(allowed);
+  const clampedTime = allowed(pickupTime) ? pickupTime : (firstAllowed ?? pickupTime);
   const validDays = days != null && days >= minDays;
   const endDate = validDays && startDate && days != null ? addDays(startDate, days - 1) : null;
   const rental = validDays && days != null ? days * pricePerDay : null;
@@ -145,8 +152,14 @@ export function BookingForm({
             {slots.length > 0
               ? `Entre ${slots.map((s) => `${s.from} et ${s.until}`).join(", ou entre ")} à ce lieu. `
               : ""}
-            Nous la confirmons ou vous proposons un autre créneau.
+            {closed.length > 0 ? `Ce jour-là, remise possible ${describeOpenHours(closed)}. ` : ""}
+            {firstAllowed ? "Nous la confirmons ou vous proposons un autre créneau." : null}
           </span>
+          {!firstAllowed ? (
+            <span className="mt-1 block text-sm font-semibold text-brick-deep">
+              Aucune heure possible ce jour-là à ce lieu : choisissez un autre lieu ou d&apos;autres dates.
+            </span>
+          ) : null}
         </label>
         {set.disassemblyCents != null ? (
           <label className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-slate-ink/15 bg-sky p-4 cursor-pointer hover:bg-sea/10">
@@ -239,7 +252,7 @@ export function BookingForm({
               maintenant : nous revenons vers vous rapidement pour confirmer la remise.
             </p>
             <div>
-              <SubmitButton disabled={!validDays || !startDate}>Envoyer ma demande</SubmitButton>
+              <SubmitButton disabled={!validDays || !startDate || !firstAllowed}>Envoyer ma demande</SubmitButton>
             </div>
             <FormMessage state={state} />
           </section>

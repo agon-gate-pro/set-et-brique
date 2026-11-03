@@ -3,9 +3,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { User } from "@clerk/backend";
 import {
   RESERVING_STATUSES,
+  closedTimeRanges,
+  describeOpenHours,
   endDateFor,
   findFreeCopy,
   isInBlackout,
+  isTimeClosed,
   todayIso,
   withExtension,
   withLateReturn,
@@ -211,6 +214,10 @@ export async function createBookingRequest(req: BookingRequest) {
     throw new BookingError(`À ${pickupPoint.name}, la remise est possible entre ${ranges}.`);
   }
   if (isInBlackout(req.startDate, blackouts)) throw new BookingError("Nous sommes fermés à la date de remise choisie.");
+  if (isTimeClosed(req.startDate, req.pickupTime, blackouts)) {
+    const open = describeOpenHours(closedTimeRanges(req.startDate, blackouts));
+    throw new BookingError(`Ce jour-là, la remise est possible ${open}. Choisissez une autre heure.`);
+  }
   if (isInBlackout(endDate, blackouts)) throw new BookingError("Nous sommes fermés à la date de retour. Choisissez une autre durée ou une autre date.");
 
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay;

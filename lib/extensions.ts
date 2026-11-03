@@ -6,6 +6,7 @@ import {
   latestExtensionEnd,
   withExtension,
   withLateReturn,
+  type BlackoutRange,
   type ExtensionWindow,
 } from "@/lib/availability-core";
 import { addDays, daysBetween, monthStartIso, parisEndOfDay, todayIso } from "@/lib/dates";
@@ -95,7 +96,7 @@ export async function expireStaleExtensions(today: string = todayIso(), now = ne
 export type ExtensionOptions = {
   /** Dernière date de retour possible, null si aucun jour ne peut être ajouté. */
   latestEndDate: string | null;
-  blackouts: { startDate: string; endDate: string }[];
+  blackouts: BlackoutRange[];
   pricePerDayCents: number;
 };
 
@@ -133,7 +134,12 @@ export async function loadExtensionOptions(
     .from(schema.bookings)
     .where(and(eq(schema.bookings.setId, booking.setId), inArray(schema.bookings.status, [...RESERVING_STATUSES])));
   const blackouts = await executor
-    .select({ startDate: schema.blackoutPeriods.startDate, endDate: schema.blackoutPeriods.endDate })
+    .select({
+        startDate: schema.blackoutPeriods.startDate,
+        endDate: schema.blackoutPeriods.endDate,
+        startTime: schema.blackoutPeriods.startTime,
+        endTime: schema.blackoutPeriods.endTime,
+      })
     .from(schema.blackoutPeriods);
   const turnaround = set?.turnaroundDays ?? (await getSetting("turnaround_days"));
   const horizon = addDays(monthStartIso(today, HORIZON_MONTHS), -1);

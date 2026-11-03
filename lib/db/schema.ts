@@ -278,6 +278,13 @@ export const blackoutPeriods = pgTable("blackout_periods", {
   id: uuid("id").primaryKey().defaultRandom(),
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
+  /**
+   * Heures facultatives (migration 0029) : fermé à partir de `start_time` le premier jour, jusqu'à
+   * `end_time` le dernier. Sans heure, le jour entier est fermé. Voir `isInBlackout` et
+   * `closedTimeRanges` (`lib/availability-core.ts`).
+   */
+  startTime: time("start_time"),
+  endTime: time("end_time"),
   reason: text("reason"),
   createdAt: timestamps.createdAt,
 });

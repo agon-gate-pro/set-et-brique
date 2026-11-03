@@ -69,7 +69,12 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
         })
         .from(schema.bookings)
         .where(and(eq(schema.bookings.setId, set.id), inArray(schema.bookings.status, [...RESERVING_STATUSES]))),
-      db.select({ startDate: schema.blackoutPeriods.startDate, endDate: schema.blackoutPeriods.endDate }).from(schema.blackoutPeriods),
+      db.select({
+        startDate: schema.blackoutPeriods.startDate,
+        endDate: schema.blackoutPeriods.endDate,
+        startTime: schema.blackoutPeriods.startTime,
+        endTime: schema.blackoutPeriods.endTime,
+      }).from(schema.blackoutPeriods),
       getSetting("turnaround_days"),
     ]);
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay ?? null;

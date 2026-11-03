@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { addDays, daysBetween } from "@/lib/dates";
-import { findFreeCopy, isInBlackout, type CopyInput, type RangeBooking } from "@/lib/availability-core";
+import { findFreeCopy, isInBlackout, type BlackoutRange, type CopyInput, type RangeBooking } from "@/lib/availability-core";
 import { formatCents } from "@/lib/format";
 import { DateReadable } from "./date-readable";
 
 type Props = {
   copies: CopyInput[];
   bookings: RangeBooking[];
-  blackouts: { startDate: string; endDate: string }[];
+  blackouts: BlackoutRange[];
   turnaroundDays: number;
   minStartDate: string;
   minDays: number;

@@ -170,15 +170,25 @@ export const pickupPointSchema = z.object({
   active: checkbox,
 });
 
+/** Heure facultative (« hh:mm ») : vide = jour entier. */
+const optionalClockTime = optionalText.pipe(clockTime.nullable());
+
+/** Période fermée ; les heures limitent le premier et le dernier jour (voir `blackoutPeriods`). */
 export const blackoutSchema = z
   .object({
     startDate: isoDate,
     endDate: isoDate,
+    startTime: optionalClockTime,
+    endTime: optionalClockTime,
     reason: optionalText,
   })
   .refine((d) => d.endDate >= d.startDate, {
     path: ["endDate"],
     message: "La fin doit être après le début",
+  })
+  .refine((d) => d.startDate !== d.endDate || !d.startTime || !d.endTime || d.endTime > d.startTime, {
+    path: ["endTime"],
+    message: "Sur un seul jour, l'heure de fin doit être après l'heure de début",
   });
 
 const positiveInt = (label: string) =>

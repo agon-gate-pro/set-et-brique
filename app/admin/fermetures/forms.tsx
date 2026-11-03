@@ -36,6 +36,10 @@ function BlackoutFields({
           className={inputClass}
         />
       </Field>
+      {/* Facultatif : sans heure, le jour entier est fermé ; avec, la remise reste possible avant. */}
+      <Field label="À partir de" hint="Facultatif">
+        <input name="startTime" type="time" step={900} defaultValue={period?.startTime?.slice(0, 5) ?? ""} className={inputClass} />
+      </Field>
       <Field label="Au" hint="Inclus">
         <input
           name="endDate"
@@ -46,6 +50,9 @@ function BlackoutFields({
           onChange={(e) => onEndDateChange(e.target.value)}
           className={inputClass}
         />
+      </Field>
+      <Field label="Jusqu'à" hint="Facultatif">
+        <input name="endTime" type="time" step={900} defaultValue={period?.endTime?.slice(0, 5) ?? ""} className={inputClass} />
       </Field>
       <Field label="Motif" hint="Pour vous, jamais affiché au client">
         <input
@@ -172,7 +179,7 @@ export function BlackoutRow({ period, affected }: { period: BlackoutPeriod; affe
           {affected} réservation{affected > 1 ? "s ont" : " a"} une remise ou un retour prévu pendant cette période.
         </p>
       ) : null}
-      <form ref={formRef} action={editAction} className="grid gap-4 sm:grid-cols-[10rem_10rem_1fr_auto] items-end">
+      <form ref={formRef} action={editAction} className="grid gap-4 sm:grid-cols-[10rem_7rem_10rem_7rem_1fr_auto] items-end">
         <input type="hidden" name="id" value={period.id} />
         <BlackoutFields
           period={period}
@@ -184,7 +191,7 @@ export function BlackoutRow({ period, affected }: { period: BlackoutPeriod; affe
         <SubmitButton variant="leaf" disabled={!dirty}>
           Enregistrer
         </SubmitButton>
-        <div className="sm:col-span-4">
+        <div className="sm:col-span-6">
           <FormMessage state={editState} />
         </div>
       </form>

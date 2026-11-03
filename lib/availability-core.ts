@@ -204,8 +204,52 @@ export function findFreeCopy(
   return free.length > unassigned ? free[unassigned] : null;
 }
 
-export function isInBlackout(date: string, blackouts: { startDate: string; endDate: string }[]) {
-  return blackouts.some((b) => b.startDate <= date && date <= b.endDate);
+/**
+ * Période fermée. Avec une heure, le premier jour reste ouvert avant `startTime` et le dernier à
+ * partir de `endTime` (« du 1er décembre à 10 h au 15 décembre à 17 h »), décision de la cliente
+ * du 3 novembre 2026. Heures en « hh:mm » ou « hh:mm:ss » (colonne Postgres `time`).
+ */
+export type BlackoutRange = { startDate: string; endDate: string; startTime?: string | null; endTime?: string | null };
+
+/**
+ * Jour entièrement fermé : ni remise ni retour. Un premier ou un dernier jour avec une heure reste
+ * possible, pour la remise hors des heures fermées (`closedTimeRanges`) comme pour le retour, qui
+ * n'a pas d'heure dans le tunnel.
+ */
+export function isInBlackout(date: string, blackouts: BlackoutRange[]) {
+  return blackouts.some(
+    (b) =>
+      b.startDate <= date &&
+      date <= b.endDate &&
+      !(date === b.startDate && b.startTime) &&
+      !(date === b.endDate && b.endTime),
+  );
+}
+
+/** Heures fermées d'un jour en partie ouvert : intervalles `[from, until[` en « hh:mm », `until` pouvant valoir « 24:00 ». */
+export function closedTimeRanges(date: string, blackouts: BlackoutRange[]): { from: string; until: string }[] {
+  return blackouts
+    .filter((b) => b.startDate <= date && date <= b.endDate)
+    .map((b) => ({
+      from: date === b.startDate && b.startTime ? b.startTime.slice(0, 5) : "00:00",
+      until: date === b.endDate && b.endTime ? b.endTime.slice(0, 5) : "24:00",
+    }))
+    .filter((r) => r.from < r.until);
+}
+
+/** L'heure de remise `time` (« hh:mm ») tombe dans une heure fermée de ce jour. */
+export function isTimeClosed(date: string, time: string, blackouts: BlackoutRange[]) {
+  const t = time.slice(0, 5);
+  return closedTimeRanges(date, blackouts).some((r) => r.from <= t && t < r.until);
+}
+
+/** « avant 10:00 », « à partir de 17:00 », « avant 10:00 ou à partir de 17:00 » : les heures encore ouvertes, pour le client. */
+export function describeOpenHours(ranges: { from: string; until: string }[]) {
+  return ranges
+    .map((r) =>
+      r.from === "00:00" ? `à partir de ${r.until}` : r.until === "24:00" ? `avant ${r.from}` : `avant ${r.from} ou à partir de ${r.until}`,
+    )
+    .join(", et ");
 }
 
 /* ------------------------------------------------------------------ */
@@ -237,7 +281,7 @@ export function extensionWindow(status: string, endDate: string, today: string =
 export function latestExtensionEnd(
   booking: { id: string; copyId: string | null; customerId: string; endDate: string },
   bookings: RangeBooking[],
-  blackouts: { startDate: string; endDate: string }[],
+  blackouts: BlackoutRange[],
   turnaroundDays: number,
   horizon: string,
 ): string | null {
@@ -260,7 +304,7 @@ export function isExtensionEndAllowed(
   newEndDate: string,
   currentEndDate: string,
   latest: string | null,
-  blackouts: { startDate: string; endDate: string }[],
+  blackouts: BlackoutRange[],
 ) {
   return latest !== null && newEndDate > currentEndDate && newEndDate <= latest && !isInBlackout(newEndDate, blackouts);
 }
@@ -291,7 +335,7 @@ export type DayAvailability = "free" | "booked" | "closed" | "past";
 export function computeDayAvailability(
   copies: CopyInput[],
   bookings: RangeBooking[],
-  blackouts: { startDate: string; endDate: string }[],
+  blackouts: BlackoutRange[],
   turnaroundDays: number,
   from: string,
   to: string,
