@@ -9,7 +9,7 @@ import { site } from "@/lib/site";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: { userAgent: "*", allow: "/", disallow: ["/api/"] },
+    // Pas de `host` : consigne propre à Yandex, signalée « règle ignorée » par la Search Console.
     sitemap: `${site.url}/sitemap.xml`,
-    host: site.url,
   };
 }
