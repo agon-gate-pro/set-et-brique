@@ -9,6 +9,7 @@ import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { slugify } from "@/lib/format";
 import { sanitizeCropRect, type CropRect } from "@/lib/image-crop";
+import { shrinkStoredImage } from "@/lib/image-resize";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES_PER_SET, setImagePrefix } from "@/lib/set-images";
 import { copySchema, firstError, formToObject, setSchema } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
@@ -195,7 +196,17 @@ export async function registerSetImage(setId: string, url: string): Promise<{ er
     return refuse(`${MAX_IMAGES_PER_SET} photos maximum par set. Retirez-en une avant d'en ajouter.`);
   }
 
-  await db.insert(schema.setImages).values({ setId, url, alt: null, sortOrder: n });
+  // Photo plus large que ce que le site affiche : remplacée par une version réduite (`lib/image-resize.ts`).
+  // En cas d'échec, l'originale est gardée : la photo s'affiche, seulement plus lentement la première fois.
+  let stored = url;
+  try {
+    stored = (await shrinkStoredImage(url, meta.pathname, meta.contentType)) ?? url;
+  } catch (e) {
+    console.error("[photos] réduction", url, e);
+  }
+
+  await db.insert(schema.setImages).values({ setId, url: stored, alt: null, sortOrder: n });
+  if (stored !== url) await del(url).catch(() => undefined);
   revalidateSet(setId);
   return {};
 }
