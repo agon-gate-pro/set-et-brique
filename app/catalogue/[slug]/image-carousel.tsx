@@ -134,20 +134,34 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
             else previous();
           }}
         >
-          {/* Mobile : photo bord à bord, la place en haut et en bas reste à la croix et au compteur. */}
-          <div className="absolute inset-x-0 inset-y-16 sm:inset-10" style={{ containerType: "size" }}>
-            {current.cropRect ? (
-              <CroppedImage src={current.url} alt={current.alt ?? name} sizes="100vw" crop={cropOf(current)} />
-            ) : (
-              // Sans zone choisie, le cadrage vaut pour un cadre 4:3 : le plus grand qui tienne à l'écran.
+          {/* Photo en cours, plus la précédente et la suivante chargées cachées : au changement de photo,
+              la voisine est déjà là (même clé, donc même élément). Sans ça, chaque photo n'était demandée
+              qu'à l'affichage, et la première conversion d'un original de plusieurs Mo prend 1 à 2 s. */}
+          {images.map((img, i) => {
+            const distance = Math.min(Math.abs(i - index), count - Math.abs(i - index));
+            if (distance > 1) return null;
+            return (
+              // Mobile : photo bord à bord, la place en haut et en bas reste à la croix et au compteur.
               <div
-                className="absolute left-1/2 top-1/2 aspect-[4/3] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg"
-                style={{ width: "min(100cqw, calc(100cqh * 4 / 3))" }}
+                key={img.id}
+                className={`absolute inset-x-0 inset-y-16 sm:inset-10 ${i === index ? "" : "invisible"}`}
+                style={{ containerType: "size" }}
+                aria-hidden={i !== index}
               >
-                <CroppedImage src={current.url} alt={current.alt ?? name} sizes="100vw" crop={cropOf(current)} />
+                {img.cropRect ? (
+                  <CroppedImage src={img.url} alt={img.alt ?? name} sizes="100vw" crop={cropOf(img)} loading="eager" />
+                ) : (
+                  // Sans zone choisie, le cadrage vaut pour un cadre 4:3 : le plus grand qui tienne à l'écran.
+                  <div
+                    className="absolute left-1/2 top-1/2 aspect-[4/3] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg"
+                    style={{ width: "min(100cqw, calc(100cqh * 4 / 3))" }}
+                  >
+                    <CroppedImage src={img.url} alt={img.alt ?? name} sizes="100vw" crop={cropOf(img)} loading="eager" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })}
           <button
             type="button"
             autoFocus

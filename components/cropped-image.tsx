@@ -16,6 +16,7 @@ export function CroppedImage({
   sizes,
   crop,
   priority,
+  loading,
   className = "",
 }: {
   src: string;
@@ -23,6 +24,8 @@ export function CroppedImage({
   sizes: string;
   crop?: ImageCrop | null;
   priority?: boolean;
+  /** `eager` : chargée tout de suite, même cachée (photos voisines de la galerie en grand). */
+  loading?: "eager" | "lazy";
   /** Classes de l'image elle-même, ex. un effet au survol. */
   className?: string;
 }) {
@@ -33,7 +36,7 @@ export function CroppedImage({
       <div className="absolute inset-0" style={{ containerType: "size" }}>
         <div className="absolute left-1/2 top-1/2 overflow-hidden" style={styles.window}>
           <div className="absolute" style={styles.photo}>
-            <Image src={src} alt={alt} fill sizes={photoSizes} priority={priority} quality={PHOTO_QUALITY}className={className} />
+            <Image src={src} alt={alt} fill sizes={photoSizes} priority={priority} loading={loading} quality={PHOTO_QUALITY}className={className} />
           </div>
         </div>
       </div>
@@ -42,7 +45,7 @@ export function CroppedImage({
   const styles = cropStyles(crop);
   return (
     <div className="absolute inset-0" style={styles.wrapper}>
-      <Image src={src} alt={alt} fill sizes={photoSizes} priority={priority} quality={PHOTO_QUALITY}style={styles.image} className={`object-cover ${className}`} />
+      <Image src={src} alt={alt} fill sizes={photoSizes} priority={priority} loading={loading} quality={PHOTO_QUALITY}style={styles.image} className={`object-cover ${className}`} />
     </div>
   );
 }
