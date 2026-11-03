@@ -63,14 +63,19 @@ export function SettingsForm({ values }: { values: Values }) {
             passée ; après, au plus tôt demain. Laissez vide pour ne jamais proposer le jour même.
           </p>
         </div>
-        <input
-          id="sameDayCutoff"
-          name="sameDayCutoff"
-          type="time"
-          step={900}
-          defaultValue={values.sameDayCutoff}
-          className={`${inputClass} w-32`}
-        />
+        {/* Même colonne que les champs nombre : largeur, alignement à droite et unité ; l'icône
+            d'horloge du navigateur est masquée, l'unité en tient lieu. */}
+        <div className="flex items-center gap-2">
+          <input
+            id="sameDayCutoff"
+            name="sameDayCutoff"
+            type="time"
+            step={900}
+            defaultValue={values.sameDayCutoff}
+            className={`${inputClass} w-24 text-right [&::-webkit-calendar-picker-indicator]:hidden`}
+          />
+          <span className="text-slate-ink">heures</span>
+        </div>
       </section>
 
       <FormMessage state={state} />
