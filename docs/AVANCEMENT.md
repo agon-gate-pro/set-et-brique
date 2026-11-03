@@ -2,7 +2,7 @@
 
 État du développement de la plateforme, module par module de la spécification (`specification-fonctionnelle.md`), avec le journal des étapes. La doc technique est dans `FONCTIONNEMENT.md`. Mis à jour à chaque étape.
 
-Dernière mise à jour : 26 octobre 2026.
+Dernière mise à jour : 3 novembre 2026.
 
 ## 1. Où on en est
 
@@ -153,6 +153,10 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 6. Les comptes de l'instance de développement ne sont pas repris : Marion et Gaëtan recréent leur compte, puis `pnpm role <email> admin` (et `superadmin` pour Agon-Gate). Ou, comme pour Marion sur l'instance de développement (journal du 1er octobre), une invitation Clerk qui porte déjà le rôle.
 
 ## 5. Journal
+
+### 3 novembre 2026
+
+- **robots.txt n'interdit plus que `/api/`** (`app/robots.ts`, `FONCTIONNEMENT.md` §8 bis). Suite au mail de la Search Console reçu par Marion (« Introuvable (404) », « Page indexée sans contenu »). Revue du rapport Pages : 27 « noindex » (pages « Réserver » des sets), 7 canoniques (filtres `?gamme=` du catalogue), 3 redirections, toutes normales ; 2 « 404 » sur `/$` et `/&`, chaînes du code de React (marqueurs de Suspense dans le JavaScript) que Google prend pour des liens, rien à faire ; 1 « explorée, non indexée » sur `/opengraph-image`, image d'aperçu, rien à faire. Les 33 adresses du sitemap répondent 200 avec une canonique sur elles-mêmes et sans `noindex`. Seul vrai défaut : robots.txt interdisait la visite des pages qui portent `noindex`, donc Google ne lisait pas la balise et pouvait indexer l'adresse seule ; cause probable du « Page indexée sans contenu », qui n'apparaît plus dans le rapport. Aucune validation à lancer dans la Search Console.
 
 ### 26 octobre 2026
 
