@@ -25,6 +25,8 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
   // Point de départ d'un glissement du doigt sur la photo en grand.
   const swipe = useRef<{ x: number; y: number } | null>(null);
 
+  // Photo en cours, ou sa voisine (précédente, suivante, en boucle) : montée pour être prête.
+  const isNear = (i: number) => Math.min(Math.abs(i - index), count - Math.abs(i - index)) <= 1;
   const previous = () => setIndex((i) => (i - 1 + count) % count);
   const next = () => setIndex((i) => (i + 1) % count);
 
@@ -53,7 +55,6 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
     );
   }
 
-  const current = images[index];
   const hasMultiple = images.length > 1;
 
   return (
@@ -84,7 +85,23 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
           aria-label="Agrandir la photo"
           className="absolute inset-0 block cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-sun"
         >
-          <CroppedImage src={current.url} alt={current.alt ?? name} priority sizes="(min-width: 768px) 50vw, 90vw" crop={cropOf(current)} />
+          {/* Un élément par photo (clé) : avec un seul, le navigateur gardait la photo précédente
+              affichée, sous le cadrage et le compteur de la nouvelle, le temps de la charger. La
+              précédente et la suivante sont chargées cachées, comme en grand. */}
+          {images.map((img, i) =>
+            isNear(i) ? (
+              <div key={img.id} className={`absolute inset-0 ${i === index ? "" : "invisible"}`} aria-hidden={i !== index}>
+                <CroppedImage
+                  src={img.url}
+                  alt={img.alt ?? name}
+                  priority={i === index}
+                  loading={i === index ? undefined : "eager"}
+                  sizes="(min-width: 768px) 50vw, 90vw"
+                  crop={cropOf(img)}
+                />
+              </div>
+            ) : null,
+          )}
         </button>
         {hasMultiple ? (
           <>
@@ -138,8 +155,7 @@ export function ImageCarousel({ images, name }: { images: CarouselImage[]; name:
               la voisine est déjà là (même clé, donc même élément). Sans ça, chaque photo n'était demandée
               qu'à l'affichage, et la première conversion d'un original de plusieurs Mo prend 1 à 2 s. */}
           {images.map((img, i) => {
-            const distance = Math.min(Math.abs(i - index), count - Math.abs(i - index));
-            if (distance > 1) return null;
+            if (!isNear(i)) return null;
             return (
               // Mobile : photo bord à bord, la place en haut et en bas reste à la croix et au compteur.
               <div
