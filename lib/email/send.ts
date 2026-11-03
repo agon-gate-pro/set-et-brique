@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import { db, schema } from "@/lib/db";
-import { site } from "@/lib/site";
 import { renderEmail, type EmailContent } from "./layout";
 
 /**
  * Envoi par Resend (intégration Vercel Marketplace, `RESEND_API_KEY`).
  *
  * - Expéditeur : `EMAIL_FROM`, par défaut « Set et Brique <bonjour@set-et-brique.com> » ; le
- *   domaine doit être vérifié chez Resend. Réponse à : l'adresse de contact, pour que le client
- *   qui clique sur « Répondre » tombe sur Marion.
+ *   domaine doit être vérifié chez Resend. Réponse à : `bonjour@set-et-brique.com` aussi, renvoyée
+ *   par Cloudflare Email Routing vers la boîte Gmail de Marion (3 novembre 2026). Une réponse vers
+ *   une adresse Gmail, autre domaine que l'expéditeur, pesait dans le classement en spam.
  * - `EMAIL_TEST_RECIPIENT` : si renseignée, tous les e-mails partent à cette adresse au lieu du
  *   vrai destinataire (développement en local : la base est partagée avec la production, les
  *   clients sont réels).
@@ -20,6 +20,7 @@ import { renderEmail, type EmailContent } from "./layout";
  */
 
 const from = process.env.EMAIL_FROM || "Set et Brique <bonjour@set-et-brique.com>";
+const replyTo = "bonjour@set-et-brique.com";
 
 let client: Resend | null = null;
 function resend() {
@@ -51,7 +52,7 @@ export async function sendEmail({ to, kind, bookingId = null, content, logId }: 
   if (api) {
     try {
       const result = await api.emails.send(
-        { from, to: recipient, replyTo: site.email, subject, html, text },
+        { from, to: recipient, replyTo, subject, html, text },
         logId ? { idempotencyKey: `email-log/${logId}` } : undefined,
       );
       if (result.error) {
