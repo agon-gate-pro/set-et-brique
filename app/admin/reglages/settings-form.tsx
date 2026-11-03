@@ -5,7 +5,7 @@ import { FormMessage, SubmitButton, inputClass } from "@/components/admin/form";
 import { useFormDirty } from "@/lib/use-form-dirty";
 import { saveSettings } from "./actions";
 
-type Values = { paymentDelayHours: number; turnaroundDays: number; minRentalDays: number };
+type Values = { paymentDelayHours: number; turnaroundDays: number; minRentalDays: number; sameDayCutoff: string };
 
 export function SettingsForm({ values }: { values: Values }) {
   const [state, action] = useActionState(saveSettings, null);
@@ -52,6 +52,26 @@ export function SettingsForm({ values }: { values: Values }) {
       >
         Le calendrier de réservation refuse une période plus courte.
       </Setting>
+      {/* Heure, pas un nombre : même mise en page que les autres réglages, champ propre. */}
+      <section className="brick-card p-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+        <div>
+          <label htmlFor="sameDayCutoff" className="block font-bold text-ink-deep">
+            Heure limite pour une remise le jour même
+          </label>
+          <p className="mt-1 text-sm text-slate-ink">
+            Jusqu&apos;à cette heure, un client peut demander une remise pour aujourd&apos;hui, à une heure pas encore
+            passée ; après, au plus tôt demain. Laissez vide pour ne jamais proposer le jour même.
+          </p>
+        </div>
+        <input
+          id="sameDayCutoff"
+          name="sameDayCutoff"
+          type="time"
+          step={900}
+          defaultValue={values.sameDayCutoff}
+          className={`${inputClass} w-32`}
+        />
+      </section>
 
       <FormMessage state={state} />
       <div className="flex justify-end">

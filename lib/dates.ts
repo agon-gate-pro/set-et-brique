@@ -5,6 +5,21 @@ export function todayIso() {
   return new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris" }).format(new Date());
 }
 
+/** Heure actuelle à Paris, « hh:mm », comparable aux heures de remise. */
+export function parisTimeNow(now = new Date()) {
+  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+}
+
+/**
+ * Premier jour de remise qu'un client peut demander : aujourd'hui jusqu'à l'heure limite
+ * `sameDayCutoff` incluse (réglage `same_day_cutoff`, « 18:00 » : une demande à 18 h 01 vise
+ * demain au plus tôt), demain sinon ; une heure limite vide ferme le jour même.
+ */
+export function firstPickupDate(sameDayCutoff: string, now = new Date()) {
+  const today = new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris" }).format(now);
+  return sameDayCutoff && parisTimeNow(now) <= sameDayCutoff ? today : addDays(today, 1);
+}
+
 export function addDays(iso: string, days: number) {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

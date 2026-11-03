@@ -1,5 +1,5 @@
 import { and, eq, gte, inArray, or } from "drizzle-orm";
-import { addDays, monthStartIso, todayIso } from "@/lib/dates";
+import { addDays, firstPickupDate, monthStartIso, todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { activeExtensionEnd } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
@@ -127,6 +127,7 @@ export async function loadDayAvailability(
     from,
     to,
     today,
+    firstPickupDate(await getSetting("same_day_cutoff")),
   );
   return { from, to, days };
 }

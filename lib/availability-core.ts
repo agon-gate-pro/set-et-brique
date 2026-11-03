@@ -323,7 +323,7 @@ export function isBookable(a: SetAvailabilityResult) {
  * - `free` : au moins un exemplaire peut être loué ce jour-là ;
  * - `booked` : tous les exemplaires sont pris, en battement ou indisponibles ;
  * - `closed` : période fermée définie par les gérants ;
- * - `past` : jour déjà passé (ou aujourd'hui : la remise commence demain).
+ * - `past` : jour déjà passé, ou trop proche (avant `firstDay`, voir `firstPickupDate`).
  */
 export type DayAvailability = "free" | "booked" | "closed" | "past";
 
@@ -340,10 +340,12 @@ export function computeDayAvailability(
   from: string,
   to: string,
   today: string = todayIso(),
+  /** Premier jour de remise possible : aujourd'hui avant l'heure limite du jour même, demain sinon. */
+  firstDay: string = addDays(today, 1),
 ): Record<string, DayAvailability> {
   const days: Record<string, DayAvailability> = {};
   for (let day = from; day <= to; day = addDays(day, 1)) {
-    if (day <= today) days[day] = "past";
+    if (day < firstDay) days[day] = "past";
     else if (isInBlackout(day, blackouts)) days[day] = "closed";
     else days[day] = findFreeCopy(copies, bookings, turnaroundDays, day, day, null) ? "free" : "booked";
   }

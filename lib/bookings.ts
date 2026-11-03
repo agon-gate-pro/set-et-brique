@@ -13,7 +13,7 @@ import {
   withExtension,
   withLateReturn,
 } from "@/lib/availability";
-import { parisEndOfDay } from "@/lib/dates";
+import { firstPickupDate, parisEndOfDay, parisTimeNow } from "@/lib/dates";
 import { activeExtensionEnd } from "@/lib/extensions";
 import { expireOverduePayments } from "@/lib/payment-expiry";
 import { db, schema } from "@/lib/db";
@@ -192,7 +192,18 @@ export async function createBookingRequest(req: BookingRequest) {
   const today = todayIso();
   const minDays = await getSetting("min_rental_days");
   if (req.days < minDays) throw new BookingError(`Durée minimale : ${minDays} jour${minDays > 1 ? "s" : ""}.`);
-  if (req.startDate <= today) throw new BookingError("Choisissez une date de remise à partir de demain.");
+  // Jour même possible jusqu'à l'heure limite (réglage `same_day_cutoff`), à une heure pas encore passée.
+  const firstDate = firstPickupDate(await getSetting("same_day_cutoff"));
+  if (req.startDate < firstDate) {
+    throw new BookingError(
+      firstDate === today
+        ? "Choisissez une date de remise à partir d'aujourd'hui."
+        : "Il est trop tard pour une remise aujourd'hui : choisissez une date à partir de demain.",
+    );
+  }
+  if (req.startDate === today && req.pickupTime.slice(0, 5) <= parisTimeNow()) {
+    throw new BookingError("Cette heure est déjà passée : choisissez une heure de remise plus tard aujourd'hui.");
+  }
   const endDate = endDateFor(req.startDate, req.days);
 
   const [set, pickupPoint, blackouts, defaultPlan, globalTurnaround] = await Promise.all([

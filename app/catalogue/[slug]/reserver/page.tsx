@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
-import { RESERVING_STATUSES, addDays, loadAvailability, todayIso, withExtension, withLateReturn } from "@/lib/availability";
+import { RESERVING_STATUSES, loadAvailability, todayIso, withExtension, withLateReturn } from "@/lib/availability";
+import { firstPickupDate, parisTimeNow } from "@/lib/dates";
 import { coordinatesUrl, findCustomerByClerkId, isCustomerComplete } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { activeExtensionEnd } from "@/lib/extensions";
@@ -38,7 +39,7 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
   if (!set) notFound();
   const today = todayIso();
 
-  const [user, customer, pickupPoints, defaultPlan, minDays, availability, copies, rawBookings, blackouts, globalTurnaround] =
+  const [user, customer, pickupPoints, defaultPlan, minDays, availability, copies, rawBookings, blackouts, globalTurnaround, sameDayCutoff] =
     await Promise.all([
       userId ? currentUser() : Promise.resolve(null),
       userId ? findCustomerByClerkId(userId) : Promise.resolve(null),
@@ -76,7 +77,12 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
         endTime: schema.blackoutPeriods.endTime,
       }).from(schema.blackoutPeriods),
       getSetting("turnaround_days"),
+      getSetting("same_day_cutoff"),
     ]);
+  // Remise le jour même jusqu'à l'heure limite ; l'heure du moment, lue ici une fois, écarte les
+  // heures déjà passées dans le formulaire (le serveur revérifie à l'envoi).
+  const firstDate = firstPickupDate(sameDayCutoff);
+  const now = { today, time: parisTimeNow() };
   const pricePerDay = set.ratePlan?.priceCentsPerDay ?? defaultPlan?.priceCentsPerDay ?? null;
   const a = availability.get(set.id);
   // Le `customerId` réel n'a pas d'usage ici (l'aperçu compare toujours à `null`, jamais à un
@@ -104,7 +110,8 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
             set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents, disassemblyCents: set.disassemblyCents }}
             pricePerDay={pricePerDay}
             minDays={minDays}
-            minStartDate={addDays(today, 1)}
+            minStartDate={firstDate}
+            now={now}
             pickupPoints={pickupPoints}
             customer={null}
             defaults={{ firstName: "", lastName: "" }}
@@ -134,7 +141,8 @@ export default async function ReservePage({ params, searchParams }: PageProps<"/
             set={{ id: set.id, slug: set.slug, name: set.name, depositCents: set.depositCents, disassemblyCents: set.disassemblyCents }}
             pricePerDay={pricePerDay}
             minDays={minDays}
-            minStartDate={addDays(today, 1)}
+            minStartDate={firstDate}
+            now={now}
             pickupPoints={pickupPoints}
             customer={customer ?? null}
             defaults={{ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" }}

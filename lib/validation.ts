@@ -65,6 +65,12 @@ export const settingsSchema = z.object({
   paymentDelayHours: boundedInt("Délai de paiement", 1, 168),
   turnaroundDays: boundedInt("Battement", 0, 30),
   minRentalDays: boundedInt("Durée minimale", 1, 60),
+  /** « hh:mm », ou vide pour ne jamais proposer le jour même. */
+  sameDayCutoff: z
+    .string()
+    .trim()
+    .default("")
+    .refine((s) => s === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(s), "Heure limite du jour même : hh:mm, ou vide."),
 });
 
 export const ratePlanSchema = z.object({

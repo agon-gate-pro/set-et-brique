@@ -9,17 +9,18 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   await requireRole("admin");
-  const [paymentDelayHours, turnaroundDays, minRentalDays] = await Promise.all([
+  const [paymentDelayHours, turnaroundDays, minRentalDays, sameDayCutoff] = await Promise.all([
     getSetting("payment_delay_hours"),
     getSetting("turnaround_days"),
     getSetting("min_rental_days"),
+    getSetting("same_day_cutoff"),
   ]);
 
   return (
     <>
       <AdminPageTitle section="/admin/reglages">Réglages</AdminPageTitle>
       <p className="mt-3 text-sm text-slate-ink">Les règles de fonctionnement des réservations.</p>
-      <SettingsForm values={{ paymentDelayHours, turnaroundDays, minRentalDays }} />
+      <SettingsForm values={{ paymentDelayHours, turnaroundDays, minRentalDays, sameDayCutoff }} />
     </>
   );
 }

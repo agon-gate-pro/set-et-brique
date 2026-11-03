@@ -13,6 +13,11 @@ export const settingDefaults = {
   min_rental_days: 1,
   /** Heures laissées au client pour payer une demande acceptée, pendant lesquelles le set lui reste réservé. */
   payment_delay_hours: 24,
+  /**
+   * Heure limite (« hh:mm », Paris) pour demander une remise le jour même ; vide = à partir du
+   * lendemain seulement. 18:00 choisi par la cliente le 3 novembre 2026 (voir `firstPickupDate`).
+   */
+  same_day_cutoff: "18:00" as string,
   radius_km: 30,
 } as const;
 

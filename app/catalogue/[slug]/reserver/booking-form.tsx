@@ -22,6 +22,8 @@ type Props = {
   pricePerDay: number;
   minDays: number;
   minStartDate: string;
+  /** Date et heure (« hh:mm ») de Paris au chargement de la page : le jour même, seules les heures à venir sont proposées. */
+  now: { today: string; time: string };
   pickupPoints: Pick<PickupPoint, "id" | "name" | "address" | "slots">[];
   customer: Pick<
     Customer,
@@ -45,6 +47,7 @@ export function BookingForm({
   pricePerDay,
   minDays,
   minStartDate,
+  now,
   pickupPoints,
   customer,
   defaults,
@@ -68,8 +71,12 @@ export function BookingForm({
   const [returnAssembled, setReturnAssembled] = useState(false);
   // Heures fermées du jour de remise (absence qui commence ou finit ce jour-là), en plus des créneaux du lieu.
   const closed = startDate ? closedTimeRanges(startDate, calendar.blackouts) : [];
+  // Remise demandée pour aujourd'hui : pas d'heure déjà passée (décision de la cliente : pas d'autre délai).
+  const sameDay = startDate === now.today;
   const allowed = (t: string) =>
-    (slots.length === 0 || slots.some((s) => s.from <= t && t <= s.until)) && !(startDate && isTimeClosed(startDate, t, calendar.blackouts));
+    (slots.length === 0 || slots.some((s) => s.from <= t && t <= s.until)) &&
+    !(startDate && isTimeClosed(startDate, t, calendar.blackouts)) &&
+    !(sameDay && t <= now.time);
   // Heure ramenée au premier quart d'heure possible si celle choisie ne l'est pas.
   const firstAllowed = QUARTER_HOURS.find(allowed);
   const clampedTime = allowed(pickupTime) ? pickupTime : (firstAllowed ?? pickupTime);
@@ -152,6 +159,7 @@ export function BookingForm({
             {slots.length > 0
               ? `Entre ${slots.map((s) => `${s.from} et ${s.until}`).join(", ou entre ")} à ce lieu. `
               : ""}
+            {sameDay ? `Aujourd'hui, remise possible après ${now.time}. ` : ""}
             {closed.length > 0 ? `Ce jour-là, remise possible ${describeOpenHours(closed)}. ` : ""}
             {firstAllowed ? "Nous la confirmons ou vous proposons un autre créneau." : null}
           </span>

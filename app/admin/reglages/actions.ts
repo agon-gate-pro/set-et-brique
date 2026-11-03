@@ -15,6 +15,7 @@ export async function saveSettings(_: ActionState, formData: FormData): Promise<
     setSetting("payment_delay_hours", parsed.data.paymentDelayHours),
     setSetting("turnaround_days", parsed.data.turnaroundDays),
     setSetting("min_rental_days", parsed.data.minRentalDays),
+    setSetting("same_day_cutoff", parsed.data.sameDayCutoff),
   ]);
   revalidatePath("/admin/reglages");
   return { ok: "Réglages enregistrés." };

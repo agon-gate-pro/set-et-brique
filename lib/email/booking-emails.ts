@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
+import { todayIso } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { BookingExtension } from "@/lib/db/schema";
 import { formatCents, formatDateLong, formatDay, formatPhone, formatWeekday } from "@/lib/format";
@@ -182,7 +183,8 @@ function requestNewAdmin(b: BookingWithDetails) {
   const name = customerName(b);
   const phone = b.customer.phone ? formatPhone(b.customer.phone) : "pas de téléphone";
   return adminMail("request_new_admin", {
-    subject: `Nouvelle demande : ${b.set.name} du ${longDate(b.startDate)} au ${longDate(b.endDate)} (${name})`,
+    // Remise demandée pour le jour même : à traiter tout de suite, d'où l'objet qui commence par « Aujourd'hui ».
+    subject: `${b.startDate === todayIso() ? "Aujourd'hui : n" : "N"}ouvelle demande : ${b.set.name} du ${longDate(b.startDate)} au ${longDate(b.endDate)} (${name})`,
     blocks: [
       p("Bonjour,"),
       p(`${name} vient de demander une location.`),
