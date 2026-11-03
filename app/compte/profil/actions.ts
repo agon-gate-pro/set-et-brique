@@ -4,7 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { safeReturnPath, upsertCustomer } from "@/lib/bookings";
+import { safeReturnPath, setNewsletterConsent, upsertCustomer } from "@/lib/bookings";
 import { db, schema } from "@/lib/db";
 import { customerProfileSchema, firstError, formToObject } from "@/lib/validation";
 import type { ActionState } from "@/components/admin/form";
@@ -16,7 +16,7 @@ export async function saveCustomerProfile(_: ActionState, formData: FormData): P
 
   const parsed = customerProfileSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { preferredPickupPointId, ...input } = parsed.data;
+  const { preferredPickupPointId, newsletter, ...input } = parsed.data;
 
   let pickupPointId: string | null = null;
   if (preferredPickupPointId) {
@@ -28,7 +28,8 @@ export async function saveCustomerProfile(_: ActionState, formData: FormData): P
     pickupPointId = point.id;
   }
 
-  await upsertCustomer(user, { ...input, preferredPickupPointId: pickupPointId });
+  const customer = await upsertCustomer(user, { ...input, preferredPickupPointId: pickupPointId });
+  await setNewsletterConsent(customer.id, newsletter);
   revalidatePath("/compte");
   revalidatePath("/compte/profil");
   const returnTo = safeReturnPath(formData.get("retour"));

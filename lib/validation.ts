@@ -230,6 +230,8 @@ export const customerProfileSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? v : null)),
+  /** Case newsletter : décochée, elle retire l'accord. */
+  newsletter: checkbox,
 });
 
 export const bookingRequestSchema = z.object({
@@ -244,6 +246,8 @@ export const bookingRequestSchema = z.object({
     .optional()
     .transform((v) => v === "on"),
   ...customerFields,
+  /** Case newsletter du tunnel, jamais cochée par défaut ; elle ne fait qu'inscrire (désinscription depuis le compte). */
+  newsletter: checkbox,
   terms: z
     .string()
     .optional()

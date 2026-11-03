@@ -10,6 +10,7 @@ const sections = [
   { href: "/admin/fermetures", label: "Périodes fermées" },
   { href: "/admin/bons-cadeaux", label: "Bons cadeaux" },
   { href: "/admin/statistiques", label: "Statistiques" },
+  { href: "/admin/export", label: "Export" },
   { href: "/admin/contenus", label: "Contenus du site" },
   { href: "/admin/reglages", label: "Réglages" },
 ];

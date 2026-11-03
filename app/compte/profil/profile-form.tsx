@@ -11,7 +11,7 @@ import { PostalCityFields } from "./postal-city-fields";
 type Props = {
   customer: Pick<
     Customer,
-    "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId"
+    "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId" | "newsletterConsentAt"
   > | null;
   defaults: { firstName: string; lastName: string };
   pickupPoints: Pick<PickupPoint, "id" | "name" | "address">[];
@@ -68,6 +68,21 @@ export function ProfileForm({ customer, defaults, pickupPoints, returnTo = null 
           </select>
         </Field>
       </div>
+      {/* Accord pour la newsletter : décocher le retire (`setNewsletterConsent`). */}
+      <label className="sm:col-span-2 flex items-start gap-3">
+        <input
+          type="checkbox"
+          name="newsletter"
+          defaultChecked={customer?.newsletterConsentAt != null}
+          className="mt-1 h-5 w-5 shrink-0 accent-brick"
+        />
+        <span>
+          <span className="block font-bold text-ink-deep">Recevoir la newsletter de Set et Brique</span>
+          <span className="block text-sm text-slate-ink">
+            Nouveaux sets et offres, par e-mail. Désinscription possible à tout moment, ici ou par le lien de chaque envoi.
+          </span>
+        </span>
+      </label>
       <div className="sm:col-span-2 flex justify-end">
         <SubmitButton variant="leaf" disabled={!dirty}>{returnTo ? "Enregistrer et reprendre ma réservation" : "Enregistrer"}</SubmitButton>
       </div>

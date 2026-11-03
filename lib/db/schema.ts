@@ -130,6 +130,11 @@ export const customers = pgTable(
      * identifiant inconnu de Stripe est recréé au paiement suivant (`lib/payments.ts`).
      */
     stripeCustomerId: text("stripe_customer_id"),
+    /**
+     * Accord pour recevoir la newsletter (migration 0030) : date de la case cochée, vide sinon ou
+     * après désinscription depuis le compte. Seuls ces clients figurent dans l'export de `/admin/export`.
+     */
+    newsletterConsentAt: timestamp("newsletter_consent_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [uniqueIndex("customers_clerk_user_id_idx").on(t.clerkUserId)],

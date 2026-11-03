@@ -103,7 +103,7 @@ Deux chaînes de connexion : `DATABASE_URL` (avec pooler, utilisée par l'applic
 
 **Clients et comptes**
 
-- `customers` : un client par compte Clerk (`clerk_user_id`). Coordonnées (nom, prénom, téléphone, adresse : obligatoires à la première demande, spécification module 3), note interne, et `blocked` : compte bloqué à la main par les gérants, plus aucune réservation possible. Le compte de connexion vit chez Clerk, la fiche client vit ici.
+- `customers` : un client par compte Clerk (`clerk_user_id`). Coordonnées (nom, prénom, téléphone, adresse : obligatoires à la première demande, spécification module 3), note interne, et `blocked` : compte bloqué à la main par les gérants, plus aucune réservation possible. Le compte de connexion vit chez Clerk, la fiche client vit ici. `newsletter_consent_at` (migration 0030, 3 novembre 2026) : date de l'accord pour la newsletter, vide sans accord ou après retrait (`setNewsletterConsent`, `lib/bookings.ts`, qui garde la date d'un accord déjà donné). Case jamais cochée par défaut : dans le tunnel, sous les coordonnées, masquée si le client est déjà inscrit et qui ne fait qu'inscrire, enregistrée après la création de la demande ; dans le compte (`/compte/profil`, onglet Coordonnées), où la décocher retire l'accord. Mentions légales (section 5) et CGU (article 7) le disent.
 
 **Catalogue**
 
@@ -394,6 +394,10 @@ Impression : page dédiée par navigateur (§10, pas de moteur PDF serveur pour 
 ### Statistiques (`/admin/statistiques`)
 
 Chiffre d'affaires des 12 derniers mois en barres (réservations `confirmed`, `picked_up` et `returned`, à la date de début de location, même règle que le tableau de bord). Cinq sets les plus loués, par nombre de réservations dans les mêmes statuts. Taux d'occupation glissant sur 30 jours : jours loués (recouvrement de chaque réservation avec la fenêtre) divisés par le nombre d'exemplaires actifs (hors « Retiré ») multiplié par 30 — approximation qui ne retire pas les exemplaires en réparation du dénominateur. Bons cadeaux : valeur totale émise, utilisée, encore en circulation (valides et non expirés).
+
+### Export (`/admin/export`)
+
+Rubrique créée le 3 novembre 2026 (demande d'Alexis : un menu à part plutôt que dans Statistiques), où viendront aussi l'export des ventes et celui des notes (spécification, module 11). Pour l'instant : **la liste de la newsletter**, nombre d'inscrits et bouton « Télécharger la liste », qui pointe vers la route `GET /admin/export/newsletter` (`isAdmin`, 403 sinon). Fichier `newsletter-set-et-brique-aaaa-mm-jj.csv` : séparateur `;`, BOM UTF-8 (Excel l'ouvre en français, accents compris ; Brevo, Mailchimp et les autres l'importent tel quel), colonnes E-mail, Prénom, Nom, Inscrit le, seuls les clients dont `newsletter_consent_at` est renseigné, du plus ancien au plus récent ; une valeur qui commence par `=`, `+`, `-` ou `@` est précédée d'une apostrophe (pas de formule exécutée par Excel). Le site fournit le fichier, rien de plus : la rédaction et l'envoi se font dans l'outil de la cliente, et une désinscription faite dans cet outil ne remonte pas au site.
 
 ### Où vit un set
 

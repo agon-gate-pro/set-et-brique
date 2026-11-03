@@ -27,7 +27,7 @@ type Props = {
   pickupPoints: Pick<PickupPoint, "id" | "name" | "address" | "slots">[];
   customer: Pick<
     Customer,
-    "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId"
+    "firstName" | "lastName" | "phone" | "addressLine" | "postalCode" | "city" | "preferredPickupPointId" | "newsletterConsentAt"
   > | null;
   defaults: { firstName: string; lastName: string };
   calendar: {
@@ -216,6 +216,18 @@ export function BookingForm({
             <Field label="Ville">
               <input name="city" required defaultValue={customer?.city ?? ""} className={inputClass} />
             </Field>
+            {/* Inscription seulement, jamais cochée par défaut ; déjà inscrit, le client gère ça depuis son compte. */}
+            {customer?.newsletterConsentAt ? null : (
+              <label className="sm:col-span-2 flex items-start gap-3">
+                <input type="checkbox" name="newsletter" className="mt-1 h-5 w-5 shrink-0 accent-brick" />
+                <span>
+                  <span className="block text-ink-deep">J&apos;accepte de recevoir la newsletter de Set et Brique</span>
+                  <span className="block text-sm text-slate-ink">
+                    Nouveaux sets et offres, par e-mail. Facultatif, désinscription possible à tout moment.
+                  </span>
+                </span>
+              </label>
+            )}
           </section>
 
           {/* Récapitulatif juste avant l'envoi, après tous les choix qui changent le prix (option comprise). */}

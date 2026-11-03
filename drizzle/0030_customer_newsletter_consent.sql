@@ -1,0 +1,1 @@
+ALTER TABLE "customers" ADD COLUMN "newsletter_consent_at" timestamp with time zone;

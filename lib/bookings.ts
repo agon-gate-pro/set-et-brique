@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { User } from "@clerk/backend";
 import {
   RESERVING_STATUSES,
@@ -102,7 +102,19 @@ export const customerPublicColumns = {
   city: true,
   preferredPickupPointId: true,
   blocked: true,
+  newsletterConsentAt: true,
 } as const satisfies Partial<Record<keyof Customer, true>>;
+
+/**
+ * Accord pour la newsletter : la date d'un accord déjà donné est gardée (preuve du consentement),
+ * un retrait l'efface. Case jamais cochée par défaut, dans le tunnel et dans le compte.
+ */
+export async function setNewsletterConsent(customerId: string, accepted: boolean) {
+  await db
+    .update(schema.customers)
+    .set({ newsletterConsentAt: accepted ? sql`coalesce(${schema.customers.newsletterConsentAt}, now())` : null })
+    .where(eq(schema.customers.id, customerId));
+}
 
 /**
  * Colonnes d'une réservation visibles par le client. `adminNote` et

@@ -151,6 +151,13 @@ export default function LegalPage() {
                 commerciales.
               </p>
               <p>
+                Si vous l&apos;acceptez, en cochant la case prévue à la
+                réservation ou dans votre compte, votre adresse e-mail est
+                aussi utilisée pour vous envoyer la newsletter de Set et
+                Brique. Vous pouvez retirer votre accord à tout moment depuis
+                votre compte ou par le lien de désinscription de chaque envoi.
+              </p>
+              <p>
                 Conformément au Règlement général sur la protection des
                 données (RGPD, UE 2016/679) et à la loi Informatique et
                 Libertés, vous disposez d&apos;un droit d&apos;accès, de

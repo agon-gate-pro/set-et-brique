@@ -156,7 +156,11 @@ export default function TermsPage() {
                 Les données personnelles traitées sont celles nécessaires à
                 la gestion des réservations et aux réponses à vos demandes.
                 Elles ne sont jamais transmises à des tiers à des fins
-                commerciales. Conformément au RGPD et à la loi Informatique
+                commerciales. Avec votre accord, donné en cochant la case
+                prévue à la réservation ou dans votre compte, votre adresse
+                e-mail sert aussi à l&apos;envoi de la newsletter ; vous pouvez
+                le retirer à tout moment depuis votre compte ou par le lien de
+                désinscription de chaque envoi. Conformément au RGPD et à la loi Informatique
                 et Libertés, vous disposez de droits d&apos;accès, de
                 rectification, d&apos;effacement, d&apos;opposition, de
                 portabilité et de limitation. Pour les exercer, écrivez à{" "}
