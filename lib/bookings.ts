@@ -125,6 +125,7 @@ export const bookingCustomerColumns = {
   cancelReason: true,
   refundCents: true,
   refundedVoucherCode: true,
+  creditVoucherCode: true,
   pickedUpAt: true,
   returnedAt: true,
   paymentDueAt: true,

@@ -344,6 +344,8 @@ export const bookings = pgTable(
     refundCents: integer("refund_cents"),
     stripeRefundId: text("stripe_refund_id"),
     refundedVoucherCode: text("refunded_voucher_code"),
+    /** Avoir offert à la place du remboursement sur la carte (migration 0028) : code du bon cadeau créé. */
+    creditVoucherCode: text("credit_voucher_code"),
     customerNote: text("customer_note"),
     adminNote: text("admin_note"),
     /** Motif communiqué au client en cas de refus ou d'annulation. */

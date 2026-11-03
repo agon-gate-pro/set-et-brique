@@ -162,6 +162,32 @@ Rien n'a été débité. Si vous le souhaitez, d'autres dates ou un autre set so
 
 [signature]
 
+### A4 bis. Réservation payée annulée par les gérants, au client
+
+Déclencheur : les gérants annulent une réservation payée (`confirmed` → `cancelled`, `cancelPaidBooking`), avec motif et, au choix, un remboursement sur la carte ou un avoir en bon cadeau (3 novembre 2026). Texte écrit dans le code (`lib/email/booking-emails.ts`), pas encore relu par Marion.
+
+**Objet** : Votre réservation {{reference}} est annulée
+
+Bonjour {{prenom}},
+
+Votre réservation de {{set}} du {{date_debut}} au {{date_fin}} est annulée : {{motif}}.
+
+*Remboursement sur la carte* : {{montant}} vous sont remboursés sur la carte utilisée pour le paiement. La somme apparaît sur votre compte sous quelques jours, selon votre banque. (Rien de remboursé : « Aucun remboursement n'est dû sur cette réservation. »)
+
+*Avoir* : Un avoir de {{montant}} vous est offert, sous forme de bon cadeau à saisir au moment du paiement de votre prochaine location :
+
+> Code : {{code}} · Valeur : {{montant}} · Valable jusqu'au {{date_validite}}
+
+Il s'utilise en une seule fois, sur n'importe quel set du catalogue ; la caution reste due séparément.
+
+(Bon cadeau utilisé au paiement : « Votre bon cadeau {{code_bon}} est de nouveau valable, pour une autre location. » Caution : « Si une empreinte de caution était en place sur votre carte, elle est libérée : rien n'a été débité. »)
+
+D'autres dates ou un autre set sont sans doute possibles, et nous sommes joignables au 07 83 73 70 20 pour en parler.
+
+[Bouton : Voir le catalogue → {{lien_catalogue}}]
+
+[signature]
+
 ### A5. Annulation par le client, aux gérants
 
 Déclencheur : le client annule depuis son espace (→ `cancelled`).

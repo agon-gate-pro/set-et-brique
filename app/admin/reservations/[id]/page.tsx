@@ -193,6 +193,9 @@ export default async function BookingPage({ params }: PageProps<"/admin/reservat
                     {b.cancelReason}
                   </Callout>
                 ) : null}
+                {b.creditVoucherCode && b.status === "cancelled" ? (
+                  <Callout label="Avoir offert à la place du remboursement">bon cadeau {b.creditVoucherCode}</Callout>
+                ) : null}
 
                 <p className="mt-5 text-sm text-slate-ink">
                   Demande faite le {dateTime.format(b.createdAt)}

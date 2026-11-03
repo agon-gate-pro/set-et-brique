@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { daysLate, todayIso } from "@/lib/availability";
@@ -9,6 +9,7 @@ import { hasUnseenHandoverChange } from "@/lib/handover";
 import { db, schema } from "@/lib/db";
 import { DepositError, captureDeposit, placeDepositHold, queueDepositRenewal, releaseDepositHold } from "@/lib/deposits";
 import { formatCents } from "@/lib/format";
+import { formatBatchNumber, generateGiftVoucherCode, giftVoucherExpiresAt } from "@/lib/gift-vouchers";
 import { cardPaidCents, refundBookingPayment } from "@/lib/payments";
 import { queueBookingEmails, queueExtensionEmails, type ExtensionEmailEvent } from "@/lib/email/booking-emails";
 import { ExtensionError, acceptExtension, markExtensionPaid, refuseExtension } from "@/lib/extensions";
@@ -164,9 +165,11 @@ export async function cancelAcceptedBooking(_: ActionState, formData: FormData):
 /**
  * Annuler une réservation payée (`confirmed`), à l'initiative de Set et Brique ou à la demande du
  * client (CGL, articles 12 à 14). Les gérants choisissent la somme remboursée sur la carte (tout par
- * défaut, ou la part du barème de l'article 12), bornée à ce qui a été payé par carte. Un bon cadeau
- * utilisé au paiement redevient valable, l'empreinte de caution éventuelle est libérée, et le client
- * reçoit un e-mail avec le motif et le montant. Le set n'est jamais parti : rien d'autre à solder.
+ * défaut, ou la part du barème de l'article 12), bornée à ce qui a été payé par carte, ou un avoir :
+ * un bon cadeau du montant choisi, valable un an, sans remboursement Stripe (spécification, module 7 ;
+ * à la demande du client, seulement avec son accord). Un bon cadeau utilisé au paiement redevient
+ * valable, l'empreinte de caution éventuelle est libérée, et le client reçoit un e-mail avec le motif
+ * et le montant (ou le code de l'avoir). Le set n'est jamais parti : rien d'autre à solder.
  */
 export async function cancelPaidBooking(_: ActionState, formData: FormData): Promise<ActionState> {
   await requireRole("admin");
@@ -184,8 +187,9 @@ export async function cancelPaidBooking(_: ActionState, formData: FormData): Pro
     console.error("[stripe] paiement de la réservation introuvable", id, e);
     return { error: "Stripe n'a pas répondu. Réessayez dans un instant." };
   }
-  const refund = Math.min(parsed.data.refundEuros, paid);
-  if (parsed.data.refundEuros > paid) {
+  const credit = parsed.data.refundMode === "credit" ? parsed.data.refundEuros : 0;
+  const refund = credit > 0 ? 0 : Math.min(parsed.data.refundEuros, paid);
+  if (credit === 0 && parsed.data.refundEuros > paid) {
     return { error: `Le client a payé ${formatCents(paid)} par carte : impossible de rembourser davantage.` };
   }
 
@@ -202,7 +206,32 @@ export async function cancelPaidBooking(_: ActionState, formData: FormData): Pro
     return { error: "Stripe a refusé le remboursement. Rien n'est annulé : réessayez, ou remboursez depuis le Dashboard Stripe." };
   }
 
+  let creditCode: string | null = null;
   await db.transaction(async (tx) => {
+    if (credit > 0) {
+      const [{ n }] = (await tx.execute(sql`select nextval('gift_voucher_batch_seq') as n`)).rows as { n: string }[];
+      for (let attempt = 0; ; attempt++) {
+        const code = generateGiftVoucherCode();
+        try {
+          // Point de reprise : un code déjà pris (23505) n'annule pas toute la transaction.
+          await tx.transaction((sp) =>
+            sp.insert(schema.giftVouchers).values({
+              code,
+              amountCents: credit,
+              origin: "admin",
+              batchNumber: formatBatchNumber(Number(n)),
+              batchLabel: "Avoir",
+              note: `Avoir, annulation de ${b.reference}`,
+              expiresAt: giftVoucherExpiresAt(),
+            }),
+          );
+          creditCode = code;
+          break;
+        } catch (err) {
+          if ((err as { code?: string }).code !== "23505" || attempt >= 4) throw err;
+        }
+      }
+    }
     let restored: string | null = null;
     if (voucherCode) {
       const [row] = await tx
@@ -223,11 +252,18 @@ export async function cancelPaidBooking(_: ActionState, formData: FormData): Pro
         refundCents: refund,
         stripeRefundId: refundId,
         refundedVoucherCode: restored,
+        creditVoucherCode: creditCode,
       })
       .where(eq(schema.bookings.id, id));
     const parts = [
       `Annulée par Set et Brique : ${parsed.data.reason}`,
-      refund > 0 ? `${formatCents(refund)} remboursés sur la carte` : paid > 0 ? "aucun remboursement" : null,
+      creditCode
+        ? `avoir ${creditCode} de ${formatCents(credit)} offert, sans remboursement sur la carte`
+        : refund > 0
+          ? `${formatCents(refund)} remboursés sur la carte`
+          : paid > 0
+            ? "aucun remboursement"
+            : null,
       restored ? `bon cadeau ${restored} de nouveau valable` : null,
     ].filter(Boolean);
     await tx.insert(schema.bookingEvents).values({ bookingId: id, actor: "admin", fromStatus: "confirmed", toStatus: "cancelled", message: parts.join(". ") });
@@ -239,7 +275,7 @@ export async function cancelPaidBooking(_: ActionState, formData: FormData): Pro
   queueBookingEmails("cancelled_refund", id);
   revalidate(id);
   return {
-    ok: `Réservation annulée${refund > 0 ? `, ${formatCents(refund)} remboursés` : ""}${voucherCode ? ", bon cadeau de nouveau valable" : ""}. Le client est prévenu par e-mail.`,
+    ok: `Réservation annulée${creditCode ? `, avoir ${creditCode} de ${formatCents(credit)} créé` : refund > 0 ? `, ${formatCents(refund)} remboursés` : ""}${voucherCode ? ", bon cadeau de nouveau valable" : ""}. Le client est prévenu par e-mail.`,
   };
 }
 

@@ -250,12 +250,19 @@ export const cancelBookingSchema = z.object({
 });
 
 /**
- * Annulation par Set et Brique d'une réservation payée : motif obligatoire, et somme à rembourser sur
- * la carte en euros (« 12 », « 12,50 »), bornée à ce qui a été payé par carte dans l'action.
+ * Annulation par Set et Brique d'une réservation payée : motif obligatoire, et somme rendue en euros
+ * (« 12 », « 12,50 »), soit remboursée sur la carte (`card`, bornée à ce qui a été payé par carte dans
+ * l'action), soit offerte en avoir sous forme de bon cadeau (`credit`, montant libre mais non nul).
  */
-export const cancelPaidBookingSchema = cancelBookingSchema.extend({
-  refundEuros: eurosToCents,
-});
+export const cancelPaidBookingSchema = cancelBookingSchema
+  .extend({
+    refundMode: z.enum(["card", "credit"]).default("card"),
+    refundEuros: eurosToCents,
+  })
+  .refine((d) => d.refundMode !== "credit" || d.refundEuros > 0, {
+    message: "Indiquez le montant de l'avoir.",
+    path: ["refundEuros"],
+  });
 
 /** Moyens de paiement saisis par les gérants au bouton « Paiement reçu » (libellé dans l'historique). */
 export const paymentMethods = {

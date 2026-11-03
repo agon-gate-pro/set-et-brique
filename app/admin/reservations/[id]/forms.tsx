@@ -243,7 +243,8 @@ export function HandoverActions({ booking }: { booking: Booking }) {
  * Annulation d'une réservation payée, par les gérants (`cancelPaidBooking`) : motif visible du
  * client et somme remboursée sur la carte. Tout est proposé par défaut ; le barème de l'article 12
  * des CGL (0 %, 50 %, 100 % conservés selon le délai avant la remise) est rappelé pour une
- * annulation demandée par le client. Un bon cadeau utilisé redevient valable quoi qu'il arrive.
+ * annulation demandée par le client. À la place du remboursement, un avoir en bon cadeau (montant
+ * libre, par défaut ce qui a été payé par carte). Un bon cadeau utilisé redevient valable quoi qu'il arrive.
  */
 export function CancelPaidActions({ booking, cardPaidCents }: { booking: Booking; cardPaidCents: number }) {
   const [state, action] = useActionState(cancelPaidBooking, null);
@@ -259,7 +260,7 @@ export function CancelPaidActions({ booking, cardPaidCents }: { booking: Booking
         <ConfirmButton
           asDialog
           state={state}
-          confirmLabel="Oui, annuler et rembourser"
+          confirmLabel="Oui, annuler la réservation"
           pendingLabel="Annulation…"
           className="text-sm"
           details={
@@ -279,7 +280,21 @@ export function CancelPaidActions({ booking, cardPaidCents }: { booking: Booking
                 <Field label="Motif, visible du client">
                   <input name="reason" required className={inputClass} placeholder="Le set revenu de location est incomplet" />
                 </Field>
-                <Field label="Somme remboursée sur la carte, en euros">
+                <fieldset className="grid gap-2 text-left text-sm">
+                  <legend className="mb-1 font-bold text-ink-deep">Ce que le client récupère</legend>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="refundMode" value="card" defaultChecked className="h-4 w-4 accent-brick" />
+                    Remboursement sur la carte
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="refundMode" value="credit" className="h-4 w-4 accent-brick" />
+                    Avoir en bon cadeau, valable un an, sans remboursement
+                  </label>
+                  <p className="text-slate-ink">
+                    Annulation demandée par le client : un avoir à la place du remboursement seulement s&apos;il est d&apos;accord.
+                  </p>
+                </fieldset>
+                <Field label="Montant, en euros">
                   <input
                     name="refundEuros"
                     required

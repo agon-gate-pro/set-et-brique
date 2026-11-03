@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { db, schema } from "@/lib/db";
 import type { BookingExtension } from "@/lib/db/schema";
-import { formatCents, formatDay, formatPhone, formatWeekday } from "@/lib/format";
+import { formatCents, formatDateLong, formatDay, formatPhone, formatWeekday } from "@/lib/format";
 import { site } from "@/lib/site";
 import { siteLink, type EmailBlock, type EmailContent } from "./layout";
 import { sendEmail } from "./send";
@@ -39,7 +39,7 @@ export type BookingEmailEvent =
 export type ReminderKind = "reminder_eve" | "reminder_day" | "reminder_late";
 
 async function loadBooking(bookingId: string) {
-  return db.query.bookings.findFirst({
+  const b = await db.query.bookings.findFirst({
     where: eq(schema.bookings.id, bookingId),
     with: {
       customer: true,
@@ -47,6 +47,15 @@ async function loadBooking(bookingId: string) {
       pickupPoint: { columns: { name: true, address: true, instructions: true } },
     },
   });
+  if (!b) return b;
+  // Avoir offert à l'annulation (`cancelPaidBooking`) : montant et validité pour l'e-mail A4 bis.
+  const creditVoucher = b.creditVoucherCode
+    ? ((await db.query.giftVouchers.findFirst({
+        where: eq(schema.giftVouchers.code, b.creditVoucherCode),
+        columns: { code: true, amountCents: true, expiresAt: true },
+      })) ?? null)
+    : null;
+  return { ...b, creditVoucher };
 }
 
 export type BookingWithDetails = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;
@@ -296,7 +305,7 @@ function cancelledCustomer(b: BookingWithDetails) {
   });
 }
 
-/** A4 bis. Réservation payée annulée par les gérants : motif, remboursement, bon et caution. */
+/** A4 bis. Réservation payée annulée par les gérants : motif, remboursement ou avoir, bon et caution. */
 function cancelledRefund(b: BookingWithDetails) {
   const reason = visibleReason(b);
   const refund = b.refundCents ?? 0;
@@ -307,11 +316,28 @@ function cancelledRefund(b: BookingWithDetails) {
       p(
         `Votre réservation de ${b.set.name} du ${longDate(b.startDate)} au ${longDate(b.endDate)} est annulée${reason ? ` : ${reason}` : ""}.`,
       ),
-      p(
-        refund > 0
-          ? `${formatCents(refund)} vous sont remboursés sur la carte utilisée pour le paiement. La somme apparaît sur votre compte sous quelques jours, selon votre banque.`
-          : "Aucun remboursement n'est dû sur cette réservation.",
-      ),
+      ...(b.creditVoucher
+        ? [
+            p(
+              `Un avoir de ${formatCents(b.creditVoucher.amountCents)} vous est offert, sous forme de bon cadeau à saisir au moment du paiement de votre prochaine location :`,
+            ),
+            {
+              type: "box" as const,
+              lines: [
+                `Code : ${b.creditVoucher.code}`,
+                `Valeur : ${formatCents(b.creditVoucher.amountCents)}`,
+                `Valable jusqu'au ${formatDateLong(b.creditVoucher.expiresAt)}`,
+              ],
+            },
+            p("Il s'utilise en une seule fois, sur n'importe quel set du catalogue ; la caution reste due séparément."),
+          ]
+        : [
+            p(
+              refund > 0
+                ? `${formatCents(refund)} vous sont remboursés sur la carte utilisée pour le paiement. La somme apparaît sur votre compte sous quelques jours, selon votre banque.`
+                : "Aucun remboursement n'est dû sur cette réservation.",
+            ),
+          ]),
       ...(b.refundedVoucherCode ? [p(`Votre bon cadeau ${b.refundedVoucherCode} est de nouveau valable, pour une autre location.`)] : []),
       ...(b.depositCents > 0 ? [p("Si une empreinte de caution était en place sur votre carte, elle est libérée : rien n'a été débité.")] : []),
       p(`D'autres dates ou un autre set sont sans doute possibles, et nous sommes joignables au ${site.phone} pour en parler.`),

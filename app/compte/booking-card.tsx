@@ -268,9 +268,11 @@ export function BookingCard({
       {/* Annulation d'une réservation payée par les gérants : ce qui revient au client (`cancelPaidBooking`). */}
       {booking.status === "cancelled" && booking.refundCents != null ? (
         <p className="mt-1 text-sm text-slate-ink">
-          {booking.refundCents > 0
-            ? `${formatCents(booking.refundCents)} remboursés sur votre carte, visibles sous quelques jours selon votre banque.`
-            : "Aucun remboursement sur cette réservation."}
+          {booking.creditVoucherCode
+            ? `Un avoir vous est offert : bon cadeau ${booking.creditVoucherCode}, à saisir au paiement de votre prochaine location (montant et validité dans l'e-mail d'annulation).`
+            : booking.refundCents > 0
+              ? `${formatCents(booking.refundCents)} remboursés sur votre carte, visibles sous quelques jours selon votre banque.`
+              : "Aucun remboursement sur cette réservation."}
           {booking.refundedVoucherCode ? ` Votre bon cadeau ${booking.refundedVoucherCode} est de nouveau valable.` : ""}
         </p>
       ) : null}
