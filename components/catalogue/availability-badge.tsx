@@ -16,7 +16,9 @@ const styles = {
  * partir du … » — c'est elle qui donne envie de cliquer, pas le rappel qu'il
  * est pris pour l'instant, qui prenait toute la place avant (décision du 22
  * septembre 2026, revue une seconde fois le même jour : une phrase en rouge
- * essayée d'abord, jugée trop proche des messages de blocage).
+ * essayée d'abord, jugée trop proche des messages de blocage). Sur une seule
+ * ligne (8 novembre 2026) : « dès le » plutôt que « à partir du », 13 px et
+ * `whitespace-nowrap`, pour tenir dans la carte la plus étroite du catalogue.
  */
 export function AvailabilityBadge({
   availability,
@@ -34,9 +36,9 @@ export function AvailabilityBadge({
           {setAvailabilityLabels[status]}
         </span>
         <span
-          className={`mt-2 block w-fit text-sm font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${styles.available}`}
+          className={`mt-2 block w-fit whitespace-nowrap text-[13px] font-bold px-2.5 py-1 rounded-md border border-slate-ink/15 ${styles.available}`}
         >
-          Disponible à partir du {formatDay(nextAvailableDate)}
+          Disponible dès le {formatDay(nextAvailableDate)}
         </span>
       </span>
     );

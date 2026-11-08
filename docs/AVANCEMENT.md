@@ -154,6 +154,10 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ## 5. Journal
 
+### 8 novembre 2026
+
+- **Pastille « Disponible dès le … » sur une seule ligne** (`components/catalogue/availability-badge.tsx`) : sur les cartes du catalogue, « Disponible à partir du 19 novembre » passait sur deux lignes. Texte raccourci en « Disponible dès le 19 novembre », taille 13 px au lieu de 14, retour à la ligne interdit. Même pastille sur la fiche et le tunnel de réservation.
+
 ### 3 novembre 2026
 
 - **Newsletter : accord des clients et export** (migration 0030 `customers.newsletter_consent_at`, `setNewsletterConsent`, case du tunnel et du compte, rubrique `/admin/export` et route `/admin/export/newsletter`, mentions légales section 5, CGU article 7 ; `FONCTIONNEMENT.md` §5 et §7, spécification V2 point 4). Point du mail de Marion du 3 novembre. Décisions d'Alexis : un menu « Export » à part, et le site ne fournit que le fichier (CSV ouvert par Excel), la rédaction et l'envoi restant dans l'outil de la cliente. La liste démarre vide : les clients existants n'y figurent qu'après avoir coché la case. Typage et lint passent ; migration 0030 appliquée, en ligne (commit `281f15e`) et testée en production par Alexis le jour même.
