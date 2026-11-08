@@ -18,8 +18,8 @@ Base du point de fin de semaine avec Madus et Marion. Le détail technique est d
 - **Export de la liste newsletter** dans le nouveau menu « Export », en fichier ouvrable avec Excel (3 novembre).
 - **E-mails** : les réponses des clients arrivent sur `bonjour@set-et-brique.com` (3 novembre).
 - **Statistiques enrichies** (8 novembre) :
-  - en tête, les **chiffres du mois** (locations, chiffre d'affaires, panier moyen, durée moyenne), avec ceux du mois précédent en dessous ;
-  - le **graphique du chiffre d'affaires** affiche enfin ses barres sur ordinateur (seuls les montants apparaissaient) ;
+  - en tête, les **chiffres du mois** (locations, chiffre d'affaires, panier moyen, durée moyenne), chacun en deux barres pour comparer d'un coup d'œil avec le mois précédent ;
+  - le **graphique du chiffre d'affaires** affiche enfin ses barres sur ordinateur (seuls les montants apparaissaient), en bleu marine plutôt qu'en rouge ;
   - **sets qui dorment** : les sets jamais loués ou sans location depuis plus de 60 jours, utile pour choisir les coups de cœur ou les sets à retirer ;
   - **clients** : combien ont loué, combien sont revenus, combien sont inscrits à la newsletter ;
   - dans « Sets les plus loués », chaque nom ouvre maintenant la fiche du set.

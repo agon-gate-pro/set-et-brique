@@ -128,19 +128,11 @@ export default async function StatistiquesPage() {
       duration: count > 0 ? (row?.days ?? 0) / count : null,
     };
   });
-  const keyFigures = [
-    { label: "Locations", current: String(currentMonth.count), previous: String(previousMonth.count) },
-    { label: "Chiffre d'affaires", current: formatCents(currentMonth.total), previous: formatCents(previousMonth.total) },
-    {
-      label: "Panier moyen",
-      current: currentMonth.basket != null ? formatCents(currentMonth.basket) : "—",
-      previous: previousMonth.basket != null ? formatCents(previousMonth.basket) : "—",
-    },
-    {
-      label: "Durée moyenne",
-      current: currentMonth.duration != null ? formatDays(currentMonth.duration) : "—",
-      previous: previousMonth.duration != null ? formatDays(previousMonth.duration) : "—",
-    },
+  const keyFigures: { label: string; current: number | null; previous: number | null; format: (n: number) => string }[] = [
+    { label: "Locations", current: currentMonth.count, previous: previousMonth.count, format: String },
+    { label: "Chiffre d'affaires", current: currentMonth.total, previous: previousMonth.total, format: formatCents },
+    { label: "Panier moyen", current: currentMonth.basket, previous: previousMonth.basket, format: formatCents },
+    { label: "Durée moyenne", current: currentMonth.duration, previous: previousMonth.duration, format: formatDays },
   ];
 
   // Jamais loués d'abord (ordre alphabétique conservé), puis du retour le plus ancien au plus récent.
@@ -155,20 +147,40 @@ export default async function StatistiquesPage() {
       <AdminPageTitle section="/admin/statistiques">Statistiques</AdminPageTitle>
 
       <section className="mt-8 brick-card p-5">
-        <h2 className="text-xl font-semibold">{capitalize(currentMonth.name)}</h2>
+        <h2 className="text-xl font-semibold">{capitalize(currentMonth.name)} (en cours)</h2>
         <p className="mt-1 text-sm text-slate-ink">
           Locations confirmées ou au-delà qui démarrent ce mois-ci, comparées à {previousMonth.name}.
         </p>
-        <ul className="mt-4 grid gap-4 grid-cols-2 lg:grid-cols-4">
-          {keyFigures.map((f) => (
-            <li key={f.label}>
-              <p className="text-sm text-slate-ink">{f.label}</p>
-              <p className="mt-0.5 display text-2xl md:text-3xl font-bold text-ink-deep">{f.current}</p>
-              <p className="mt-0.5 text-sm text-slate-ink">
-                {capitalize(previousMonth.name)} : {f.previous}
-              </p>
-            </li>
-          ))}
+        {/* Deux barres par chiffre, à la même échelle : mois en cours en bleu marine, mois précédent en gris. */}
+        <ul className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          {keyFigures.map((f) => {
+            const max = Math.max(f.current ?? 0, f.previous ?? 0);
+            const rows = [
+              { month: currentMonth.name, value: f.current, bar: "bg-ink-deep/85", text: "font-bold text-ink-deep" },
+              { month: previousMonth.name, value: f.previous, bar: "bg-slate-ink/25", text: "text-slate-ink" },
+            ];
+            return (
+              <li key={f.label}>
+                <p className="font-semibold text-ink-deep">{f.label}</p>
+                <div className="mt-2 space-y-1.5">
+                  {rows.map((r) => (
+                    <div key={r.month} className="flex items-center gap-3 text-sm">
+                      <span className="w-20 shrink-0 text-slate-ink">{capitalize(r.month)}</span>
+                      <span className="h-3 flex-1 overflow-hidden rounded-full bg-sky">
+                        <span
+                          className={`block h-full rounded-full ${r.bar}`}
+                          style={{ width: `${r.value && max > 0 ? Math.max(3, Math.round((r.value / max) * 100)) : 0}%` }}
+                        />
+                      </span>
+                      <span className={`w-24 shrink-0 text-right whitespace-nowrap ${r.text}`}>
+                        {r.value != null ? f.format(r.value) : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -177,12 +189,12 @@ export default async function StatistiquesPage() {
         <p className="mt-1 text-sm text-slate-ink">Réservations confirmées ou au-delà, à la date de début de location.</p>
         {/* Téléphone : barres horizontales, une ligne par mois (12 colonnes verticales ne tiennent pas en largeur). */}
         <ul className="mt-5 space-y-2 md:hidden">
-          {history.map((h) => (
+          {history.map((h, i) => (
             <li key={h.month} className="flex items-center gap-3 text-sm">
               <span className="w-16 shrink-0 text-slate-ink">{monthLabel.format(new Date(`${h.month}-01T12:00:00Z`))}</span>
               <span className="h-3 flex-1 overflow-hidden rounded-full bg-sky">
                 <span
-                  className="block h-full rounded-full bg-brick"
+                  className={`block h-full rounded-full ${i === history.length - 1 ? "bg-ink-deep/35" : "bg-ink-deep/85"}`}
                   style={{ width: `${h.total > 0 ? Math.max(2, Math.round((h.total / maxRevenue) * 100)) : 0}%` }}
                 />
               </span>
@@ -193,17 +205,20 @@ export default async function StatistiquesPage() {
         {/*
           Chaque colonne prend toute la hauteur du graphique : sans hauteur définie, le pourcentage de la
           barre retombait à 0 et seuls les montants s'affichaient. La barre la plus haute laisse la place
-          de son montant au-dessus (1,5 rem). Mois sans location : simple trait gris.
+          de son montant au-dessus (1,5 rem). Mois sans location : simple trait gris. Bleu marine plutôt
+          que rouge (réservé aux actions) ; mois en cours plus clair, puisqu'il n'est pas terminé.
         */}
         <div className="mt-6 hidden md:flex gap-2 md:gap-3 h-48">
-          {history.map((h) => (
+          {history.map((h, i) => (
             <div key={h.month} className="flex-1 h-full flex flex-col items-center gap-1.5 min-w-0">
               <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-end gap-1.5">
                 {h.total > 0 ? (
                   <span className="text-xs font-semibold text-ink-deep whitespace-nowrap">{formatCents(h.total)}</span>
                 ) : null}
                 <div
-                  className={`w-full rounded-t ${h.total > 0 ? "bg-brick" : "bg-slate-ink/15"}`}
+                  className={`w-full rounded-t ${
+                    h.total === 0 ? "bg-slate-ink/15" : i === history.length - 1 ? "bg-ink-deep/35" : "bg-ink-deep/85"
+                  }`}
                   style={{ height: h.total > 0 ? `max(4px, calc((100% - 1.5rem) * ${h.total / maxRevenue}))` : "2px" }}
                 />
               </div>
@@ -223,7 +238,7 @@ export default async function StatistiquesPage() {
             <ol className="mt-4 space-y-2">
               {topSets.map((s, i) => (
                 <li key={s.id} className="flex items-center gap-3">
-                  <span className="display text-lg font-bold text-brick w-6 shrink-0">{i + 1}</span>
+                  <span className="display text-lg font-bold text-ink-deep/60 w-6 shrink-0">{i + 1}</span>
                   <Link href={`/admin/sets/${s.id}`} className="flex-1 font-medium hover:underline truncate">
                     {s.name}
                   </Link>
@@ -239,7 +254,7 @@ export default async function StatistiquesPage() {
         <section className="brick-card p-5">
           <h2 className="text-xl font-semibold">Taux d&apos;occupation</h2>
           <p className="mt-1 text-sm text-slate-ink">Jours loués sur les 30 derniers jours, rapportés aux exemplaires actifs.</p>
-          <p className="mt-4 display text-4xl font-bold text-brick">{occupancyRate}%</p>
+          <p className="mt-4 display text-4xl font-bold text-ink-deep">{occupancyRate}%</p>
           <p className="mt-1 text-sm text-slate-ink">
             {occupancyDays.n} jour{occupancyDays.n > 1 ? "s" : ""} loué{occupancyDays.n > 1 ? "s" : ""} sur {activeCopies.n * 30} possibles
             ({activeCopies.n} exemplaire{activeCopies.n > 1 ? "s" : ""} actif{activeCopies.n > 1 ? "s" : ""}).
