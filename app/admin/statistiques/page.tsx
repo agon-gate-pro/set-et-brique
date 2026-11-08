@@ -323,7 +323,11 @@ export default async function StatistiquesPage() {
           </li>
           <li>
             <p className="display text-3xl font-bold text-ink-deep">{customers.returning}</p>
-            <p className="mt-1 text-slate-ink">Sont revenus (2 locations ou plus)</p>
+            <p className="mt-1 text-slate-ink">
+              Sont revenus
+              <br />
+              (2 locations ou plus)
+            </p>
           </li>
           <li>
             <p className="display text-3xl font-bold text-ink-deep">{newsletter.n}</p>
