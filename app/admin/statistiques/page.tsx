@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { addDays, monthStartIso, todayIso } from "@/lib/dates";
@@ -159,9 +160,34 @@ export default async function StatistiquesPage() {
               { month: currentMonth.name, value: f.current, bar: "bg-ink-deep/85", text: "font-bold text-ink-deep" },
               { month: previousMonth.name, value: f.previous, bar: "bg-slate-ink/25", text: "text-slate-ink" },
             ];
+            // Évolution en % : seulement si le mois précédent a une valeur (pas de division par zéro).
+            const change =
+              f.current != null && f.previous != null && f.previous > 0
+                ? Math.round(((f.current - f.previous) / f.previous) * 100)
+                : null;
             return (
               <li key={f.label}>
-                <p className="font-semibold text-ink-deep">{f.label}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-ink-deep">{f.label}</p>
+                  {change != null ? (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                        change > 0 ? "bg-leaf/10 text-leaf-deep" : change < 0 ? "bg-brick/10 text-brick-deep" : "bg-slate-ink/10 text-slate-ink"
+                      }`}
+                      title={`Évolution par rapport à ${previousMonth.name}`}
+                    >
+                      {change > 0 ? (
+                        <ArrowUp className="h-3.5 w-3.5" aria-hidden />
+                      ) : change < 0 ? (
+                        <ArrowDown className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <Minus className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                      {change > 0 ? "+" : change < 0 ? "−" : ""}
+                      {Math.abs(change).toLocaleString("fr-FR")}&nbsp;%
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-2 space-y-1.5">
                   {rows.map((r) => (
                     <div key={r.month} className="flex items-center gap-3 text-sm">
