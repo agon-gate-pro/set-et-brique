@@ -393,7 +393,15 @@ Impression : page dédiée par navigateur (§10, pas de moteur PDF serveur pour 
 
 ### Statistiques (`/admin/statistiques`)
 
-Chiffre d'affaires des 12 derniers mois en barres (réservations `confirmed`, `picked_up` et `returned`, à la date de début de location, même règle que le tableau de bord). Cinq sets les plus loués, par nombre de réservations dans les mêmes statuts. Taux d'occupation glissant sur 30 jours : jours loués (recouvrement de chaque réservation avec la fenêtre) divisés par le nombre d'exemplaires actifs (hors « Retiré ») multiplié par 30 — approximation qui ne retire pas les exemplaires en réparation du dénominateur. Bons cadeaux : valeur totale émise, utilisée, encore en circulation (valides et non expirés).
+Toutes les mesures portent sur les réservations `confirmed`, `picked_up` et `returned` (constante `COUNTED`), même règle que le tableau de bord.
+
+**Chiffres clés du mois** (8 novembre 2026) : locations qui démarrent dans le mois en cours, CA (loyer), panier moyen (CA / locations) et durée moyenne (`days`), avec la valeur du mois précédent en dessous. Nombres bruts, sans pourcentage d'évolution : avec peu de locations, un écart d'une seule location ferait « −50 % ».
+
+Chiffre d'affaires des 12 derniers mois en barres, à la date de début de location. Sur ordinateur, chaque colonne prend toute la hauteur du graphique et la barre se dimensionne en `calc((100% - 1.5rem) * part)`, la marge laissant la place du montant au-dessus ; mois vide = trait gris. Sur téléphone, barres horizontales. Cinq sets les plus loués, par nombre de réservations, liens vers la fiche du set.
+
+**Sets qui dorment** (8 novembre 2026) : sets publiés sans réservation en cours ni à venir (statuts `UPCOMING`, demandes en attente comprises, `end_date` ≥ aujourd'hui) et dont la dernière location comptée s'est terminée il y a plus de `SLEEPING_DAYS` (60) jours, ou jamais loués. Jamais loués d'abord, puis du retour le plus ancien au plus récent.
+
+**Clients** (8 novembre 2026) : clients ayant au moins une réservation comptée, dont ceux qui en ont deux ou plus, et inscrits à la newsletter (`newsletter_consent_at` renseigné). Taux d'occupation glissant sur 30 jours : jours loués (recouvrement de chaque réservation avec la fenêtre) divisés par le nombre d'exemplaires actifs (hors « Retiré ») multiplié par 30 — approximation qui ne retire pas les exemplaires en réparation du dénominateur. Bons cadeaux : valeur totale émise, utilisée, encore en circulation (valides et non expirés).
 
 ### Export (`/admin/export`)
 

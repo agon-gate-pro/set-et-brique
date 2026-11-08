@@ -18,7 +18,7 @@ Dernière mise à jour : 3 novembre 2026.
 | 8. Notes | **Pas commencé** | | Tout. La facturation est remplacée par l'émission de notes (révision de la spécification du 18 septembre 2026) : génération au paiement, mentions allégées, numéro `aaaa-mm-##`, note complémentaire pour le retard, export par lot en zip |
 | 9. État des lieux et dommages | **Commencé** | Statut « En réparation » et note interne par exemplaire, état des lieux en commentaire libre au retour, retard calculé et affiché | Séquence de retard J-1 / J / J+1 / J+2, barème, forfaits, et le solde de la restitution par deux boutons (Restitution conforme / Établir une note complémentaire) |
 | 10. Notifications | **Commencé** | Resend (compte direct, équipe « agon-gate », domaine `set-et-brique.com` en région UE) ; e-mails de la réservation (demande reçue, nouvelle demande aux gérants, acceptée, refusée, annulation, remise modifiée, set remis, set rendu) ; rappels veille, jour du retour et retard (tâche planifiée quotidienne), rappel de retard suspendable ; journal `email_log` visible dans l'historique d'une réservation | Relecture par Marion des e-mails de la caution (E0 posée, E1 libérée, E2 retenue) et de la prolongation ; textes modifiables par les gérants |
-| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord (blocs cliquables, CA du jour/semaine/mois), sets (tableau avec recherche et filtres), forfaits, lieux, fermetures, réservations, bons cadeaux, statistiques (CA 12 mois, sets les plus loués, taux d'occupation 30 jours, bons cadeaux). Réglages (délai de paiement, battement par défaut, durée minimale). Rôles admin et superadmin | Contenus du site, maintenance, export des ventes sur une période (champs début et fin, bouton année civile ; CA total + une ligne par client) et export des notes par lot en zip |
+| 11. Back-office et reporting | **Fait en partie** | Admin : tableau de bord (blocs cliquables, CA du jour/semaine/mois), sets (tableau avec recherche et filtres), forfaits, lieux, fermetures, réservations, bons cadeaux, statistiques (chiffres clés du mois, CA 12 mois, sets les plus loués, taux d'occupation 30 jours, sets qui dorment, clients, bons cadeaux). Réglages (délai de paiement, battement par défaut, durée minimale). Rôles admin et superadmin | Contenus du site, maintenance, export des ventes sur une période (champs début et fin, bouton année civile ; CA total + une ligne par client) et export des notes par lot en zip |
 | 12. Déploiement et formation | **En cours** | Déploiement Vercel automatique, base Neon partagée ; **en production sur `set-et-brique.com` depuis le 14 octobre 2026** (Clerk production, Stripe live, voir journal) | Tests de production à finir, formation |
 
 ## 2. Hypothèses prises sans règle explicite
@@ -119,6 +119,18 @@ Mise à jour du 13 octobre 2026, après la revue de `lib/deposits.ts` et `lib/pa
 10. Séquence de retard, état des lieux et barème (module 9), puis notes (8), contrat PDF et version des CG acceptée (7), exports des ventes et des notes (11).
 11. Purge des données clients au bout de 3 ans, planning propre à chaque lieu (module 2).
 
+### Statistiques à ajouter plus tard (proposées le 8 novembre 2026)
+
+Retenues par Alexis pour une étape suivante, toutes calculables avec les données déjà en base :
+
+- **Devenir des demandes** : reçues, acceptées, refusées, annulées par le client, paiement non abouti (voir où se perdent les réservations).
+- **Anticipation** : nombre moyen de jours entre la demande et le début de location (réglage des délais et des fermetures).
+- **Lieux de remise** : répartition des locations par lieu.
+- **Revenus annexes** : prolongations (nombre, montant), frais de démontage, cautions retenues. Le graphique du CA ne compte que le loyer (prolongations comprises).
+- **CA par set**, en plus du nombre de locations.
+- **Graphique du CA** : afficher un total et l'écart avec le mois précédent sous le titre, masquer les mois antérieurs à la première location.
+- Avec plus de volume : occupation par set, jours de départ les plus demandés, saisonnalité. Tant que les volumes sont faibles, garder des nombres bruts plutôt que des pourcentages.
+
 ### Check-list de mise en production (écrite le 14 octobre 2026)
 
 **Déroulée le 14 octobre au soir, voir le journal.** Corrections apprises en chemin : les clés Clerk ne passent pas par `vercel env` (variables gérées par l'intégration Vercel, le domaine se règle dans l'intégration) ; `pnpm role` vise l'instance de développement ; pas de redirection de l'apex vers `www` (webhook Stripe) ; le webhook live a été créé depuis le Dashboard Stripe (pas de Stripe CLI sur le poste d'Alexis).
@@ -156,6 +168,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ### 8 novembre 2026
 
+- **Statistiques : chiffres clés du mois, sets qui dorment, clients, et deux corrections** (`app/admin/statistiques/page.tsx`, `FONCTIONNEMENT.md` « Statistiques »). Demande d'Alexis, les premières locations arrivant. (1) **Correction : les barres du CA par mois ne s'affichaient pas sur ordinateur**, seuls les montants : la colonne de chaque mois n'avait pas de hauteur définie, le pourcentage de la barre retombait à 0. Colonnes en pleine hauteur, place réservée au montant au-dessus de la plus haute barre, trait gris pour les mois sans location. (2) **Correction : « Sets les plus loués »** menait à la liste des sets, il mène maintenant à la fiche du set. (3) **Chiffres clés du mois** en tête : locations, CA, panier moyen, durée moyenne, avec la valeur du mois précédent en dessous (nombres bruts, pas de pourcentage tant que les volumes sont faibles). (4) **Sets qui dorment** : sets publiés jamais loués ou dont la dernière location est terminée depuis plus de 60 jours, sans location en cours ni à venir (demandes en attente comprises) ; jamais loués d'abord, lien vers la fiche. Sert aussi à choisir les sets « bientôt à la retraite » (demande en attente de la réponse de Marion). (5) **Clients** : clients ayant loué au moins une fois, revenus (2 locations ou plus), inscrits à la newsletter. Les autres statistiques proposées sont notées au §4. Vérifié : types, lint, requêtes exécutées en lecture sur la base (10 clients ayant loué dont 3 revenus, 3 inscrits). Pas vu à l'écran (pas de session admin en local).
 - **Pastille « Disponible dès le … » sur une seule ligne** (`components/catalogue/availability-badge.tsx`) : sur les cartes du catalogue, « Disponible à partir du 19 novembre » passait sur deux lignes. Texte raccourci en « Disponible dès le 19 novembre », taille 13 px au lieu de 14, retour à la ligne interdit. Même pastille sur la fiche et le tunnel de réservation.
 
 ### 3 novembre 2026
