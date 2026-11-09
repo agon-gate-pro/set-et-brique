@@ -12,19 +12,20 @@ export const dynamic = "force-dynamic";
 
 export default async function SetOrderPage() {
   await requireRole("admin");
-  // Même tri que le catalogue public : coups de cœur d'abord, puis l'ordre réglé ici, puis le nom.
+  // Même tri que le catalogue public : coups de cœur, puis dernière chance, puis l'ordre réglé ici, puis le nom.
   const rows = await db
     .select({
       id: schema.sets.id,
       name: schema.sets.name,
       theme: schema.sets.theme,
       featured: schema.sets.featured,
+      lastChance: schema.sets.lastChance,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
       coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom, 'rect', i.crop_rect) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
     })
     .from(schema.sets)
     .where(eq(schema.sets.status, "published"))
-    .orderBy(desc(schema.sets.featured), asc(schema.sets.sortOrder), asc(schema.sets.name));
+    .orderBy(desc(schema.sets.featured), desc(schema.sets.lastChance), asc(schema.sets.sortOrder), asc(schema.sets.name));
 
   return (
     <>
@@ -35,8 +36,8 @@ export default async function SetOrderPage() {
       <p className="mt-2 text-sm text-slate-ink max-w-2xl">
         L&apos;ordre dans lequel les sets publiés apparaissent dans le catalogue. Glissez un set pour le
         déplacer, ou utilisez les flèches : c&apos;est enregistré tout de suite. Les coups de cœur restent
-        toujours en tête ; cochez ou décochez « Coup de cœur » dans la fiche d&apos;un set pour le faire
-        changer de groupe. Un nouveau set se place à la fin.
+        toujours en tête, suivis des sets « Dernière chance » ; cochez ou décochez ces cases dans la fiche
+        d&apos;un set pour le faire changer de groupe. Un nouveau set se place à la fin.
       </p>
 
       <SetOrderList rows={rows} />

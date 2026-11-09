@@ -5,6 +5,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { MonitorSmartphone } from "lucide-react";
 import { AvailabilityBadge } from "@/components/catalogue/availability-badge";
 import { AvailabilityCalendar } from "@/components/catalogue/availability-calendar";
+import { LastChanceBadge } from "@/components/catalogue/set-highlights";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { isBookable, loadAvailability, loadDayAvailability } from "@/lib/availability";
 import { db, schema } from "@/lib/db";
@@ -122,6 +123,11 @@ export default async function SetPage({ params }: PageProps<"/catalogue/[slug]">
 
             <div>
               {a ? <AvailabilityBadge availability={a} withDate /> : null}
+              {set.lastChance ? (
+                <div className="mt-2">
+                  <LastChanceBadge />
+                </div>
+              ) : null}
               <h1 className="mt-3 text-4xl md:text-5xl font-bold leading-tight">{set.name}</h1>
               <p className="mt-2 text-slate-ink">
                 {[set.brand !== "LEGO" ? set.brand : null, set.theme].filter(Boolean).join(" · ")}

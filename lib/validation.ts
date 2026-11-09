@@ -120,6 +120,7 @@ export const setSchema = z.object({
     .nullable(),
   status: z.enum(["draft", "published", "archived"]),
   featured: checkbox,
+  lastChance: checkbox,
 });
 
 const isoDate = z

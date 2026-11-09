@@ -1,0 +1,1 @@
+ALTER TABLE "sets" ADD COLUMN "last_chance" boolean DEFAULT false NOT NULL;

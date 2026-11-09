@@ -166,6 +166,11 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 
 ## 5. Journal
 
+### 9 novembre 2026
+
+- **Sets « Dernière chance »** (`sets.last_chance`, migration 0031 appliquée ; `app/admin/sets/set-form.tsx`, `actions.ts`, `ordre/`, `app/catalogue/page.tsx`, `app/catalogue/[slug]/page.tsx`, `app/page.tsx`, `app/llms.txt/route.ts`, `components/catalogue/set-highlights.tsx`). Réponses de Marion au mail du 8 novembre : simple mention sans date (donc pas de blocage des réservations), retrait à la main, pastille « Dernière chance » avec un trèfle, place juste après les coups de cœur. Choix validés par Alexis : icône `Clover` de lucide plutôt que l'emoji, les deux pastilles si un set est à la fois coup de cœur et dernière chance. Archiver le set décoche la case. Page « Ordre du catalogue » en trois groupes. Pastille « Coup de cœur » sortie dans le même composant que la nouvelle, sans changement visuel. Vérifié : types, lint, rendu serveur de `/`, `/catalogue`, d'une fiche et de `/llms.txt`. Pas testé avec un set coché (base partagée avec la prod) : à vérifier en cochant un set.
+- **« En réparation » devient « Indisponible » côté client** (`setAvailabilityLabels`, `lib/format.ts`), demande de la cliente. L'admin garde « En réparation » pour les exemplaires. Vérifié sur le catalogue (catamaran notamment).
+
 ### 8 novembre 2026
 
 - **Statistiques : pastille d'évolution sur les chiffres du mois** (`app/admin/statistiques/page.tsx`, `DESIGN-SYSTEM.md`). Demande d'Alexis : à droite du libellé de chaque chiffre, flèche et % d'évolution par rapport au mois précédent, vert si ça monte, rouge si ça baisse (gris si égal, absente si le mois précédent vaut zéro). Exception assumée à la règle « pas de rouge pour l'information », notée au design système. Vérifié : types, lint.

@@ -78,7 +78,7 @@ async function loadThemeTiles() {
     })
     .from(schema.sets)
     .where(and(eq(schema.sets.status, "published"), isNotNull(schema.sets.theme)))
-    .orderBy(desc(schema.sets.featured), asc(schema.sets.sortOrder), asc(schema.sets.name));
+    .orderBy(desc(schema.sets.featured), desc(schema.sets.lastChance), asc(schema.sets.sortOrder), asc(schema.sets.name));
 
   const tiles = new Map<string, { slug: string; label: string; cover: string | null; coverCrop: ImageCrop | null; count: number }>();
   for (const r of rows) {

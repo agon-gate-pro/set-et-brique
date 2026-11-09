@@ -218,6 +218,13 @@
       "when": 1793723041900,
       "tag": "0030_customer_newsletter_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794253506960,
+      "tag": "0031_set_last_chance",
+      "breakpoints": true
     }
   ]
 }

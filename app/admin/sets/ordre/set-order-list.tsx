@@ -12,14 +12,16 @@ type Row = {
   name: string;
   theme: string | null;
   featured: boolean;
+  lastChance: boolean;
   cover: string | null;
   coverCrop: ImageCrop | null;
 };
 
 /**
- * Deux groupes réordonnables séparément, coups de cœur puis autres sets : dans le catalogue, un
- * coup de cœur passe toujours devant, un glisser d'un groupe à l'autre n'aurait donc pas d'effet.
- * L'ordre complet (coups de cœur puis autres) est enregistré à chaque changement.
+ * Trois groupes réordonnables séparément, coups de cœur, dernière chance puis autres sets : dans le
+ * catalogue, un coup de cœur passe toujours devant, puis un set « Dernière chance » ; un glisser d'un
+ * groupe à l'autre n'aurait donc pas d'effet. Un set à la fois coup de cœur et dernière chance est
+ * dans le premier groupe. L'ordre complet est enregistré à chaque changement.
  */
 export function SetOrderList({ rows }: { rows: Row[] }) {
   const [order, setOrder] = useState(() => rows.map((r) => r.id));
@@ -31,10 +33,11 @@ export function SetOrderList({ rows }: { rows: Row[] }) {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const ordered = order.map((id) => byId.get(id)).filter((r): r is Row => r != null);
   const featured = ordered.filter((r) => r.featured);
-  const others = ordered.filter((r) => !r.featured);
+  const lastChance = ordered.filter((r) => !r.featured && r.lastChance);
+  const others = ordered.filter((r) => !r.featured && !r.lastChance);
 
-  function commit(nextFeatured: Row[], nextOthers: Row[]) {
-    const next = [...nextFeatured, ...nextOthers].map((r) => r.id);
+  function commit(nextFeatured: Row[], nextLastChance: Row[], nextOthers: Row[]) {
+    const next = [...nextFeatured, ...nextLastChance, ...nextOthers].map((r) => r.id);
     setOrder(next);
     reorderSets(next);
   }
@@ -46,13 +49,28 @@ export function SetOrderList({ rows }: { rows: Row[] }) {
   return (
     <div className="mt-6 grid gap-8">
       {featured.length > 0 ? (
-        <Group title="Coups de cœur" hint="Toujours en tête du catalogue" rows={featured} offset={0} onChange={(l) => commit(l, others)} />
+        <Group
+          title="Coups de cœur"
+          hint="Toujours en tête du catalogue"
+          rows={featured}
+          offset={0}
+          onChange={(l) => commit(l, lastChance, others)}
+        />
+      ) : null}
+      {lastChance.length > 0 ? (
+        <Group
+          title="Dernière chance"
+          hint="Juste après les coups de cœur"
+          rows={lastChance}
+          offset={featured.length}
+          onChange={(l) => commit(featured, l, others)}
+        />
       ) : null}
       <Group
-        title={featured.length > 0 ? "Autres sets" : "Sets publiés"}
+        title={featured.length + lastChance.length > 0 ? "Autres sets" : "Sets publiés"}
         rows={others}
-        offset={featured.length}
-        onChange={(l) => commit(featured, l)}
+        offset={featured.length + lastChance.length}
+        onChange={(l) => commit(featured, lastChance, l)}
       />
     </div>
   );

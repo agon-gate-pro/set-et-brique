@@ -160,6 +160,21 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
           <input type="checkbox" name="featured" defaultChecked={set?.featured ?? false} className="focus-outline-none h-5 w-5 accent-brick" />
           <span className="font-bold">Coup de cœur (en tête du catalogue)</span>
         </label>
+        <label className="flex items-start gap-3 sm:col-start-2">
+          <input
+            type="checkbox"
+            name="lastChance"
+            defaultChecked={set?.lastChance ?? false}
+            className="focus-outline-none mt-0.5 h-5 w-5 shrink-0 accent-brick"
+          />
+          <span>
+            <span className="block font-bold">Dernière chance</span>
+            <span className="block text-sm text-slate-ink">
+              Set bientôt retiré : pastille, et place juste après les coups de cœur. Décochée toute seule quand le set
+              est archivé.
+            </span>
+          </span>
+        </label>
       </Group>
 
       <div className="sm:col-span-2">

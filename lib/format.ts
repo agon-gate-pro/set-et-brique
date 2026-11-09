@@ -122,7 +122,8 @@ export const setAvailabilityLabels = {
   rented: "En location",
   // « Battement » est le terme de gestion ; le client ne le comprend pas (décision du 24 septembre 2026).
   turnaround: "Bientôt de retour",
-  repair: "En réparation",
+  // « En réparation » reste le terme de gestion ; le client voit « Indisponible » (demande de la cliente, 9 novembre 2026).
+  repair: "Indisponible",
   retired: "Retiré",
 } as const;
 

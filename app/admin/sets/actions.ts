@@ -70,6 +70,8 @@ export async function createSet(_: ActionState, formData: FormData): Promise<Act
       ratePlanId: d.ratePlanId,
       status: d.status,
       featured: d.featured,
+      // Un set archivé (retiré à la main) perd la mention « Dernière chance ».
+      lastChance: d.status === "archived" ? false : d.lastChance,
     })
     .returning({ id: schema.sets.id });
 
@@ -114,6 +116,8 @@ export async function updateSet(_: ActionState, formData: FormData): Promise<Act
       ratePlanId: d.ratePlanId,
       status: d.status,
       featured: d.featured,
+      // Un set archivé (retiré à la main) perd la mention « Dernière chance ».
+      lastChance: d.status === "archived" ? false : d.lastChance,
     })
     .where(eq(schema.sets.id, id));
 

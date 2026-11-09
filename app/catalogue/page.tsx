@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { FeaturedBadge, LastChanceBadge } from "@/components/catalogue/set-highlights";
 import { CroppedImage } from "@/components/cropped-image";
 import type { ImageCrop } from "@/lib/image-crop";
 import { asc, desc, eq, sql } from "drizzle-orm";
@@ -59,6 +59,7 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
       buildTime: schema.sets.buildTime,
       turnaroundDays: schema.sets.turnaroundDays,
       featured: schema.sets.featured,
+      lastChance: schema.sets.lastChance,
       pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
       cover: sql<string | null>`(select url from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
       coverCrop: sql<ImageCrop | null>`(select json_build_object('x', i.crop_x, 'y', i.crop_y, 'zoom', i.crop_zoom, 'rect', i.crop_rect) from ${schema.setImages} i where i.set_id = ${schema.sets}.id order by i.sort_order asc, i.created_at asc limit 1)`,
@@ -66,7 +67,7 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
     })
     .from(schema.sets)
     .where(eq(schema.sets.status, "published"))
-    .orderBy(desc(schema.sets.featured), asc(schema.sets.sortOrder), asc(schema.sets.name));
+    .orderBy(desc(schema.sets.featured), desc(schema.sets.lastChance), asc(schema.sets.sortOrder), asc(schema.sets.name));
 
   if (allRows.length === 0) {
     return (
@@ -144,11 +145,12 @@ export default async function CataloguePage({ searchParams }: PageProps<"/catalo
                 Photo à venir
               </div>
             )}
-            {s.featured ? (
-              // Blanc à cœur rouge, en haut à droite : à distance de la pastille jaune « Disponible », sous la photo.
-              <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-paper/95 px-2.5 py-1 text-xs font-bold text-ink-deep shadow-brick-sm">
-                <Heart className="h-3.5 w-3.5 fill-brick text-brick" aria-hidden />
-                Coup de cœur
+            {s.featured || s.lastChance ? (
+              // Pilules blanches en haut à droite : à distance de la pastille jaune « Disponible », sous la photo.
+              // Un set peut avoir les deux : l'une sous l'autre.
+              <span className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                {s.featured ? <FeaturedBadge /> : null}
+                {s.lastChance ? <LastChanceBadge /> : null}
               </span>
             ) : null}
           </div>

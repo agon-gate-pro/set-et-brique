@@ -206,6 +206,12 @@ export const sets = pgTable(
     turnaroundDays: integer("turnaround_days"),
     status: setStatus("status").notNull().default("draft"),
     featured: boolean("featured").notNull().default(false),
+    /**
+     * « Dernière chance » : set bientôt retiré du catalogue. Pastille, et place juste après les
+     * coups de cœur. Simple mention, sans date ; le retrait se fait à la main en archivant le set,
+     * ce qui décoche la case (migration 0031, 9 novembre 2026).
+     */
+    lastChance: boolean("last_chance").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
     ...timestamps,
   },

@@ -10,7 +10,7 @@ export async function GET() {
     .select({ slug: schema.sets.slug, name: schema.sets.name, theme: schema.sets.theme, pieces: schema.sets.pieces })
     .from(schema.sets)
     .where(eq(schema.sets.status, "published"))
-    .orderBy(desc(schema.sets.featured), asc(schema.sets.sortOrder), asc(schema.sets.name));
+    .orderBy(desc(schema.sets.featured), desc(schema.sets.lastChance), asc(schema.sets.sortOrder), asc(schema.sets.name));
   const lines = [
     `# ${site.name}`,
     "",
