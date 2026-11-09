@@ -19,3 +19,7 @@ Base du point de fin de semaine avec Madus et Marion. Le détail technique est d
 ## 2. À vérifier par Alexis
 
 - Cocher « Dernière chance » sur un set (puis un set aussi coup de cœur) et regarder le catalogue sur téléphone.
+
+## 3. Échanges avec Set et Brique
+
+- **9 novembre** : mail à Marion et Gaëtan expliquant « Dernière chance » et « Indisponible » (`docs/mails-client/2026-11-09-derniere-chance-indisponible.md`).
