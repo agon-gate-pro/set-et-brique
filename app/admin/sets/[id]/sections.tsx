@@ -564,7 +564,7 @@ export function CopiesSection({ setId, copies }: { setId: string; copies: SetCop
         Chaque boîte physique est un exemplaire. C&apos;est l&apos;exemplaire qui est
         réservé ; un set avec deux exemplaires peut être loué deux fois en même temps.
         « En location » et « en battement » ne se règlent pas ici : ils découlent des
-        réservations. Passez un exemplaire « En réparation » pour le bloquer le temps
+        réservations. Passez un exemplaire « Indisponible » pour le bloquer le temps
         d&apos;un souci, « Retiré » s&apos;il ne reviendra pas.
       </p>
 

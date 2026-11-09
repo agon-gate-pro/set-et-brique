@@ -13,7 +13,7 @@ Base du point de fin de semaine avec Madus et Marion. Le détail technique est d
 
 - Nouvelle case **« Dernière chance »** dans la fiche d'un set, sous « Coup de cœur ». Pas de date : le set reste réservable. Pour le retirer, passer le set en « Archivé » : la case se décoche toute seule.
 - La page **Ordre du catalogue** a maintenant un groupe « Dernière chance » entre les coups de cœur et les autres sets.
-- Dans l'admin, les exemplaires gardent le statut « En réparation ».
+- Le statut « En réparation » d'un exemplaire s'appelle aussi « Indisponible » dans la fiche du set.
 
 ## 2. À vérifier par Alexis
 

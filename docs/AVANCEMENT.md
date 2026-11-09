@@ -169,7 +169,7 @@ Clerk reste le service de comptes en production : plan gratuit suffisant, aucun 
 ### 9 novembre 2026
 
 - **Sets « Dernière chance »** (`sets.last_chance`, migration 0031 appliquée ; `app/admin/sets/set-form.tsx`, `actions.ts`, `ordre/`, `app/catalogue/page.tsx`, `app/catalogue/[slug]/page.tsx`, `app/page.tsx`, `app/llms.txt/route.ts`, `components/catalogue/set-highlights.tsx`). Réponses de Marion au mail du 8 novembre : simple mention sans date (donc pas de blocage des réservations), retrait à la main, pastille « Dernière chance » avec un trèfle, place juste après les coups de cœur. Choix validés par Alexis : icône `Clover` de lucide plutôt que l'emoji, les deux pastilles si un set est à la fois coup de cœur et dernière chance. Archiver le set décoche la case. Page « Ordre du catalogue » en trois groupes. Pastille « Coup de cœur » sortie dans le même composant que la nouvelle, sans changement visuel. Vérifié : types, lint, rendu serveur de `/`, `/catalogue`, d'une fiche et de `/llms.txt`. Pas testé avec un set coché (base partagée avec la prod) : à vérifier en cochant un set.
-- **« En réparation » devient « Indisponible » côté client** (`setAvailabilityLabels`, `lib/format.ts`), demande de la cliente. L'admin garde « En réparation » pour les exemplaires. Vérifié sur le catalogue (catamaran notamment).
+- **« En réparation » devient « Indisponible »** (`setAvailabilityLabels` et `copyStatusLabels`, `lib/format.ts`, texte d'aide des exemplaires), demande de la cliente : côté client, puis aussi dans le statut d'un exemplaire de la fiche du set (seconde demande le même jour). Vérifié sur le catalogue (catamaran notamment).
 
 ### 8 novembre 2026
 

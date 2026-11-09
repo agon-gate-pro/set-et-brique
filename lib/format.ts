@@ -112,7 +112,8 @@ export const copyConditionLabels = {
 
 export const copyStatusLabels = {
   available: "Disponible",
-  maintenance: "En réparation",
+  // « En réparation » jusqu'au 9 novembre 2026 : « Indisponible », comme côté client (demande de la cliente).
+  maintenance: "Indisponible",
   retired: "Retiré",
 } as const;
 
@@ -122,7 +123,7 @@ export const setAvailabilityLabels = {
   rented: "En location",
   // « Battement » est le terme de gestion ; le client ne le comprend pas (décision du 24 septembre 2026).
   turnaround: "Bientôt de retour",
-  // « En réparation » reste le terme de gestion ; le client voit « Indisponible » (demande de la cliente, 9 novembre 2026).
+  // Ex-« En réparation », renommé côté client et côté gestion le 9 novembre 2026 (demande de la cliente).
   repair: "Indisponible",
   retired: "Retiré",
 } as const;
