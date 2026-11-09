@@ -48,26 +48,25 @@ export function SetOrderList({ rows }: { rows: Row[] }) {
 
   return (
     <div className="mt-6 grid gap-8">
-      {featured.length > 0 ? (
-        <Group
-          title="Coups de cœur"
-          hint="Toujours en tête du catalogue"
-          rows={featured}
-          offset={0}
-          onChange={(l) => commit(l, lastChance, others)}
-        />
-      ) : null}
-      {lastChance.length > 0 ? (
-        <Group
-          title="Dernière chance"
-          hint="Juste après les coups de cœur"
-          rows={lastChance}
-          offset={featured.length}
-          onChange={(l) => commit(featured, l, others)}
-        />
-      ) : null}
+      {/* Groupes toujours affichés, même vides : sinon on ne sait pas qu'ils existent (9 novembre 2026). */}
       <Group
-        title={featured.length + lastChance.length > 0 ? "Autres sets" : "Sets publiés"}
+        title="Coups de cœur"
+        hint="Toujours en tête du catalogue"
+        empty="Aucun coup de cœur. Cochez « Coup de cœur » dans la fiche d'un set pour l'ajouter ici."
+        rows={featured}
+        offset={0}
+        onChange={(l) => commit(l, lastChance, others)}
+      />
+      <Group
+        title="Dernière chance"
+        hint="Juste après les coups de cœur"
+        empty="Aucun set en dernière chance. Cochez « Dernière chance » dans la fiche d'un set pour l'ajouter ici."
+        rows={lastChance}
+        offset={featured.length}
+        onChange={(l) => commit(featured, l, others)}
+      />
+      <Group
+        title="Autres sets"
         rows={others}
         offset={featured.length + lastChance.length}
         onChange={(l) => commit(featured, lastChance, l)}
@@ -79,12 +78,15 @@ export function SetOrderList({ rows }: { rows: Row[] }) {
 function Group({
   title,
   hint,
+  empty = "Aucun set dans ce groupe.",
   rows,
   offset,
   onChange,
 }: {
   title: string;
   hint?: string;
+  /** Texte affiché quand le groupe est vide. */
+  empty?: string;
   rows: Row[];
   /** Rang du premier set du groupe dans le catalogue, pour la numérotation. */
   offset: number;
@@ -123,7 +125,7 @@ function Group({
         {hint ? <span className="ml-2 text-sm font-semibold text-slate-ink">{hint}</span> : null}
       </h2>
       {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-ink">Aucun set dans ce groupe.</p>
+        <p className="mt-3 text-sm text-slate-ink">{empty}</p>
       ) : (
         <ol className="mt-3 brick-card divide-y divide-slate-ink/10 overflow-hidden">
           {rows.map((r, i) => (
