@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FilterBar } from "@/components/admin/filter-bar";
 import { formatCents, formatSetNumbers, setStatusLabels } from "@/lib/format";
+import { FeaturedBadge, LastChanceBadge } from "@/components/catalogue/set-highlights";
 
 export type SetRow = {
   id: string;
@@ -13,6 +14,8 @@ export type SetRow = {
   setNumbers: string[];
   theme: string | null;
   status: "draft" | "published" | "archived";
+  featured: boolean;
+  lastChance: boolean;
   depositCents: number;
   planName: string | null;
   pricePerDay: number | null;
@@ -25,6 +28,17 @@ type StatusFilter = "" | SetRow["status"];
 /** Couleur de la pastille de statut, partagée par le tableau et les cartes. */
 function statusBadge(status: SetRow["status"]) {
   return status === "published" ? "bg-sun" : status === "archived" ? "bg-slate-200" : "bg-paper";
+}
+
+/** Pastilles « Coup de cœur » / « Dernière chance », les mêmes que dans le catalogue. */
+function Highlights({ set, className = "" }: { set: SetRow; className?: string }) {
+  if (!set.featured && !set.lastChance) return null;
+  return (
+    <span className={`flex flex-wrap gap-1.5 ${className}`}>
+      {set.featured ? <FeaturedBadge /> : null}
+      {set.lastChance ? <LastChanceBadge /> : null}
+    </span>
+  );
 }
 
 export function SetsTable({ rows }: { rows: SetRow[] }) {
@@ -62,7 +76,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
           setStatus("");
           setTheme("");
         }}
-        resultCount={filtered.length}
+        resultCount={filtered.length}
       >
         <label className="block">
           <span className="block font-bold text-ink-deep">Statut</span>
@@ -128,6 +142,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
                     {s.copies} exempl. · {s.pricePerDay != null ? `${formatCents(s.pricePerDay)}/jour` : (s.planName ?? "forfait par défaut")} ·
                     caution {formatCents(s.depositCents)}
                   </span>
+                  <Highlights set={s} className="mt-2" />
                 </span>
               </Link>
             </li>
@@ -142,7 +157,8 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
               <col className="w-20" />
               <col className="w-[20%]" />
               <col className="w-24" />
-              <col className="w-24" />
+              {/* Assez large pour la pastille « Dernière chance » sous le statut. */}
+              <col className="w-40" />
               <col className="w-28" />
             </colgroup>
             <thead>
@@ -185,6 +201,7 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
                     <span className={`text-xs font-bold px-2 py-1 rounded-md border border-slate-ink/15 inline-block ${statusBadge(s.status)}`}>
                       {setStatusLabels[s.status]}
                     </span>
+                    <Highlights set={s} className="mt-2 flex-col items-start" />
                   </td>
                   <td className="p-2 sm:p-3 text-right">
                     <Link href={`/admin/sets/${s.id}`} className="btn bg-ink-deep text-paper text-xs py-1.5 px-3 whitespace-nowrap">

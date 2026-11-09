@@ -19,6 +19,8 @@ export default async function SetsPage() {
       setNumbers: schema.sets.setNumbers,
       theme: schema.sets.theme,
       status: schema.sets.status,
+      featured: schema.sets.featured,
+      lastChance: schema.sets.lastChance,
       depositCents: schema.sets.depositCents,
       planName: sql<string | null>`(select name from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id)`,
       pricePerDay: sql<number | null>`coalesce((select price_cents_per_day from ${schema.ratePlans} rp where rp.id = ${schema.sets}.rate_plan_id), (select price_cents_per_day from ${schema.ratePlans} rp where rp.is_default limit 1))`,
