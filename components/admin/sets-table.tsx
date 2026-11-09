@@ -193,8 +193,9 @@ export function SetsTable({ rows }: { rows: SetRow[] }) {
                   <td className="p-2 sm:p-3 text-slate-ink break-words">{s.theme ?? "—"}</td>
                   <td className="p-2 sm:p-3">{s.copies}</td>
                   <td className="p-2 sm:p-3 text-slate-ink break-words">
-                    {s.planName ?? "forfait par défaut"}
-                    {s.pricePerDay != null ? ` (${formatCents(s.pricePerDay)}/jour)` : ""}
+                    {/* Prix sur sa propre ligne, insécable : en ligne avec le forfait, la parenthèse finissait seule. */}
+                    <span className="block">{s.planName ?? "forfait par défaut"}</span>
+                    {s.pricePerDay != null ? <span className="block whitespace-nowrap">{formatCents(s.pricePerDay)}/jour</span> : null}
                   </td>
                   <td className="p-2 sm:p-3 break-words">{formatCents(s.depositCents)}</td>
                   <td className="p-2 sm:p-3">
