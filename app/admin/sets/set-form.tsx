@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Clover, Heart } from "lucide-react";
 import { Field, FormMessage, SubmitButton, inputClass, type ActionState } from "@/components/admin/form";
 import { centsToInput, instructionTypeLabels, setStatusLabels } from "@/lib/format";
 import { useFormDirty } from "@/lib/use-form-dirty";
@@ -158,7 +159,11 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
         </Field>
         <label className="flex items-center gap-3 self-end pb-2">
           <input type="checkbox" name="featured" defaultChecked={set?.featured ?? false} className="focus-outline-none h-5 w-5 accent-brick" />
-          <span className="font-bold">Coup de cœur (en tête du catalogue)</span>
+          {/* Même icône que la pastille du catalogue (`components/catalogue/set-highlights.tsx`). */}
+          <span className="inline-flex items-center gap-1.5 font-bold">
+            <Heart className="h-4 w-4 shrink-0 fill-brick text-brick" aria-hidden />
+            Coup de cœur (en tête du catalogue)
+          </span>
         </label>
         <label className="flex items-start gap-3 sm:col-start-2">
           <input
@@ -168,7 +173,10 @@ export function SetForm({ action, set, ratePlans, defaultTurnaroundDays, submitL
             className="focus-outline-none mt-0.5 h-5 w-5 shrink-0 accent-brick"
           />
           <span>
-            <span className="block font-bold">Dernière chance</span>
+            <span className="flex items-center gap-1.5 font-bold">
+              <Clover className="h-4 w-4 shrink-0 fill-leaf text-leaf-deep" aria-hidden />
+              Dernière chance
+            </span>
             <span className="block text-sm text-slate-ink">
               Set bientôt retiré : pastille, et place juste après les coups de cœur. Décochée toute seule quand le set
               est archivé.
