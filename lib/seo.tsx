@@ -19,6 +19,24 @@ export function metaDescription(text: string | null | undefined, fallback: strin
 /** Latitude et longitude du lieu de la fiche Google Maps (`site.links.googleReviews`). */
 const geo = { latitude: 47.7584758, longitude: -3.3585911 };
 
+/**
+ * Politique de retour attendue par Google pour les « fiches de marchand » : la location n'ouvre
+ * aucun retour contre remboursement (rendre le set fait partie de la prestation ; l'annulation suit
+ * les CGL). Déclarée sur le commerce et répétée dans chaque offre, où la Search Console la cherche.
+ */
+const returnPolicy = {
+  "@type": "MerchantReturnPolicy",
+  applicableCountry: "FR",
+  returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+};
+
+/** Aucun envoi ni livraison à domicile : remise en main propre dans un lieu de remise, sans frais. */
+const shippingDetails = {
+  "@type": "OfferShippingDetails",
+  shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "EUR" },
+  shippingDestination: { "@type": "DefinedRegion", addressCountry: "FR" },
+};
+
 /** Set et Brique en tant que commerce local (accueil). */
 export function localBusinessJsonLd() {
   const [streetAddress, rest] = site.address.split(", ");
@@ -59,6 +77,7 @@ export function localBusinessJsonLd() {
       areaServed: "Pays de Lorient",
       businessFunction: "http://purl.org/goodrelations/v1#LeaseOut",
     },
+    hasMerchantReturnPolicy: returnPolicy,
   };
 }
 
@@ -111,6 +130,8 @@ export function productJsonLd(p: ProductJsonLdInput) {
             businessFunction: "http://purl.org/goodrelations/v1#LeaseOut",
             areaServed: "Pays de Lorient",
             seller: { "@id": `${site.url}/#organisation` },
+            shippingDetails,
+            hasMerchantReturnPolicy: returnPolicy,
             description: `Location à la journée, caution de ${(p.depositCents / 100).toLocaleString("fr-FR")} € bloquée sur la carte à la remise.`,
           }
         : undefined,

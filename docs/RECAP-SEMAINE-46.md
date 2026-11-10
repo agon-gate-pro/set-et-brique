@@ -16,9 +16,15 @@ Base du point de fin de semaine avec Madus et Marion. Le détail technique est d
 - La page **Ordre du catalogue** a maintenant un groupe « Dernière chance » entre les coups de cœur et les autres sets.
 - Le statut « En réparation » d'un exemplaire s'appelle aussi « Indisponible » dans la fiche du set.
 
+### Pour Google
+
+- **Alertes de la Search Console corrigées** (10 novembre) : chaque fiche de set indique maintenant à Google qu'il n'y a pas de frais de livraison (remise en main propre) et pas de retour contre remboursement (c'est une location). Les deux autres suggestions (note et avis par set) sont volontairement laissées : on n'a pas d'avis par set, et réutiliser les avis Google Maps est interdit par Google.
+- **Idée pour Marion** : demander aux clients de noter le set après la location. Ce serait la seule façon légitime d'avoir des étoiles sous les fiches dans Google.
+
 ## 2. À vérifier par Alexis
 
 - Cocher « Dernière chance » sur un set (puis un set aussi coup de cœur) et regarder le catalogue sur téléphone.
+- Après le déploiement : tester une fiche de set dans l'outil de test des résultats enrichis de Google (search.google.com/test/rich-results), puis cliquer sur « Valider la correction » dans la Search Console (compte `setetbrique@gmail.com`).
 
 ## 3. Échanges avec Set et Brique
 
