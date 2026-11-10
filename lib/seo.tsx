@@ -30,11 +30,16 @@ const returnPolicy = {
   returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
 };
 
-/** Aucun envoi ni livraison à domicile : remise en main propre dans un lieu de remise, sans frais. */
+/**
+ * Aucun envoi ni livraison à domicile : remise en main propre dans un lieu de remise, sans frais,
+ * le jour de début de location choisi par le client, d'où aucun délai de préparation ni de transport.
+ */
+const zeroDays = { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" };
 const shippingDetails = {
   "@type": "OfferShippingDetails",
   shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "EUR" },
   shippingDestination: { "@type": "DefinedRegion", addressCountry: "FR" },
+  deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: zeroDays, transitTime: zeroDays },
 };
 
 /** Set et Brique en tant que commerce local (accueil). */
